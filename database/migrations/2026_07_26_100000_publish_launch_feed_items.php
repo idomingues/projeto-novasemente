@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Publica no feed unificado (produção): NS Whats + enquete do milagre.
+ * Publica no feed unificado (produção): NS Conecta + enquete do milagre.
  * Idempotente — safe em re-run via updateOrCreate / flags.
  */
 return new class extends Migration

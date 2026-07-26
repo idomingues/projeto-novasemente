@@ -197,7 +197,7 @@ return [
             'routes' => ['mobile.support', 'mobile.support.*'],
         ],
         'ns_whats' => [
-            'label' => 'NS Whats',
+            'label' => 'NS Conecta',
             'group' => 'inicio',
             'routes' => [
                 'mobile.ns-whats',

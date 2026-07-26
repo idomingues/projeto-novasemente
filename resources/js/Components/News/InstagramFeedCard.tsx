@@ -77,7 +77,7 @@ function FeedMedia({
 
     if (hostedVideoUrl && !isDetail) {
         const mediaClassName =
-            'relative block aspect-[9/16] w-full cursor-pointer overflow-hidden bg-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500';
+            'group relative block aspect-[9/16] w-full cursor-pointer overflow-hidden bg-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500';
         const video = (
             <>
                 <video

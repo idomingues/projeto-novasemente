@@ -136,8 +136,6 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'conversations.settings': ['conversations.admin'],
     'conversations.messages.store': ['conversations.manage', 'conversations.admin'],
     'conversations.claim': ['conversations.manage', 'conversations.admin'],
-    'conversations.close': ['conversations.manage', 'conversations.admin'],
-    'conversations.reopen': ['conversations.manage', 'conversations.admin'],
     'conversations.transfer': ['conversations.manage', 'conversations.admin'],
     'conversations.forward': ['conversations.manage', 'conversations.admin'],
     'pastors.index': ['pastors.view', 'pastors.manage'],

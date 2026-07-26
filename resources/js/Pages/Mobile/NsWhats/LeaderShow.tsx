@@ -10,7 +10,6 @@ import Modal from '@/Components/Modal';
 import NsWhatsChatComposer from '@/Components/NsWhats/NsWhatsChatComposer';
 import { NsWhatsMessageBubble, NsWhatsSystemPill } from '@/Components/NsWhats/NsWhatsMessageBubble';
 import { FormEventHandler, useRef, useEffect, useState } from 'react';
-import { confirmAction } from '@/utils/confirmDialog';
 import { sendNsWhatsMessage, type NsWhatsMessagePayload } from '@/utils/nsWhatsSendMessage';
 
 type Message = {
@@ -30,8 +29,6 @@ type Conversation = {
     headerTitle: string;
     headerSubtitle: string;
     statusLabel: string;
-    canChat: boolean;
-    canReopen: boolean;
     canClaim: boolean;
     canTransfer: boolean;
     canForward: boolean;
@@ -116,7 +113,7 @@ export default function LeaderShow({ conversation, peerLeaders, otherMinistries,
 
     return (
         <MobileLayout flush>
-            <Head title={`NS Whats — ${conversation.headerTitle}`} />
+            <Head title={`NS Conecta — ${conversation.headerTitle}`} />
             <div className={`mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:border-x pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))]`}>
                 <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-200/80 bg-[#f0f2f5] px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
                     <div className="min-w-0 flex-1">
@@ -127,7 +124,7 @@ export default function LeaderShow({ conversation, peerLeaders, otherMinistries,
                             {conversation.headerTitle}
                         </h1>
                         <p className="truncate text-[12px] text-zinc-500">
-                            {conversation.headerSubtitle} · {conversation.statusLabel}
+                            {conversation.headerSubtitle}
                         </p>
                     </div>
                     <div className="flex flex-wrap justify-end gap-1.5">
@@ -153,30 +150,6 @@ export default function LeaderShow({ conversation, peerLeaders, otherMinistries,
                         {conversation.canInternalNote ? (
                             <SecondaryButton type="button" className="!rounded-full !px-3 !py-1.5 text-xs" onClick={() => setNoteOpen(true)}>
                                 Interna
-                            </SecondaryButton>
-                        ) : null}
-                        {conversation.canChat ? (
-                            <SecondaryButton
-                                type="button"
-                                className="!rounded-full !px-3 !py-1.5 text-xs"
-                                onClick={async () => {
-                                    const ok = await confirmAction({
-                                        title: 'Finalizar conversa?',
-                                        confirmButtonText: 'Finalizar',
-                                    });
-                                    if (ok) router.post(route('mobile.ns-whats.leader.close', conversation.id));
-                                }}
-                            >
-                                Finalizar
-                            </SecondaryButton>
-                        ) : null}
-                        {conversation.canReopen ? (
-                            <SecondaryButton
-                                type="button"
-                                className="!rounded-full !px-3 !py-1.5 text-xs"
-                                onClick={() => router.post(route('mobile.ns-whats.leader.reopen', conversation.id))}
-                            >
-                                Reabrir
                             </SecondaryButton>
                         ) : null}
                     </div>
@@ -227,10 +200,6 @@ export default function LeaderShow({ conversation, peerLeaders, otherMinistries,
                 ) : conversation.canClaim ? (
                     <p className="shrink-0 border-t border-zinc-200 bg-[#f0f2f5] px-4 py-3 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
                         Assuma a conversa para responder.
-                    </p>
-                ) : !conversation.canChat ? (
-                    <p className="shrink-0 border-t border-zinc-200 bg-[#f0f2f5] px-4 py-3 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
-                        Conversa finalizada.
                     </p>
                 ) : (
                     <p className="shrink-0 border-t border-zinc-200 bg-[#f0f2f5] px-4 py-3 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">

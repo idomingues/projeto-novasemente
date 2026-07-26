@@ -37,7 +37,7 @@ const PASTORAL_ROUTE = 'mobile.pastoral-appointments.request' as const;
 
 const items: MoreMenuItem[] = [
     {
-        name: 'NS Whats',
+        name: 'NS Conecta',
         description: 'Converse com departamentos, líderes e voluntários.',
         route: 'mobile.ns-whats.index',
         featureKey: 'ns_whats',

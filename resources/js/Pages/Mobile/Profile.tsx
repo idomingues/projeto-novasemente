@@ -29,7 +29,7 @@ interface Props {
         pastoral_agenda: number | null;
         /** Total no feed de notificações (igreja + caixa pessoal). */
         notifications: number;
-        /** Conversas NS Whats aguardando sua resposta. */
+        /** Conversas NS Conecta aguardando sua resposta. */
         ns_whats_pending?: number;
     };
 }
@@ -213,7 +213,7 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
             ? ([
                   {
                       title: 'Aniversariantes do mês',
-                      description: 'Da sua área — com destaque no dia e parabéns pelo NS Whats',
+                      description: 'Da sua área — com destaque no dia e parabéns pelo NS Conecta',
                       icon: CakeIcon,
                       href: route('mobile.leader.birthdays'),
                       tone: 'member',
@@ -223,7 +223,7 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
         ...(route().has('mobile.ns-whats.index')
             ? ([
                   {
-                      title: 'NS Whats',
+                      title: 'NS Conecta',
                       description: 'Converse com departamentos, líderes e voluntários.',
                       icon: ChatBubbleLeftRightIcon,
                       href: route('mobile.ns-whats.index'),

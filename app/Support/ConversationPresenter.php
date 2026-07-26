@@ -11,6 +11,45 @@ use App\Policies\ChurchConversationPolicy;
 final class ConversationPresenter
 {
     /**
+     * Nome do departamento para UI do NS Conecta: remove sufixo de status do voluntário
+     * (ex.: «Coral - atuante» → «Coral»).
+     */
+    public static function displayMinistryName(?string $name): string
+    {
+        $name = trim((string) $name);
+        if ($name === '') {
+            return '';
+        }
+
+        $suffixes = [
+            'atuante',
+            'ativo',
+            'interessados',
+            'interessado',
+            'em treinamento',
+            'treinamento',
+            'em análise',
+            'em analise',
+            'pronto para servir',
+            'novo',
+            'recusado pelo líder',
+            'recusado pelo lider',
+        ];
+
+        foreach ($suffixes as $suffix) {
+            $pattern = '/^(.*?)\s*[-–—]\s*'.preg_quote($suffix, '/').'$/iu';
+            if (preg_match($pattern, $name, $matches) === 1) {
+                $base = trim((string) ($matches[1] ?? ''));
+                if ($base !== '') {
+                    return $base;
+                }
+            }
+        }
+
+        return $name;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function forMember(ChurchConversation $c, User $viewer): array
@@ -30,18 +69,28 @@ final class ConversationPresenter
             ->all();
 
         $unread = self::unreadCount($c, $viewer, true);
+        $ministryName = self::displayMinistryName($c->currentMinistry?->name);
+        $ministryId = (int) ($c->current_ministry_id ?? 0);
+        $assignee = $c->assignee;
+        if ($assignee !== null && $ministryId > 0 && NsWhatsAccess::leadsMinistry($assignee, $ministryId)) {
+            $headerSubtitle = $ministryName !== '' ? 'Líder - '.$ministryName : 'Líder';
+        } elseif ($assignee !== null) {
+            $headerSubtitle = $ministryName !== '' ? 'Voluntário - '.$ministryName : 'Voluntário';
+        } else {
+            $headerSubtitle = $ministryName !== '' ? $ministryName : 'Aguardando um líder assumir';
+        }
 
         return [
             'id' => $c->id,
             'subject' => $c->subject,
             'status' => $c->status,
             'statusLabel' => ChurchConversation::memberStatusLabel($c->status),
-            'ministryName' => $c->currentMinistry?->name,
+            'ministryName' => $ministryName !== '' ? $ministryName : null,
             'ministryIcon' => $c->currentMinistry?->icon,
             'assigneeName' => $c->assignee?->name,
             'preferredLeaderName' => $c->preferredLeader?->name,
-            'canChat' => $c->allowsChat(),
-            'canReopen' => $c->canReopen(),
+            'canChat' => true,
+            'archived' => app(\App\Actions\Conversations\ArchiveConversationForUser::class)->isArchivedFor($c, $viewer),
             'memberArchived' => $c->member_archived_at !== null,
             'lastActivityAt' => $c->last_activity_at?->toIso8601String(),
             'createdAt' => $c->created_at?->toIso8601String(),
@@ -49,11 +98,13 @@ final class ConversationPresenter
             'unreadCount' => $unread,
             'lastPreview' => self::lastPreview($messages),
             'messages' => $messages,
-            'headerTitle' => $c->assignee?->name ?? $c->currentMinistry?->name ?? 'NS Whats',
-            'headerSubtitle' => $c->assignee
-                ? ($c->currentMinistry?->name ?? 'Departamento')
-                : 'Aguardando um líder assumir',
+            'headerTitle' => $c->assignee?->name ?? ($ministryName !== '' ? $ministryName : 'NS Conecta'),
+            'headerSubtitle' => $headerSubtitle,
             'headerPhotoUrl' => $c->assignee?->photo_url,
+            'currentMinistryId' => $c->current_ministry_id ? (int) $c->current_ministry_id : null,
+            'counterpartUserId' => $c->assignee_user_id
+                ? (int) $c->assignee_user_id
+                : ($c->preferred_leader_user_id ? (int) $c->preferred_leader_user_id : null),
         ];
     }
 
@@ -71,6 +122,8 @@ final class ConversationPresenter
             ->all();
 
         $policy = app(ChurchConversationPolicy::class);
+        $ministryName = self::displayMinistryName($c->currentMinistry?->name);
+        $headerSubtitle = $ministryName !== '' ? 'Voluntário - '.$ministryName : 'Voluntário';
 
         return array_merge($base, [
             'statusLabel' => ChurchConversation::staffStatusLabel($c->status),
@@ -89,9 +142,12 @@ final class ConversationPresenter
             'canReply' => $policy->sendMessage($viewer, $c),
             'canChat' => $policy->sendMessage($viewer, $c),
             'headerTitle' => $c->member?->name ?? 'Membro',
-            'headerSubtitle' => $c->subject ?: ($c->currentMinistry?->name ?? 'NS Whats'),
+            'headerSubtitle' => $headerSubtitle,
+            'ministryName' => $ministryName !== '' ? $ministryName : null,
             'headerPhotoUrl' => $c->member?->photo_url,
             'unreadCount' => self::unreadCount($c, $viewer, false),
+            'currentMinistryId' => $c->current_ministry_id ? (int) $c->current_ministry_id : null,
+            'counterpartUserId' => $c->member_user_id ? (int) $c->member_user_id : null,
         ]);
     }
 

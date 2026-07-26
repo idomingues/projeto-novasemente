@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Conversations\ClaimConversation;
-use App\Actions\Conversations\CloseConversation;
 use App\Actions\Conversations\ForwardConversation;
 use App\Actions\Conversations\MarkConversationRead;
-use App\Actions\Conversations\ReopenConversation;
 use App\Actions\Conversations\SendConversationMessage;
 use App\Actions\Conversations\TransferConversation;
 use App\Models\Church;
@@ -58,11 +56,10 @@ class MobileNsWhatsLeaderController extends Controller
 
         match ($filter) {
             'new' => $query->where('status', ChurchConversation::STATUS_NEW),
-            'unclaimed' => $query->whereNull('assignee_user_id')->where('status', '!=', ChurchConversation::STATUS_CLOSED),
+            'unclaimed' => $query->whereNull('assignee_user_id'),
             'mine' => $query->where('assignee_user_id', $user->id),
             'awaiting_member' => $query->where('status', ChurchConversation::STATUS_AWAITING_MEMBER),
             'awaiting_department' => $query->where('status', ChurchConversation::STATUS_AWAITING_DEPARTMENT),
-            'closed' => $query->where('status', ChurchConversation::STATUS_CLOSED),
             default => null,
         };
 
@@ -186,23 +183,5 @@ class MobileNsWhatsLeaderController extends Controller
 
         return redirect()->route('mobile.ns-whats.leader.show', $conversation)
             ->with('success', 'Observação interna salva.');
-    }
-
-    public function close(Request $request, ChurchConversation $conversation, CloseConversation $close): RedirectResponse
-    {
-        $this->authorize('close', $conversation);
-        $close->handle($conversation, $request->user(), 'leader');
-
-        return redirect()->route('mobile.ns-whats.leader.show', $conversation)
-            ->with('success', 'Conversa finalizada.');
-    }
-
-    public function reopen(Request $request, ChurchConversation $conversation, ReopenConversation $reopen): RedirectResponse
-    {
-        $this->authorize('reopen', $conversation);
-        $reopen->handle($conversation, $request->user());
-
-        return redirect()->route('mobile.ns-whats.leader.show', $conversation)
-            ->with('success', 'Conversa reaberta.');
     }
 }

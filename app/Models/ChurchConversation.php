@@ -30,6 +30,8 @@ class ChurchConversation extends Model
         'assignee_user_id',
         'status',
         'last_activity_at',
+        'staff_alerted_at',
+        'member_alerted_at',
         'closed_at',
         'closed_by_user_id',
         'closed_by_role',
@@ -43,6 +45,8 @@ class ChurchConversation extends Model
     {
         return [
             'last_activity_at' => 'datetime',
+            'staff_alerted_at' => 'datetime',
+            'member_alerted_at' => 'datetime',
             'closed_at' => 'datetime',
             'reopen_until' => 'datetime',
             'member_archived_at' => 'datetime',
@@ -110,24 +114,19 @@ class ChurchConversation extends Model
         return $this->hasMany(ChurchConversationForward::class, 'conversation_id')->orderBy('created_at');
     }
 
-    public function allowsChat(): bool
+    public function archives(): HasMany
     {
-        return $this->status !== self::STATUS_CLOSED;
+        return $this->hasMany(ChurchConversationArchive::class, 'conversation_id');
     }
 
-    public function canReopen(): bool
+    public function allowsChat(): bool
     {
-        if ($this->status !== self::STATUS_CLOSED || $this->reopen_until === null) {
-            return false;
-        }
-
-        return $this->reopen_until->isFuture();
+        return true;
     }
 
     public static function memberStatusLabel(string $status): string
     {
         return match ($status) {
-            self::STATUS_CLOSED => 'Finalizada',
             self::STATUS_AWAITING_MEMBER => 'Aguardando você',
             default => 'Em andamento',
         };
@@ -141,8 +140,7 @@ class ChurchConversation extends Model
             self::STATUS_AWAITING_MEMBER => 'Aguardando membro',
             self::STATUS_AWAITING_DEPARTMENT => 'Aguardando departamento',
             self::STATUS_FORWARDED => 'Encaminhada',
-            self::STATUS_CLOSED => 'Finalizada',
-            default => $status,
+            default => 'Em andamento',
         };
     }
 }

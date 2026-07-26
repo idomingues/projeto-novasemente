@@ -13,7 +13,7 @@ export default function NsWhatsGuestGate({ registerUrl, redirectAfterLogin, cont
 
     return (
         <MobileLayout>
-            <Head title="NS Whats" />
+            <Head title="NS Conecta" />
             <div className="space-y-6">
                 <div className="flex items-start gap-3">
                     <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-zinc-900 dark:bg-white">
@@ -21,7 +21,7 @@ export default function NsWhatsGuestGate({ registerUrl, redirectAfterLogin, cont
                     </div>
                     <div className="min-w-0">
                         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
-                            NS Whats
+                            NS Conecta
                         </h1>
                         <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                             Canal de mensagens da igreja para falar com departamentos, líderes e membros — direto pelo app,
@@ -35,10 +35,9 @@ export default function NsWhatsGuestGate({ registerUrl, redirectAfterLogin, cont
                     <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                         <li>Enviar mensagem para a fila de um departamento ou para uma pessoa específica</li>
                         <li>Acompanhar a conversa e as respostas da equipe</li>
-                        <li>Finalizar ou reabrir quando o assunto estiver resolvido</li>
                     </ul>
                     <p className="pt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                        Para usar o NS Whats é preciso estar{' '}
+                        Para usar o NS Conecta é preciso estar{' '}
                         <span className="font-semibold text-zinc-900 dark:text-white">logado(a)</span>. Assim suas
                         conversas ficam salvas na sua conta.
                     </p>

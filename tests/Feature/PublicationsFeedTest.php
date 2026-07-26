@@ -6,6 +6,7 @@ use App\Models\Church;
 use App\Models\News;
 use App\Models\Poll;
 use App\Models\User;
+use App\Support\NewsLaunchDeepLinks;
 use Database\Seeders\ChurchSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -252,6 +253,45 @@ class PublicationsFeedTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('items.data.0.href', route('mobile.news.show', ['news' => 'noticia-feed-teste'], absolute: false)));
+    }
+
+    public function test_ns_conecta_launch_news_links_to_module_not_detail(): void
+    {
+        config(['publications_feed.preview_only' => false]);
+
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $user = User::factory()->create([
+            'church_id' => $church->id,
+            'email' => 'membro@example.com',
+        ]);
+
+        News::query()->create([
+            'church_id' => $church->id,
+            'section' => News::SECTION_NEWS,
+            'title' => 'NS Conecta — comunicação entre a Nova Semente',
+            'slug' => NewsLaunchDeepLinks::NS_CONECTA_SLUG,
+            'content_type' => News::TYPE_INSTAGRAM_FEED,
+            'body' => 'Toque em NS Conecta.',
+            'image_url' => '/storage/news/ns-conecta-feed-arte.png',
+            'published_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.publications-feed', ['type' => 'news']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('items.data.0.href', route('mobile.ns-whats.index', absolute: false))
+                ->where('items.data.0.action_label', 'Abrir NS Conecta')
+                ->where('items.data.0.requires_open', true));
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.news.show', ['news' => NewsLaunchDeepLinks::NS_CONECTA_SLUG]))
+            ->assertRedirect(route('mobile.ns-whats.index'));
     }
 
     public function test_open_poll_appears_in_publications_feed(): void

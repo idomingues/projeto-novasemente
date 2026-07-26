@@ -56,7 +56,7 @@ class MobileChurchSolicitationController extends Controller
             'bible_study' => 'Pedido de estudo bíblico',
             'baby_presentation' => 'Apresentação de bebé',
             'pastor_visit' => 'Visita aos pastores',
-            'leader_chat' => 'NS Whats',
+            'leader_chat' => 'NS Conecta',
             'volunteer_request' => 'Pedido de voluntário',
             'communication_request' => 'Solicitação de comunicação',
             self::TYPE_PASTORAL_INFORMAL => 'Atendimento pastoral (informal)',

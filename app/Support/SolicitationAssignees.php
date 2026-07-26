@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
 class SolicitationAssignees
 {
     /**
-     * @deprecated Mantido por compatibilidade; o NS Whats lista líderes de todos os departamentos.
+     * @deprecated Mantido por compatibilidade; o NS Conecta lista líderes de todos os departamentos.
      */
     public const LEADER_CONTACT_MINISTRY_NAME = 'Voluntariado';
 
@@ -63,7 +63,7 @@ class SolicitationAssignees
     }
 
     /**
-     * Líderes com conta na app, em qualquer departamento da igreja (NS Whats).
+     * Líderes com conta na app, em qualquer departamento da igreja (NS Conecta).
      * Quem está logado não aparece na lista (não pode falar consigo mesmo).
      *
      * @return list<array{value: int, label: string, name: string, ministries: list<string>}>
@@ -130,7 +130,7 @@ class SolicitationAssignees
     }
 
     /**
-     * Departamentos da igreja que têm pelo menos um líder com conta (NS Whats).
+     * Departamentos da igreja que têm pelo menos um líder com conta (NS Conecta).
      *
      * @return list<array{id: int, name: string}>
      */

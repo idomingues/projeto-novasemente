@@ -32,10 +32,6 @@ class ChurchConversationPolicy
 
     public function sendMessage(User $user, ChurchConversation $conversation): bool
     {
-        if (! $conversation->allowsChat()) {
-            return false;
-        }
-
         if ((int) $conversation->member_user_id === (int) $user->id) {
             return true;
         }
@@ -45,10 +41,6 @@ class ChurchConversationPolicy
 
     public function claim(User $user, ChurchConversation $conversation): bool
     {
-        if (! $conversation->allowsChat()) {
-            return false;
-        }
-
         if ($conversation->assignee_user_id !== null) {
             return false;
         }
@@ -58,10 +50,6 @@ class ChurchConversationPolicy
 
     public function transfer(User $user, ChurchConversation $conversation): bool
     {
-        if (! $conversation->allowsChat()) {
-            return false;
-        }
-
         if (NsWhatsAccess::isModuleAdmin($user)) {
             return true;
         }
@@ -77,38 +65,12 @@ class ChurchConversationPolicy
 
     public function addInternalNote(User $user, ChurchConversation $conversation): bool
     {
-        return NsWhatsAccess::canViewAsStaff($user, $conversation) && $conversation->allowsChat();
-    }
-
-    public function close(User $user, ChurchConversation $conversation): bool
-    {
-        if (! $conversation->allowsChat()) {
-            return false;
-        }
-
-        if ((int) $conversation->member_user_id === (int) $user->id) {
-            return true;
-        }
-
-        return NsWhatsAccess::canViewAsStaff($user, $conversation);
-    }
-
-    public function reopen(User $user, ChurchConversation $conversation): bool
-    {
-        if (! $conversation->canReopen()) {
-            return false;
-        }
-
-        if ((int) $conversation->member_user_id === (int) $user->id) {
-            return true;
-        }
-
         return NsWhatsAccess::canViewAsStaff($user, $conversation);
     }
 
     public function archive(User $user, ChurchConversation $conversation): bool
     {
-        return (int) $conversation->member_user_id === (int) $user->id;
+        return $this->view($user, $conversation);
     }
 
     public function editMessage(User $user, ChurchConversationMessage $message): bool
@@ -122,7 +84,7 @@ class ChurchConversationPolicy
         }
 
         $conversation = $message->conversation;
-        if (! $conversation || ! $conversation->allowsChat()) {
+        if (! $conversation) {
             return false;
         }
 

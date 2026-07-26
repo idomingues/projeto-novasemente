@@ -1,10 +1,9 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import {
+    ArchiveBoxIcon,
     ArrowLeftIcon,
     BookmarkIcon,
-    CheckCircleIcon,
-    EllipsisVerticalIcon,
     MagnifyingGlassIcon,
     PlusIcon,
     UserGroupIcon,
@@ -16,13 +15,14 @@ import NsWhatsChatComposer from '@/Components/NsWhats/NsWhatsChatComposer';
 import { NsWhatsMessageBubble, NsWhatsSystemPill } from '@/Components/NsWhats/NsWhatsMessageBubble';
 import NsWhatsNewChatPanel, {
     type ComposeMinistry,
+    type ComposePeopleMatch,
     type ComposePerson,
     type DraftTarget,
 } from '@/Components/NsWhats/NsWhatsNewChatPanel';
-import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
-import { confirmAction } from '@/utils/confirmDialog';
+import { FormEventHandler, useEffect, useRef, useState } from 'react';
 import {
     loadNsWhatsConversation,
+    mutateNsWhatsConversation,
     sendNsWhatsMessage,
     type NsWhatsMessagePayload,
 } from '@/utils/nsWhatsSendMessage';
@@ -45,8 +45,6 @@ type Conversation = {
     statusLabel: string;
     ministryName?: string | null;
     assigneeName?: string | null;
-    canChat: boolean;
-    canReopen: boolean;
     canClaim?: boolean;
     canReply?: boolean;
     viewerRole?: 'member' | 'staff';
@@ -58,13 +56,17 @@ type Conversation = {
     headerTitle: string;
     headerSubtitle: string;
     headerPhotoUrl?: string | null;
+    currentMinistryId?: number | null;
+    counterpartUserId?: number | null;
     /** Conversas fixas com líderes dos departamentos em que o usuário serve. */
     pinnedLeader?: boolean;
+    archived?: boolean;
 };
 
 interface Props {
-    tab: 'open' | 'closed';
     search: string;
+    viewingArchived: boolean;
+    archivedCount: number;
     conversations: Conversation[];
     selected: Conversation | null;
     composing: boolean;
@@ -73,8 +75,9 @@ interface Props {
     selectedMinistry: ComposeMinistry | null;
     leaders: ComposePerson[];
     members: ComposePerson[];
+    peopleMatches?: ComposePeopleMatch[];
+    peopleSearch?: string;
     storeUrl: string;
-    departmentQueueUrl?: string | null;
     fallbackMinistryConfigured: boolean;
 }
 
@@ -96,11 +99,11 @@ function formatWhen(iso?: string | null): string {
 const bottomNavClearance =
     'pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))]';
 
-function syncConversaInUrl(conversaId: number | null, extras?: { tab?: string; q?: string; nova?: boolean }) {
+function syncConversaInUrl(
+    conversaId: number | null,
+    extras?: { q?: string; nova?: boolean; arquivadas?: boolean },
+) {
     const url = new URL(window.location.href);
-    if (extras?.tab) {
-        url.searchParams.set('tab', extras.tab);
-    }
     if (extras?.q !== undefined) {
         if (extras.q) url.searchParams.set('q', extras.q);
         else url.searchParams.delete('q');
@@ -111,6 +114,11 @@ function syncConversaInUrl(conversaId: number | null, extras?: { tab?: string; q
         url.searchParams.delete('nova');
         url.searchParams.delete('ministry');
     }
+    if (extras?.arquivadas) {
+        url.searchParams.set('arquivadas', '1');
+    } else if (extras?.arquivadas === false) {
+        url.searchParams.delete('arquivadas');
+    }
     if (conversaId) {
         url.searchParams.set('conversa', String(conversaId));
     } else {
@@ -120,8 +128,9 @@ function syncConversaInUrl(conversaId: number | null, extras?: { tab?: string; q
 }
 
 export default function NsWhatsIndex({
-    tab,
     search: initialSearch,
+    viewingArchived: initialViewingArchived,
+    archivedCount: initialArchivedCount,
     conversations: initialConversations,
     selected: initialSelected,
     composing: initialComposing,
@@ -130,12 +139,12 @@ export default function NsWhatsIndex({
     selectedMinistry,
     leaders,
     members,
+    peopleMatches = [],
+    peopleSearch = '',
     storeUrl,
-    departmentQueueUrl = null,
     fallbackMinistryConfigured,
 }: Props) {
     const [search, setSearch] = useState(initialSearch);
-    const [menuOpen, setMenuOpen] = useState(false);
     const [composeDraft, setComposeDraft] = useState<DraftTarget | null>(() => {
         if (!initialComposeDraft) {
             return null;
@@ -148,9 +157,12 @@ export default function NsWhatsIndex({
     const [sending, setSending] = useState(false);
     const [loadingConversation, setLoadingConversation] = useState(false);
     const [composing, setComposing] = useState(initialComposing);
+    const [viewingArchived, setViewingArchived] = useState(initialViewingArchived);
+    const [archivedCount, setArchivedCount] = useState(initialArchivedCount);
     const [roster, setRoster] = useState(initialConversations);
     const [active, setActive] = useState<Conversation | null>(initialSelected);
     const [liveMessages, setLiveMessages] = useState<NsWhatsMessagePayload[]>(initialSelected?.messages ?? []);
+    const [archiveMutating, setArchiveMutating] = useState(false);
     const threadEnd = useRef<HTMLDivElement | null>(null);
     const draftForm = useForm({
         ministry_id: (initialComposeDraft?.ministryId ?? '') as number | '',
@@ -166,6 +178,14 @@ export default function NsWhatsIndex({
     useEffect(() => {
         setRoster(initialConversations);
     }, [initialConversations]);
+
+    useEffect(() => {
+        setViewingArchived(initialViewingArchived);
+    }, [initialViewingArchived]);
+
+    useEffect(() => {
+        setArchivedCount(initialArchivedCount);
+    }, [initialArchivedCount]);
 
     useEffect(() => {
         setComposing(initialComposing);
@@ -199,8 +219,47 @@ export default function NsWhatsIndex({
     const applySearch = () => {
         router.get(
             route('mobile.ns-whats.index'),
-            { tab, q: search || undefined, nova: composing ? 1 : undefined, ministry: selectedMinistry?.id },
-            { preserveState: true },
+            {
+                q: search || undefined,
+                arquivadas: viewingArchived ? 1 : undefined,
+                nova: composing ? 1 : undefined,
+                ministry: selectedMinistry?.id,
+            },
+            {
+                preserveState: true,
+                only: viewingArchived
+                    ? ['conversations', 'viewingArchived', 'archivedCount', 'search', 'selected']
+                    : undefined,
+            },
+        );
+    };
+
+    const openArchivedList = () => {
+        setComposeDraft(null);
+        setComposing(false);
+        setActive(null);
+        setLiveMessages([]);
+        router.get(
+            route('mobile.ns-whats.index'),
+            { arquivadas: 1, q: search || undefined },
+            {
+                preserveState: true,
+                only: ['conversations', 'viewingArchived', 'archivedCount', 'search'],
+            },
+        );
+    };
+
+    const backToMainList = () => {
+        setActive(null);
+        setLiveMessages([]);
+        syncConversaInUrl(null, { q: search, arquivadas: false });
+        router.get(
+            route('mobile.ns-whats.index'),
+            { q: search || undefined },
+            {
+                preserveState: true,
+                only: ['conversations', 'viewingArchived', 'archivedCount', 'search', 'selected'],
+            },
         );
     };
 
@@ -208,10 +267,9 @@ export default function NsWhatsIndex({
         if (loadingConversation) return;
         setComposeDraft(null);
         setComposing(false);
-        setMenuOpen(false);
 
         if (active?.id === id) {
-            syncConversaInUrl(id, { tab, q: search, nova: false });
+            syncConversaInUrl(id, { q: search, nova: false, arquivadas: viewingArchived });
             return;
         }
 
@@ -241,15 +299,54 @@ export default function NsWhatsIndex({
                     : c,
             ),
         );
-        syncConversaInUrl(id, { tab, q: search, nova: false });
+        syncConversaInUrl(id, { q: search, nova: false, arquivadas: viewingArchived });
     };
 
     const backToList = () => {
         setComposeDraft(null);
         setActive(null);
         setLiveMessages([]);
-        setMenuOpen(false);
-        syncConversaInUrl(null, { tab, q: search });
+        syncConversaInUrl(null, { q: search, arquivadas: viewingArchived });
+    };
+
+    const showUnarchiveAction = Boolean(active?.archived || viewingArchived);
+
+    const runArchiveToggle = async () => {
+        if (!active || archiveMutating) return;
+        setArchiveMutating(true);
+        const url = showUnarchiveAction
+            ? route('mobile.ns-whats.unarchive', active.id)
+            : route('mobile.ns-whats.archive', active.id);
+        const result = await mutateNsWhatsConversation(url);
+        setArchiveMutating(false);
+
+        if (!result.ok) {
+            return;
+        }
+
+        const convId = active.id;
+
+        if (showUnarchiveAction) {
+            if (viewingArchived) {
+                setRoster((prev) => prev.filter((c) => c.id !== convId));
+                setActive(null);
+                setLiveMessages([]);
+                syncConversaInUrl(null, { q: search, arquivadas: true });
+                setArchivedCount((n) => Math.max(0, n - 1));
+            } else {
+                setActive((prev) => (prev ? { ...prev, archived: false } : prev));
+                setRoster((prev) =>
+                    prev.map((c) => (c.id === convId ? { ...c, archived: false } : c)),
+                );
+            }
+            return;
+        }
+
+        setRoster((prev) => prev.filter((c) => c.id !== convId));
+        setActive(null);
+        setLiveMessages([]);
+        setArchivedCount((n) => n + 1);
+        syncConversaInUrl(null, { q: search, arquivadas: viewingArchived ? true : false });
     };
 
     const startCompose = () => {
@@ -257,35 +354,23 @@ export default function NsWhatsIndex({
         setActive(null);
         setLiveMessages([]);
         setComposing(true);
-        syncConversaInUrl(null, { tab, q: search, nova: true });
+        syncConversaInUrl(null, { q: search, nova: true });
         router.get(
             route('mobile.ns-whats.index'),
-            { tab, q: search || undefined, nova: 1 },
-            { preserveState: true, preserveScroll: true, only: ['ministries', 'selectedMinistry', 'leaders', 'members', 'composing', 'fallbackMinistryConfigured'] },
+            { q: search || undefined, nova: 1 },
+            { preserveState: true, preserveScroll: true, only: ['ministries', 'selectedMinistry', 'leaders', 'members', 'peopleMatches', 'peopleSearch', 'composing', 'fallbackMinistryConfigured'] },
         );
     };
 
     const closeCompose = () => {
         setComposeDraft(null);
         setComposing(false);
-        syncConversaInUrl(null, { tab, q: search, nova: false });
+        syncConversaInUrl(null, { q: search, nova: false });
         router.get(
             route('mobile.ns-whats.index'),
-            { tab, q: search || undefined },
-            { preserveState: true, preserveScroll: true, only: ['composing', 'selectedMinistry', 'leaders', 'members'] },
+            { q: search || undefined },
+            { preserveState: true, preserveScroll: true, only: ['composing', 'selectedMinistry', 'leaders', 'members', 'peopleMatches', 'peopleSearch'] },
         );
-    };
-
-    const finalizeConversation = async () => {
-        if (!active?.canChat) return;
-        setMenuOpen(false);
-        const ok = await confirmAction({
-            title: 'Finalizar conversa?',
-            confirmButtonText: 'Finalizar',
-        });
-        if (ok) {
-            router.post(route('mobile.ns-whats.close', active.id));
-        }
     };
 
     const sendMessage: FormEventHandler = async (e) => {
@@ -340,17 +425,29 @@ export default function NsWhatsIndex({
         });
     };
 
-    const tabs = useMemo(
-        () => [
-            { key: 'open' as const, label: 'Em andamento' },
-            { key: 'closed' as const, label: 'Finalizadas' },
-        ],
-        [],
-    );
+    const archivedRow =
+        !viewingArchived && archivedCount > 0 ? (
+            <button
+                type="button"
+                onClick={openArchivedList}
+                className="mx-2 mb-1 flex w-[calc(100%-1rem)] cursor-pointer items-center gap-3 rounded-xl px-2.5 py-3 text-left transition hover:bg-zinc-50 dark:hover:bg-zinc-900/80"
+            >
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                    <ArchiveBoxIcon className="h-5 w-5" aria-hidden strokeWidth={1.8} />
+                </span>
+                <span className="min-w-0 flex-1 text-[15px] font-medium text-zinc-800 dark:text-zinc-100">Arquivadas</span>
+                <span className="inline-flex min-w-[1.35rem] shrink-0 items-center justify-center rounded-full bg-zinc-200 px-2 py-0.5 text-[12px] font-semibold tabular-nums text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100">
+                    {archivedCount}
+                </span>
+            </button>
+        ) : null;
+
+    const showMainEmpty = !viewingArchived && roster.length === 0 && archivedCount === 0;
+    const showArchivedEmpty = viewingArchived && roster.length === 0;
 
     return (
         <MobileLayout flush>
-            <Head title="NS Whats" />
+            <Head title="NS Conecta" />
             <div className="flex h-full min-h-0 overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:rounded-none md:border-0">
                 <aside
                     className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:w-[20rem] md:shrink-0 md:border-r lg:w-[22rem] ${bottomNavClearance} ${
@@ -360,28 +457,39 @@ export default function NsWhatsIndex({
                     {!composing ? (
                         <>
                             <div className="flex shrink-0 items-center justify-between gap-2 px-3 pb-0.5 pt-2.5">
-                                <h1 className="text-[20px] font-bold leading-none tracking-tight text-zinc-900 dark:text-white">
-                                    NS Whats
-                                </h1>
-                                <div className="flex items-center gap-1.5">
-                                    {departmentQueueUrl ? (
-                                        <Link
-                                            href={departmentQueueUrl}
-                                            className="inline-flex cursor-pointer items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold text-zinc-700 transition hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-                                            title="Fila do departamento"
+                                {viewingArchived ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={backToMainList}
+                                            className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                            aria-label="Voltar para conversas"
                                         >
-                                            Fila do depto
-                                        </Link>
-                                    ) : null}
-                                    <button
-                                        type="button"
-                                        onClick={startCompose}
-                                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-black text-white shadow-sm transition hover:bg-zinc-800 active:scale-95 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-                                        aria-label="Nova conversa"
-                                    >
-                                        <PlusIcon className="h-5 w-5" strokeWidth={2.25} />
-                                    </button>
-                                </div>
+                                            <ArrowLeftIcon className="h-5 w-5" strokeWidth={2} />
+                                        </button>
+                                        <h1 className="min-w-0 flex-1 text-[20px] font-bold leading-none tracking-tight text-zinc-900 dark:text-white">
+                                            Arquivadas
+                                        </h1>
+                                    </>
+                                ) : (
+                                    <h1 className="text-[20px] font-bold leading-none tracking-tight text-zinc-900 dark:text-white">
+                                        NS Conecta
+                                    </h1>
+                                )}
+                                {!viewingArchived ? (
+                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={startCompose}
+                                            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-black text-white shadow-sm transition hover:bg-zinc-800 active:scale-95 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                                            aria-label="Nova conversa"
+                                        >
+                                            <PlusIcon className="h-6 w-6" strokeWidth={2.4} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <span className="w-9 shrink-0" aria-hidden />
+                                )}
                             </div>
 
                             <div className="shrink-0 px-2.5 pb-1.5 pt-2">
@@ -397,54 +505,73 @@ export default function NsWhatsIndex({
                                 </label>
                             </div>
 
-                            <div className="flex shrink-0 gap-1.5 overflow-x-auto px-2.5 pb-1.5">
-                                {tabs.map((t) => (
-                                    <button
-                                        key={t.key}
-                                        type="button"
-                                        onClick={() =>
-                                            router.get(route('mobile.ns-whats.index'), { tab: t.key }, { preserveState: true })
-                                        }
-                                        className={`cursor-pointer whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-medium transition ${
-                                            tab === t.key
-                                                ? 'bg-[#d8fdd2] text-[#006e52] dark:bg-emerald-950 dark:text-emerald-100'
-                                                : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800'
-                                        }`}
-                                    >
-                                        {t.label}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                                {roster.length === 0 ? (
-                                    <div className="px-5 py-10 text-center text-[13px] text-zinc-500">
-                                        Você ainda não possui conversas.
-                                        <p className="mt-2 text-[12px] text-zinc-400">Toque em + para iniciar uma nova.</p>
+                            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+                                {showMainEmpty ? (
+                                    <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
+                                        <p className="text-[15px] font-semibold text-zinc-800 dark:text-zinc-100">
+                                            Nenhuma conversa ainda
+                                        </p>
+                                        <p className="mt-2 max-w-[18rem] text-[13px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+                                            Fale com um departamento, líder ou voluntário da igreja.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={startCompose}
+                                            className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 active:scale-[0.98] dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                                        >
+                                            <PlusIcon className="h-4 w-4" aria-hidden strokeWidth={2.4} />
+                                            Nova conversa
+                                        </button>
                                         {!fallbackMinistryConfigured ? (
-                                            <p className="mt-2 text-[11px] text-zinc-400">
+                                            <p className="mt-4 text-[11px] text-zinc-400 dark:text-zinc-500">
                                                 A opção «Não sei com quem falar» depende da configuração da igreja.
                                             </p>
                                         ) : null}
                                     </div>
-                                ) : (
-                                    <ul className="space-y-1 px-2 py-1.5">
+                                ) : null}
+                                {showArchivedEmpty ? (
+                                    <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
+                                        <p className="text-[15px] font-semibold text-zinc-800 dark:text-zinc-100">
+                                            Nenhuma conversa arquivada
+                                        </p>
+                                    </div>
+                                ) : null}
+                                {roster.length > 0 ? (
+                                    <ul className="shrink-0 space-y-1 px-2 py-1.5">
                                         {roster.map((c, index) => {
                                             const isActive = selectedId === c.id;
                                             const isPinned = Boolean(c.pinnedLeader);
-                                            const prevPinned = index > 0 ? Boolean(roster[index - 1]?.pinnedLeader) : false;
-                                            const nextPinned = index < roster.length - 1 ? Boolean(roster[index + 1]?.pinnedLeader) : false;
-                                            const showPinnedDivider = isPinned && !nextPinned && roster.some((row) => !row.pinnedLeader);
-                                            const preview = c.viewerRole === 'staff'
-                                                ? `${c.ministryName ? `${c.ministryName} · ` : ''}${c.lastPreview}`
-                                                : c.ministryName
-                                                  ? `${c.ministryName}${c.lastPreview ? ` · ${c.lastPreview}` : ''}`
-                                                  : c.lastPreview;
+                                            const isTeam = c.viewerRole === 'staff';
+                                            const prev = index > 0 ? roster[index - 1] : null;
+                                            const next = index < roster.length - 1 ? roster[index + 1] : null;
+                                            const prevPinned = Boolean(prev?.pinnedLeader);
+                                            const nextPinned = Boolean(next?.pinnedLeader);
+                                            const prevTeam = prev?.viewerRole === 'staff';
+                                            const nextTeam = next?.viewerRole === 'staff';
+                                            const showPinnedDivider =
+                                                isPinned && !nextPinned && roster.some((row) => !row.pinnedLeader);
+                                            const showTeamDivider =
+                                                isTeam &&
+                                                !nextTeam &&
+                                                !nextPinned &&
+                                                roster.slice(index + 1).some((row) => row.viewerRole !== 'staff' && !row.pinnedLeader);
+                                            const ministryLabel = c.ministryName?.trim() || '';
+                                            const preview = isTeam
+                                                ? `Voluntário - ${ministryLabel || 'Departamentos'}`
+                                                : isPinned
+                                                  ? `Líder - ${ministryLabel || 'Departamentos'}`
+                                                  : ministryLabel;
+                                            const showWhen = !isPinned;
                                             return (
                                                 <li key={c.id}>
                                                     {isPinned && !prevPinned ? (
                                                         <p className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
                                                             Seus líderes
+                                                        </p>
+                                                    ) : null}
+                                                    {isTeam && !prevTeam && !isPinned ? (
+                                                        <p className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
+                                                            Seu Time
                                                         </p>
                                                     ) : null}
                                                     <button
@@ -456,7 +583,9 @@ export default function NsWhatsIndex({
                                                                 ? 'border border-emerald-500 bg-emerald-50 dark:border-emerald-600 dark:bg-emerald-950/40'
                                                                 : isPinned
                                                                   ? 'border border-transparent bg-zinc-50/80 hover:bg-zinc-100/90 dark:bg-zinc-900/50 dark:hover:bg-zinc-900/80'
-                                                                  : 'border border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900/80'
+                                                                  : isTeam
+                                                                    ? 'border border-transparent bg-zinc-50/60 hover:bg-zinc-100/90 dark:bg-zinc-900/40 dark:hover:bg-zinc-900/80'
+                                                                    : 'border border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900/80'
                                                         }`}
                                                     >
                                                         <UserListAvatar
@@ -477,22 +606,24 @@ export default function NsWhatsIndex({
                                                                     ) : null}
                                                                     <span className="truncate">
                                                                         {c.headerTitle}
-                                                                        {c.viewerRole === 'staff' ? (
+                                                                        {isTeam ? (
                                                                             <span className="ml-1.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
                                                                                 · Recebida
                                                                             </span>
                                                                         ) : null}
                                                                     </span>
                                                                 </span>
-                                                                <span
-                                                                    className={`shrink-0 text-[11px] ${
-                                                                        c.unreadCount > 0
-                                                                            ? 'font-medium text-[#00a884]'
-                                                                            : 'text-zinc-400'
-                                                                    }`}
-                                                                >
-                                                                    {formatWhen(c.lastActivityAt)}
-                                                                </span>
+                                                                {showWhen ? (
+                                                                    <span
+                                                                        className={`shrink-0 text-[11px] ${
+                                                                            c.unreadCount > 0
+                                                                                ? 'font-medium text-[#00a884]'
+                                                                                : 'text-zinc-400 dark:text-zinc-500'
+                                                                        }`}
+                                                                    >
+                                                                        {formatWhen(c.lastActivityAt)}
+                                                                    </span>
+                                                                ) : null}
                                                             </div>
                                                             <div className="mt-0.5 flex items-center justify-between gap-2">
                                                                 <p className="min-w-0 flex-1 truncate text-[12px] text-zinc-500 dark:text-zinc-400">
@@ -506,7 +637,7 @@ export default function NsWhatsIndex({
                                                             </div>
                                                         </div>
                                                     </button>
-                                                    {showPinnedDivider ? (
+                                                    {showPinnedDivider || showTeamDivider ? (
                                                         <div
                                                             className="mx-2.5 my-2.5 border-t border-zinc-200/90 dark:border-zinc-800"
                                                             role="separator"
@@ -517,7 +648,25 @@ export default function NsWhatsIndex({
                                             );
                                         })}
                                     </ul>
-                                )}
+                                ) : null}
+                                {archivedRow}
+                                {roster.length > 0 && !viewingArchived ? (
+                                    <div className="flex min-h-[8rem] flex-1 flex-col items-center justify-center gap-3 px-6 py-8">
+                                        <p className="max-w-[17rem] text-center text-[13px] leading-relaxed text-zinc-400 dark:text-zinc-500">
+                                            Fale com um departamento, líder ou voluntário
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={startCompose}
+                                            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-[13px] font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+                                        >
+                                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black text-white dark:bg-white dark:text-zinc-900">
+                                                <PlusIcon className="h-3.5 w-3.5" aria-hidden strokeWidth={2.5} />
+                                            </span>
+                                            Nova conversa
+                                        </button>
+                                    </div>
+                                ) : null}
                             </div>
                         </>
                     ) : (
@@ -526,8 +675,9 @@ export default function NsWhatsIndex({
                             selectedMinistry={selectedMinistry}
                             leaders={leaders}
                             members={members}
+                            peopleMatches={peopleMatches}
+                            peopleSearch={peopleSearch}
                             fallbackMinistryConfigured={fallbackMinistryConfigured}
-                            tab={tab}
                             search={search}
                             onSelectTarget={(draft) => {
                                 setComposeDraft(draft);
@@ -562,86 +712,30 @@ export default function NsWhatsIndex({
                                     <div className="truncate text-[14px] font-semibold leading-tight text-zinc-900 dark:text-white">
                                         {active.headerTitle}
                                     </div>
-                                    <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-                                        <span
-                                            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                                                active.canChat
-                                                    ? 'bg-[#d8fdd2] text-[#006e52] dark:bg-emerald-950 dark:text-emerald-200'
-                                                    : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
-                                            }`}
-                                        >
-                                            {active.statusLabel}
-                                        </span>
-                                        <span className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
-                                            {active.headerSubtitle}
-                                        </span>
+                                    <div className="mt-0.5 min-w-0">
+                                        {active.headerSubtitle ? (
+                                            <span className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                                                {active.headerSubtitle}
+                                            </span>
+                                        ) : null}
                                     </div>
                                 </div>
-                                {active.canChat ? (
-                                    <button
-                                        type="button"
-                                        onClick={finalizeConversation}
-                                        className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold text-zinc-700 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700 dark:hover:bg-zinc-700"
-                                        title="Finalizar conversa"
-                                    >
-                                        <CheckCircleIcon className="h-4 w-4 text-[#00a884]" />
-                                        Finalizar
-                                    </button>
-                                ) : (
-                                    <div className="flex shrink-0 items-center gap-1.5">
-                                        {active.canReopen ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => router.post(route('mobile.ns-whats.reopen', active.id))}
-                                                className="inline-flex cursor-pointer items-center rounded-full bg-[#00a884] px-2.5 py-1 text-[12px] font-semibold text-white shadow-sm transition hover:bg-[#019978]"
-                                            >
-                                                Reabrir
-                                            </button>
-                                        ) : null}
-                                        <button
-                                            type="button"
-                                            onClick={startCompose}
-                                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold text-zinc-700 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700 dark:hover:bg-zinc-700"
-                                            title="Nova conversa"
-                                        >
-                                            <PlusIcon className="h-3.5 w-3.5" strokeWidth={2.25} />
-                                            Nova conversa
-                                        </button>
-                                    </div>
-                                )}
                                 <button
                                     type="button"
-                                    onClick={() => setMenuOpen((v) => !v)}
-                                    className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-zinc-600 hover:bg-black/5 dark:text-zinc-300 dark:hover:bg-white/10"
-                                    aria-label="Menu"
+                                    onClick={() => void runArchiveToggle()}
+                                    disabled={archiveMutating}
+                                    className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold text-zinc-700 shadow-sm ring-1 ring-zinc-200 transition hover:bg-zinc-50 disabled:cursor-wait disabled:opacity-60 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700 dark:hover:bg-zinc-700"
+                                    title={showUnarchiveAction ? 'Desarquivar conversa' : 'Arquivar conversa'}
                                 >
-                                    <EllipsisVerticalIcon className="h-5 w-5" />
+                                    <ArchiveBoxIcon className="h-4 w-4 text-[#00a884]" aria-hidden />
+                                    {archiveMutating
+                                        ? showUnarchiveAction
+                                            ? 'Desarquivando…'
+                                            : 'Arquivando…'
+                                        : showUnarchiveAction
+                                          ? 'Desarquivar'
+                                          : 'Arquivar'}
                                 </button>
-                                {menuOpen ? (
-                                    <div className="absolute right-2 top-11 z-20 w-56 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-                                        {active.canChat ? (
-                                            <button
-                                                type="button"
-                                                className="block w-full cursor-pointer px-4 py-2.5 text-left text-sm text-zinc-800 dark:text-zinc-100"
-                                                onClick={finalizeConversation}
-                                            >
-                                                Finalizar conversa
-                                            </button>
-                                        ) : null}
-                                        {active.canReopen ? (
-                                            <button
-                                                type="button"
-                                                className="block w-full cursor-pointer px-4 py-2.5 text-left text-sm"
-                                                onClick={() => {
-                                                    setMenuOpen(false);
-                                                    router.post(route('mobile.ns-whats.reopen', active.id));
-                                                }}
-                                            >
-                                                Reabrir conversa
-                                            </button>
-                                        ) : null}
-                                    </div>
-                                ) : null}
                             </div>
 
                             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#efeae2] px-2 py-2 dark:bg-zinc-950 sm:px-2.5">
@@ -664,42 +758,13 @@ export default function NsWhatsIndex({
                                 </div>
                             </div>
 
-                            {active.canChat ? (
-                                <NsWhatsChatComposer
-                                    value={composerText}
-                                    onChange={setComposerText}
-                                    onSubmit={sendMessage}
-                                    processing={sending}
-                                    error={composerError}
-                                />
-                            ) : (
-                                <div className="shrink-0 bg-[#efeae2] px-3 pb-2 pt-1 dark:bg-zinc-950">
-                                    <div className="mx-auto max-w-xs space-y-2.5">
-                                        {active.canReopen ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => router.post(route('mobile.ns-whats.reopen', active.id))}
-                                                className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-[#00a884] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#019978] active:scale-[0.98]"
-                                            >
-                                                Reabrir
-                                            </button>
-                                        ) : null}
-
-                                        <div className="flex items-center gap-3 px-1">
-                                            <div className="h-px flex-1 bg-zinc-300/80 dark:bg-zinc-700" />
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            onClick={startCompose}
-                                            className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-medium text-zinc-600 transition hover:text-[#00a884] dark:text-zinc-300 dark:hover:text-emerald-300"
-                                        >
-                                            <PlusIcon className="h-4 w-4" strokeWidth={2} />
-                                            Nova conversa
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                            <NsWhatsChatComposer
+                                value={composerText}
+                                onChange={setComposerText}
+                                onSubmit={sendMessage}
+                                processing={sending}
+                                error={composerError}
+                            />
                         </div>
                     ) : showComposeDraft && composeDraft ? (
                         <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -749,7 +814,7 @@ export default function NsWhatsIndex({
                     ) : (
                         <div className="hidden flex-1 flex-col items-center justify-center bg-[#efeae2] px-6 text-center dark:bg-zinc-950 md:flex">
                             <UserGroupIcon className="mb-3 h-12 w-12 text-emerald-700 dark:text-emerald-300" />
-                            <h2 className="text-lg font-semibold">NS Whats</h2>
+                            <h2 className="text-lg font-semibold">NS Conecta</h2>
                             <p className="mt-2 max-w-sm text-sm text-zinc-600 dark:text-zinc-400">
                                 {composing
                                     ? 'Escolha um departamento ou pessoa à esquerda para escrever a mensagem.'

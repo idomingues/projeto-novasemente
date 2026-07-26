@@ -5,7 +5,6 @@ import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import SelectInput from '@/Components/SelectInput';
-import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import InputLabel from '@/Components/InputLabel';
 import { FormEventHandler, useEffect, useState } from 'react';
@@ -24,7 +23,6 @@ type Conversation = {
     canClaim?: boolean;
     canReply?: boolean;
     canChat?: boolean;
-    canReopen?: boolean;
 };
 
 interface Props {
@@ -33,7 +31,7 @@ interface Props {
     conversations: Conversation[];
     filters: { status: string; ministry_id: number | null };
     modal: Conversation | null;
-    settings: { fallback_ministry_id: number | null; reopen_days: number };
+    settings: { fallback_ministry_id: number | null };
     ministryOptions: { id: number; name: string }[];
 }
 
@@ -49,7 +47,6 @@ export default function ConversationsIndex({
     const [open, setOpen] = useState(!!modal);
     const settingsForm = useForm({
         conversation_fallback_ministry_id: settings.fallback_ministry_id ?? '',
-        conversation_reopen_days: settings.reopen_days,
     });
     const msgForm = useForm({ content: '' });
 
@@ -69,16 +66,15 @@ export default function ConversationsIndex({
 
     return (
         <AdminLayout>
-            <Head title="NS Whats" />
-            <PageHeader title="NS Whats" subtitle="Conversas entre membros e departamentos" />
+            <Head title="NS Conecta" />
+            <PageHeader title="NS Conecta" subtitle="Conversas entre membros e departamentos" />
 
-            <div className="mb-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="mb-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {[
                     ['Abertas', kpis.open],
                     ['Novas', kpis.new],
                     ['Sem responsável', kpis.unassigned],
                     ['Aguardando', kpis.awaiting],
-                    ['Finalizadas', kpis.closed],
                     ['Encaminhamentos', kpis.forwards],
                 ].map(([label, value]) => (
                     <div key={label as string} className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
@@ -106,17 +102,6 @@ export default function ConversationsIndex({
                                     </option>
                                 ))}
                             </SelectInput>
-                        </div>
-                        <div>
-                            <InputLabel value="Prazo de reabertura (dias)" />
-                            <TextInput
-                                type="number"
-                                className="mt-1"
-                                min={1}
-                                max={365}
-                                value={settingsForm.data.conversation_reopen_days}
-                                onChange={(e) => settingsForm.setData('conversation_reopen_days', Number(e.target.value))}
-                            />
                         </div>
                         <PrimaryButton type="submit" disabled={settingsForm.processing}>
                             Salvar
@@ -150,7 +135,6 @@ export default function ConversationsIndex({
                     <option value="awaiting_member">Aguardando membro</option>
                     <option value="awaiting_department">Aguardando departamento</option>
                     <option value="forwarded">Encaminhada</option>
-                    <option value="closed">Finalizada</option>
                 </SelectInput>
                 <SelectInput
                     value={filters.ministry_id ?? ''}
@@ -238,16 +222,6 @@ export default function ConversationsIndex({
                                 <PrimaryButton type="button" onClick={() => router.post(route('conversations.claim', modal.id))}>
                                     Assumir
                                 </PrimaryButton>
-                            ) : null}
-                            {modal.canChat ? (
-                                <SecondaryButton type="button" onClick={() => router.post(route('conversations.close', modal.id))}>
-                                    Finalizar
-                                </SecondaryButton>
-                            ) : null}
-                            {modal.canReopen ? (
-                                <SecondaryButton type="button" onClick={() => router.post(route('conversations.reopen', modal.id))}>
-                                    Reabrir
-                                </SecondaryButton>
                             ) : null}
                             <SecondaryButton type="button" onClick={closeModal}>
                                 Fechar

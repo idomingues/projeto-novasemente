@@ -19,9 +19,9 @@ return [
             /** Card correspondente na grade da Home (pin + estilo New no 1º mês). */
             'home_card_id' => 'ns-whats',
             'badge' => 'New',
-            'title' => 'NS Whats',
+            'title' => 'NS Conecta',
             'subtitle' => 'Converse com departamentos, líderes e voluntários.',
-            'cta' => 'Abrir NS Whats',
+            'cta' => 'Abrir NS Conecta',
             'icon_key' => 'ns_whats',
             'starts_at' => '2026-07-20',
             'ends_at' => '2026-08-31',

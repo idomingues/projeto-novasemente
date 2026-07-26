@@ -95,7 +95,7 @@ const homeCardSpotlightClass =
 const homeQuickActions: QuickAction[] = [
     {
         id: 'ns-whats',
-        label: 'NS Whats',
+        label: 'NS Conecta',
         subtitle: 'Converse com departamentos, líderes e voluntários.',
         route: 'mobile.ns-whats.index',
         featureKey: 'ns_whats',

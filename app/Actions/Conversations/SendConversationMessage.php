@@ -2,6 +2,7 @@
 
 namespace App\Actions\Conversations;
 
+use App\Actions\Conversations\ArchiveConversationForUser;
 use App\Models\ChurchConversation;
 use App\Models\ChurchConversationEvent;
 use App\Models\ChurchConversationMessage;
@@ -12,7 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class SendConversationMessage
 {
-    public function __construct(private ConversationNotifier $notifier) {}
+    public function __construct(
+        private ConversationNotifier $notifier,
+        private ArchiveConversationForUser $archiveForUser,
+    ) {}
 
     public function handle(ChurchConversation $conversation, User $actor, string $body, string $kind = ChurchConversationMessage::KIND_PUBLIC): ChurchConversationMessage
     {
@@ -20,12 +24,6 @@ class SendConversationMessage
         if ($body === '' || mb_strlen($body) > 5000) {
             throw ValidationException::withMessages([
                 'content' => ['Mensagem inválida.'],
-            ]);
-        }
-
-        if (! $conversation->allowsChat() && $kind !== ChurchConversationMessage::KIND_INTERNAL) {
-            throw ValidationException::withMessages([
-                'content' => ['Esta conversa foi finalizada.'],
             ]);
         }
 
@@ -96,10 +94,32 @@ class SendConversationMessage
 
         if ($kind === ChurchConversationMessage::KIND_PUBLIC) {
             $fresh = $conversation->fresh(['member', 'assignee', 'preferredLeader', 'currentMinistry']);
+
+            // WhatsApp: mensagem nova desarquiva para quem recebe (não para quem enviou).
             if ($isMember) {
-                $this->notifier->notifyStaffOfMemberMessage($fresh, $actor, $body);
+                $recipientIds = array_filter([
+                    $fresh->assignee_user_id ? (int) $fresh->assignee_user_id : null,
+                    $fresh->preferred_leader_user_id ? (int) $fresh->preferred_leader_user_id : null,
+                ]);
+                $this->archiveForUser->unarchiveForUsers($fresh, $recipientIds);
             } else {
-                $this->notifier->notifyMemberOfStaffMessage($fresh, $actor, $body);
+                $this->archiveForUser->unarchiveForUsers($fresh, [(int) $fresh->member_user_id]);
+            }
+
+            try {
+                if ($isMember) {
+                    // Membro falou → próximo alerta ao membro reinicia quando a equipe responder.
+                    $this->notifier->clearMemberAlertThrottle($fresh);
+                    $fresh = $fresh->fresh(['member', 'assignee', 'preferredLeader', 'currentMinistry']);
+                    $this->notifier->notifyStaffOfMemberMessage($fresh, $actor, $body);
+                } else {
+                    // Equipe falou → próximo alerta à equipe reinicia quando o membro responder.
+                    $this->notifier->clearStaffAlertThrottle($fresh);
+                    $fresh = $fresh->fresh(['member', 'assignee', 'preferredLeader', 'currentMinistry']);
+                    $this->notifier->notifyMemberOfStaffMessage($fresh, $actor, $body);
+                }
+            } catch (\Throwable $e) {
+                report($e);
             }
         }
 

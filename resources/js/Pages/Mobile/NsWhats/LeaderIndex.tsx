@@ -29,7 +29,6 @@ const filters = [
     { key: 'mine', label: 'Minhas' },
     { key: 'awaiting_member', label: 'Aguardando membro' },
     { key: 'awaiting_department', label: 'Aguardando depto' },
-    { key: 'closed', label: 'Finalizadas' },
 ];
 
 export default function LeaderIndex({ filter, search: initialSearch, conversations }: Props) {
@@ -48,7 +47,7 @@ export default function LeaderIndex({ filter, search: initialSearch, conversatio
                         href={route('mobile.ns-whats.index')}
                         className="mt-2 inline-flex cursor-pointer text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-300"
                     >
-                        Ir para NS Whats
+                        Ir para NS Conecta
                     </Link>
                 </div>
 

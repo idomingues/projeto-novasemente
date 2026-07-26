@@ -135,7 +135,7 @@ export default function NsWhatsCompose({
     if (selectedMinistry) {
         return (
             <MobileLayout>
-                <Head title={`NS Whats — ${selectedMinistry.name}`} />
+                <Head title={`NS Conecta — ${selectedMinistry.name}`} />
                 <div className="mx-auto max-w-lg space-y-4">
                     <Link href={route('mobile.ns-whats.compose')} className="inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-primary-600">
                         <ArrowLeftIcon className="h-4 w-4" /> Departamentos
@@ -206,7 +206,7 @@ export default function NsWhatsCompose({
 
                                 {filteredMembers.length > 0 ? (
                                     <div className="space-y-2">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Membros do departamento</p>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Voluntários do departamento</p>
                                         {filteredMembers.map((m) => (
                                             <button
                                                 key={`member-${m.id}`}
@@ -223,7 +223,7 @@ export default function NsWhatsCompose({
                                                 </div>
                                                 <div>
                                                     <div className="font-semibold text-zinc-900 dark:text-white">{m.name}</div>
-                                                    <div className="text-xs text-zinc-500">Membro de {selectedMinistry.name}</div>
+                                                    <div className="text-xs text-zinc-500">Voluntário · {selectedMinistry.name}</div>
                                                 </div>
                                             </button>
                                         ))}

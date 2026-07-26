@@ -6,6 +6,7 @@ use App\Models\Church;
 use App\Models\News;
 use App\Models\Poll;
 use App\Models\User;
+use App\Support\NewsLaunchDeepLinks;
 use App\Support\StorageUrl;
 use Illuminate\Console\Attributes\AsCommand;
 use Illuminate\Console\Command;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
 
 #[AsCommand(
     name: 'app:publish-launch-feed-items',
-    description: 'Publica no feed: arte NS Whats + enquete do milagre (produção/dev)',
+    description: 'Publica no feed: arte NS Conecta + enquete do milagre (produção/dev)',
 )]
 class PublishLaunchFeedItemsCommand extends Command
 {
@@ -22,17 +23,17 @@ class PublishLaunchFeedItemsCommand extends Command
                             {--church=nova-semente : Slug ou ID da igreja}
                             {--author= : E-mail do autor (padrão: admin da igreja)}';
 
-    private const NS_WHATS_SLUG = 'ns-whats-comunicacao-entre-a-nova-semente';
+    private const NS_WHATS_SLUG = NewsLaunchDeepLinks::NS_CONECTA_SLUG;
 
-    private const NS_WHATS_TITLE = 'NS Whats — comunicação entre a Nova Semente';
+    private const NS_WHATS_TITLE = 'NS Conecta — comunicação entre a Nova Semente';
 
     private const NS_WHATS_BODY = <<<'TXT'
 Falar com a igreja ficou mais simples.
 
-O NS Whats conecta membros, voluntários e líderes em um só lugar — para dúvidas, pedidos, encaminhamentos e conversas do dia a dia da Nova Semente.
+No NS Conecta, membros, voluntários e líderes ficam em um só lugar — para dúvidas, pedidos, encaminhamentos e conversas do dia a dia da Nova Semente.
 
 Abra o app.
-Toque em NS Whats.
+Toque em NS Conecta.
 Escolha a área ou a pessoa e envie sua mensagem.
 
 Comunicação clara. Equipe alinhada. Congregação mais perto.
@@ -61,7 +62,7 @@ TXT;
         $poll = $this->publishMiraclePoll($church);
 
         $this->info("Igreja: {$church->name} (#{$church->id})");
-        $this->info("NS Whats feed — news #{$news->id} · {$news->slug}");
+        $this->info("NS Conecta feed — news #{$news->id} · {$news->slug}");
         if ($poll !== null) {
             $this->info("Enquete no feed — poll #{$poll->id} · publish_to_feed=true");
         } else {
@@ -84,12 +85,12 @@ TXT;
 
     private function publishNsWhats(Church $church, User $author): News
     {
-        $seed = base_path('database/seed-assets/publications/ns-whats-feed-arte.png');
+        $seed = base_path('database/seed-assets/publications/ns-conecta-feed-arte.png');
         if (! File::isFile($seed)) {
-            throw new \RuntimeException('Arte NS Whats não encontrada em database/seed-assets/publications/ns-whats-feed-arte.png');
+            throw new \RuntimeException('Arte NS Conecta não encontrada em database/seed-assets/publications/ns-conecta-feed-arte.png');
         }
 
-        $storageRelative = 'news/ns-whats-feed-arte.png';
+        $storageRelative = 'news/ns-conecta-feed-arte.png';
         Storage::disk('public')->makeDirectory('news');
         Storage::disk('public')->put($storageRelative, File::get($seed));
         $imageUrl = StorageUrl::publicMediaUrl($storageRelative);

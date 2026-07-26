@@ -406,7 +406,7 @@ Route::get('/mobile/batismo', [MobileChurchSolicitationController::class, 'bapti
 // Solicitações: visitantes veem tela de explicação + atalhos; logados seguem para o hub.
 Route::get('/mobile/solicitacoes', [MobileChurchSolicitationController::class, 'hub'])->name('mobile.solicitations.hub');
 
-// NS Whats: visitantes veem explicação + login; logados usam o módulo.
+// NS Conecta: visitantes veem explicação + login; logados usam o módulo.
 Route::get('/mobile/ns-whats', [\App\Http\Controllers\MobileNsWhatsController::class, 'index'])->name('mobile.ns-whats.index');
 Route::get('/mobile/ns-whats/nova', [\App\Http\Controllers\MobileNsWhatsController::class, 'compose'])->name('mobile.ns-whats.compose');
 Route::get('/mobile/contact', fn () => redirect()->route('mobile.ns-whats.index'))->name('mobile.contact');
@@ -1146,14 +1146,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/mobile/solicitacoes/{solicitation}/finalizar-conversa-lider', [MobileChurchSolicitationController::class, 'finalizeLeaderChat'])->name('mobile.solicitations.leader-chat.finalize');
     Route::post('/mobile/solicitacoes/{solicitation}/ocultar-para-mim', [MobileChurchSolicitationController::class, 'hideFromMemberApp'])->name('mobile.solicitations.hide-from-member');
 
-    // NS Whats (domínio church_conversations) — ações autenticadas
+    // NS Conecta (domínio church_conversations) — ações autenticadas
     Route::post('/mobile/ns-whats', [\App\Http\Controllers\MobileNsWhatsController::class, 'store'])->name('mobile.ns-whats.store');
     Route::get('/mobile/ns-whats/{conversation}', [\App\Http\Controllers\MobileNsWhatsController::class, 'show'])->name('mobile.ns-whats.show');
     Route::post('/mobile/ns-whats/{conversation}/messages', [\App\Http\Controllers\MobileNsWhatsController::class, 'sendMessage'])->name('mobile.ns-whats.messages.store');
     Route::patch('/mobile/ns-whats/mensagens/{message}', [\App\Http\Controllers\MobileNsWhatsController::class, 'editMessage'])->name('mobile.ns-whats.messages.edit');
     Route::post('/mobile/ns-whats/mensagens/{message}/ocultar', [\App\Http\Controllers\MobileNsWhatsController::class, 'hideMessage'])->name('mobile.ns-whats.messages.hide');
-    Route::post('/mobile/ns-whats/{conversation}/finalizar', [\App\Http\Controllers\MobileNsWhatsController::class, 'close'])->name('mobile.ns-whats.close');
-    Route::post('/mobile/ns-whats/{conversation}/reabrir', [\App\Http\Controllers\MobileNsWhatsController::class, 'reopen'])->name('mobile.ns-whats.reopen');
     Route::post('/mobile/ns-whats/{conversation}/arquivar', [\App\Http\Controllers\MobileNsWhatsController::class, 'archive'])->name('mobile.ns-whats.archive');
     Route::post('/mobile/ns-whats/{conversation}/desarquivar', [\App\Http\Controllers\MobileNsWhatsController::class, 'unarchive'])->name('mobile.ns-whats.unarchive');
     Route::post('/mobile/ns-whats/{conversation}/ler', [\App\Http\Controllers\MobileNsWhatsController::class, 'markRead'])->name('mobile.ns-whats.read');
@@ -1168,10 +1166,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/mobile/ns-whats-lider/{conversation}/transferir', [\App\Http\Controllers\MobileNsWhatsLeaderController::class, 'transfer'])->name('mobile.ns-whats.leader.transfer');
     Route::post('/mobile/ns-whats-lider/{conversation}/encaminhar', [\App\Http\Controllers\MobileNsWhatsLeaderController::class, 'forward'])->name('mobile.ns-whats.leader.forward');
     Route::post('/mobile/ns-whats-lider/{conversation}/observacao', [\App\Http\Controllers\MobileNsWhatsLeaderController::class, 'internalNote'])->name('mobile.ns-whats.leader.internal');
-    Route::post('/mobile/ns-whats-lider/{conversation}/finalizar', [\App\Http\Controllers\MobileNsWhatsLeaderController::class, 'close'])->name('mobile.ns-whats.leader.close');
-    Route::post('/mobile/ns-whats-lider/{conversation}/reabrir', [\App\Http\Controllers\MobileNsWhatsLeaderController::class, 'reopen'])->name('mobile.ns-whats.leader.reopen');
 
-    // Legado «Falar com líder» → NS Whats
+    // Legado «Falar com líder» → NS Conecta
     Route::post('/mobile/contact', fn () => redirect()->route('mobile.ns-whats.index'))->name('mobile.contact.store');
     Route::get('/mobile/lider/conversas', fn () => redirect()->route('mobile.ns-whats.leader.index'))->name('mobile.leader-solicitations.index');
     Route::get('/mobile/lider/conversas/{solicitation}', fn () => redirect()->route('mobile.ns-whats.leader.index'))->name('mobile.leader-solicitations.show');
@@ -1190,12 +1186,6 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:conversations.manage|conversations.admin');
     Route::post('/ns-whats/{conversation}/assumir', [\App\Http\Controllers\ConversationAdminController::class, 'claim'])
         ->name('conversations.claim')
-        ->middleware('permission:conversations.manage|conversations.admin');
-    Route::post('/ns-whats/{conversation}/finalizar', [\App\Http\Controllers\ConversationAdminController::class, 'close'])
-        ->name('conversations.close')
-        ->middleware('permission:conversations.manage|conversations.admin');
-    Route::post('/ns-whats/{conversation}/reabrir', [\App\Http\Controllers\ConversationAdminController::class, 'reopen'])
-        ->name('conversations.reopen')
         ->middleware('permission:conversations.manage|conversations.admin');
     Route::post('/ns-whats/{conversation}/transferir', [\App\Http\Controllers\ConversationAdminController::class, 'transfer'])
         ->name('conversations.transfer')

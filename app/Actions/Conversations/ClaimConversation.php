@@ -31,12 +31,6 @@ class ClaimConversation
                 ]);
             }
 
-            if (! $locked->allowsChat()) {
-                throw ValidationException::withMessages([
-                    'conversation' => ['Esta conversa está finalizada.'],
-                ]);
-            }
-
             $before = ['assignee_user_id' => null, 'status' => $locked->status];
             $locked->assignee_user_id = $leader->id;
             $locked->status = ChurchConversation::STATUS_IN_SERVICE;

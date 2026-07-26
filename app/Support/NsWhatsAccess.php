@@ -7,7 +7,6 @@ use App\Models\ChurchConversation;
 use App\Models\Ministry;
 use App\Models\User;
 use App\Models\Volunteer;
-use Carbon\Carbon;
 
 final class NsWhatsAccess
 {
@@ -81,10 +80,6 @@ final class NsWhatsAccess
 
     public static function canReplyAsStaff(User $user, ChurchConversation $conversation): bool
     {
-        if (! $conversation->allowsChat()) {
-            return false;
-        }
-
         if (self::isModuleAdmin($user)) {
             return true;
         }
@@ -121,7 +116,6 @@ final class NsWhatsAccess
 
         return (int) ChurchConversation::query()
             ->where('church_id', $churchId)
-            ->where('status', '!=', ChurchConversation::STATUS_CLOSED)
             ->where(function ($q) use ($user) {
                 $q->where(function ($member) use ($user) {
                     $member->where('member_user_id', $user->id)
@@ -149,18 +143,6 @@ final class NsWhatsAccess
                     ->orWhere('preferred_leader_user_id', $user->id);
             })
             ->exists();
-    }
-
-    public static function reopenDaysForChurch(?Church $church): int
-    {
-        $days = (int) ($church?->conversation_reopen_days ?? 15);
-
-        return max(1, min(365, $days));
-    }
-
-    public static function reopenUntilFrom(Carbon $closedAt, ?Church $church): Carbon
-    {
-        return $closedAt->copy()->addDays(self::reopenDaysForChurch($church));
     }
 
     public static function involvesMinor(?User $member): bool
@@ -301,6 +283,96 @@ final class NsWhatsAccess
             self::leadersForMinistry($churchId, $ministryId, $exclude),
             self::membersForMinistry($churchId, $ministryId, $exclude),
         ));
+    }
+
+    /**
+     * Busca líderes e voluntários por nome em todos os departamentos com contato.
+     *
+     * @return list<array{id: int, name: string, photo_url: string|null, role: string, ministry_id: int, ministry_name: string}>
+     */
+    public static function searchPeople(int $churchId, string $term, ?User $exclude = null, int $limit = 40): array
+    {
+        $term = trim($term);
+        if (mb_strlen($term) < 2) {
+            return [];
+        }
+
+        $like = '%'.$term.'%';
+        $results = [];
+
+        $leaders = User::query()
+            ->where('church_id', $churchId)
+            ->where(function ($roleQ) {
+                $roleQ->where('is_ministry_leader', true)
+                    ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+            })
+            ->where('name', 'like', $like)
+            ->when($exclude, fn ($q) => $q->where('users.id', '!=', $exclude->id))
+            ->whereHas('ministries', fn ($mq) => $mq->where('ministries.church_id', $churchId))
+            ->with(['ministries' => fn ($mq) => $mq->where('ministries.church_id', $churchId)->orderBy('name')])
+            ->orderBy('name')
+            ->limit($limit)
+            ->get(['id', 'name', 'photo_url']);
+
+        foreach ($leaders as $leader) {
+            foreach ($leader->ministries as $ministry) {
+                $results[] = [
+                    'id' => (int) $leader->id,
+                    'name' => (string) $leader->name,
+                    'photo_url' => $leader->photo_url,
+                    'role' => 'leader',
+                    'ministry_id' => (int) $ministry->id,
+                    'ministry_name' => (string) $ministry->name,
+                ];
+            }
+        }
+
+        $volunteers = Volunteer::query()
+            ->where('active', true)
+            ->whereNotNull('user_id')
+            ->when($exclude, fn ($q) => $q->where('user_id', '!=', $exclude->id))
+            ->whereHas('user', function ($uq) use ($churchId, $like) {
+                $uq->where('church_id', $churchId)->where('name', 'like', $like);
+            })
+            ->whereHas('ministries', fn ($mq) => $mq->where('ministries.church_id', $churchId))
+            ->with([
+                'user:id,name,photo_url',
+                'ministries' => fn ($mq) => $mq->where('ministries.church_id', $churchId)->orderBy('name'),
+            ])
+            ->orderBy('name')
+            ->limit($limit)
+            ->get();
+
+        $leaderKeys = collect($results)
+            ->map(fn (array $row) => $row['id'].':'.$row['ministry_id'])
+            ->all();
+
+        foreach ($volunteers as $volunteer) {
+            $userId = (int) $volunteer->user_id;
+            foreach ($volunteer->ministries as $ministry) {
+                $ministryId = (int) $ministry->id;
+                $key = $userId.':'.$ministryId;
+                if (in_array($key, $leaderKeys, true)) {
+                    continue;
+                }
+                $results[] = [
+                    'id' => $userId,
+                    'name' => (string) ($volunteer->user?->name ?: $volunteer->display_name),
+                    'photo_url' => $volunteer->user?->photo_url,
+                    'role' => 'member',
+                    'ministry_id' => $ministryId,
+                    'ministry_name' => (string) $ministry->name,
+                ];
+                $leaderKeys[] = $key;
+            }
+        }
+
+        usort($results, static function (array $a, array $b): int {
+            return strcasecmp($a['name'], $b['name'])
+                ?: strcasecmp($a['ministry_name'], $b['ministry_name']);
+        });
+
+        return array_slice(array_values($results), 0, $limit);
     }
 
     public static function isValidRecipient(int $userId, int $churchId, int $ministryId, User $from): bool

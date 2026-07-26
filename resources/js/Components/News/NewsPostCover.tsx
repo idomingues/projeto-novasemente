@@ -47,7 +47,7 @@ export default function NewsPostCover({
 
     const frame = (
         <div
-            className={`relative overflow-hidden bg-zinc-200 dark:bg-zinc-800 ${aspectClass} ${wrapperClassName}`}
+            className={`group relative overflow-hidden bg-zinc-200 dark:bg-zinc-800 ${aspectClass} ${wrapperClassName}`}
         >
             <img
                 src={imageSrc}

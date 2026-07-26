@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Church;
 use App\Models\ChurchConversation;
+use App\Models\ChurchConversationMessage;
 use App\Models\Ministry;
 use App\Models\User;
 use Database\Seeders\ChurchSeeder;
@@ -111,7 +112,7 @@ class NsWhatsConversationTest extends TestCase
 
         $this->assertDatabaseHas('user_inbox_notifications', [
             'user_id' => $leader->id,
-            'title' => 'Nova conversa no NS Whats',
+            'title' => 'Nova conversa no NS Conecta',
         ]);
 
         $this->actingAs($leader)->post(route('mobile.ns-whats.leader.messages.store', $conversation), [
@@ -120,19 +121,67 @@ class NsWhatsConversationTest extends TestCase
 
         $this->assertDatabaseHas('user_inbox_notifications', [
             'user_id' => $member->id,
-            'title' => 'Nova mensagem no NS Whats',
+            'title' => 'NS Conecta',
+            'body' => $leader->name.' começou a falar com você.',
         ]);
 
+        $leaderAlertsBefore = \App\Models\UserInboxNotification::query()
+            ->where('user_id', $leader->id)
+            ->count();
+
+        // Segunda mensagem do membro no mesmo turno (sem resposta nova) não gera alerta.
         $this->actingAs($member)->post(route('mobile.ns-whats.messages.store', $conversation), [
             'content' => 'Sobre o horário do sábado.',
         ])->assertRedirect();
 
-        $this->assertTrue(
-            \App\Models\UserInboxNotification::query()
-                ->where('user_id', $leader->id)
-                ->where('title', 'Nova mensagem no NS Whats')
-                ->exists()
+        $this->actingAs($member)->post(route('mobile.ns-whats.messages.store', $conversation), [
+            'content' => 'E também sobre o ensaio.',
+        ])->assertRedirect();
+
+        $this->assertSame(
+            $leaderAlertsBefore + 1,
+            \App\Models\UserInboxNotification::query()->where('user_id', $leader->id)->count()
         );
+        $this->assertDatabaseHas('user_inbox_notifications', [
+            'user_id' => $leader->id,
+            'title' => 'NS Conecta',
+            'body' => $member->name.' começou a falar com você.',
+        ]);
+    }
+
+    public function test_message_alert_repeats_after_one_hour_without_reply(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.store'), [
+            'ministry_id' => $ministry->id,
+            'recipient_user_id' => $leader->id,
+            'message' => 'Primeira mensagem.',
+        ])->assertRedirect();
+
+        $conversation = ChurchConversation::query()->firstOrFail();
+        $before = \App\Models\UserInboxNotification::query()->where('user_id', $leader->id)->count();
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.messages.store', $conversation), [
+            'content' => 'Ainda sem resposta.',
+        ])->assertRedirect();
+
+        $this->assertSame(
+            $before,
+            \App\Models\UserInboxNotification::query()->where('user_id', $leader->id)->count()
+        );
+
+        $this->travel(61)->minutes();
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.messages.store', $conversation), [
+            'content' => 'Nova tentativa depois de 1 hora.',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('user_inbox_notifications', [
+            'user_id' => $leader->id,
+            'title' => 'NS Conecta',
+            'body' => $member->name.': Nova tentativa depois de 1 hora.',
+        ]);
     }
 
     public function test_member_can_create_department_queue_conversation(): void
@@ -294,6 +343,41 @@ class NsWhatsConversationTest extends TestCase
         ])->assertRedirect();
     }
 
+    public function test_compose_search_finds_leaders_and_volunteers(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+
+        $deptMemberUser = User::factory()->create([
+            'church_id' => $churchId,
+            'name' => 'Voluntário Busca',
+        ]);
+        $deptMemberUser->assignRole('membro');
+        $deptMemberUser->ensureVolunteerProfile();
+        $volunteer = $deptMemberUser->volunteerProfile()->firstOrFail();
+        $volunteer->ministries()->attach($ministry->id);
+
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index', ['nova' => 1, 'pessoa' => 'Líder']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/Index')
+                ->where('composing', true)
+                ->has('peopleMatches', 1)
+                ->where('peopleMatches.0.id', $leader->id)
+                ->where('peopleMatches.0.role', 'leader')
+                ->where('peopleMatches.0.ministry_id', $ministry->id));
+
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index', ['nova' => 1, 'pessoa' => 'Voluntário']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/Index')
+                ->has('peopleMatches', 1)
+                ->where('peopleMatches.0.id', $deptMemberUser->id)
+                ->where('peopleMatches.0.role', 'member')
+                ->where('peopleMatches.0.ministry_name', 'Louvor'));
+    }
+
     public function test_compose_lists_department_members(): void
     {
         [$churchId, $member, $ministry] = array_slice($this->seedNsWhats(), 0, 3);
@@ -338,6 +422,148 @@ class NsWhatsConversationTest extends TestCase
             ->assertOk()
             ->assertJsonPath('conversation.id', $conversation->id)
             ->assertJsonPath('conversation.messages.0.body', 'Mensagem para abrir em JSON.');
+    }
+
+    public function test_leader_of_other_ministry_is_not_pinned_as_leader_of_served_ministry(): void
+    {
+        [$churchId, $member] = array_slice($this->seedNsWhats(), 0, 2);
+        $diaconos = Ministry::query()->create(['church_id' => $churchId, 'name' => 'Diáconos']);
+        $missao = Ministry::query()->create(['church_id' => $churchId, 'name' => 'Missão']);
+
+        // Wesley: voluntário em Diáconos, líder só em Missão.
+        $wesley = $this->makeLeader($churchId, 'Wesley Moura', [$missao->id]);
+        $wesley->ensureVolunteerProfile();
+        $wesley->volunteerProfile()->firstOrFail()->ministries()->syncWithoutDetaching([$diaconos->id, $missao->id]);
+
+        $member->ensureVolunteerProfile();
+        $member->volunteerProfile()->firstOrFail()->ministries()->sync([$diaconos->id]);
+
+        // Conversa no depto Diáconos com Wesley (não é líder dali).
+        ChurchConversation::query()->create([
+            'church_id' => $churchId,
+            'member_user_id' => $member->id,
+            'subject' => $wesley->name,
+            'initial_ministry_id' => $diaconos->id,
+            'current_ministry_id' => $diaconos->id,
+            'preferred_leader_user_id' => $wesley->id,
+            'assignee_user_id' => $wesley->id,
+            'status' => ChurchConversation::STATUS_IN_SERVICE,
+            'last_activity_at' => now(),
+        ]);
+
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/Index')
+                ->where('conversations', function ($conversations) {
+                    $wesley = collect($conversations)->firstWhere('headerTitle', 'Wesley Moura');
+
+                    return $wesley !== null
+                        && $wesley['pinnedLeader'] === false
+                        && $wesley['ministryName'] === 'Diáconos';
+                }));
+    }
+
+    public function test_duplicate_seeded_leader_threads_are_merged_on_index(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+
+        $member->ensureVolunteerProfile();
+        $member->volunteerProfile()->firstOrFail()->ministries()->attach($ministry->id);
+
+        ChurchConversation::query()->create([
+            'church_id' => $churchId,
+            'member_user_id' => $member->id,
+            'subject' => $leader->name,
+            'initial_ministry_id' => $ministry->id,
+            'current_ministry_id' => $ministry->id,
+            'preferred_leader_user_id' => $leader->id,
+            'assignee_user_id' => $leader->id,
+            'status' => ChurchConversation::STATUS_IN_SERVICE,
+            'last_activity_at' => now()->subMinute(),
+        ]);
+        ChurchConversation::query()->create([
+            'church_id' => $churchId,
+            'member_user_id' => $member->id,
+            'subject' => $leader->name,
+            'initial_ministry_id' => $ministry->id,
+            'current_ministry_id' => $ministry->id,
+            'preferred_leader_user_id' => $leader->id,
+            'assignee_user_id' => $leader->id,
+            'status' => ChurchConversation::STATUS_IN_SERVICE,
+            'last_activity_at' => now(),
+        ]);
+
+        $this->assertSame(2, ChurchConversation::query()
+            ->where('member_user_id', $member->id)
+            ->where('assignee_user_id', $leader->id)
+            ->count());
+
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('conversations', function ($conversations) use ($leader) {
+                    $matches = collect($conversations)->where('headerTitle', $leader->name);
+
+                    return $matches->count() === 1 && $matches->first()['pinnedLeader'] === true;
+                }));
+
+        $this->assertSame(1, ChurchConversation::query()
+            ->where('member_user_id', $member->id)
+            ->where('assignee_user_id', $leader->id)
+            ->count());
+    }
+
+    public function test_member_can_archive_and_unarchive_conversation_like_whatsapp(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.store'), [
+            'ministry_id' => $ministry->id,
+            'recipient_user_id' => $leader->id,
+            'message' => 'Oi, preciso arquivar depois.',
+        ])->assertRedirect();
+
+        $conversation = ChurchConversation::query()->firstOrFail();
+
+        $this->actingAs($member)
+            ->postJson(route('mobile.ns-whats.archive', $conversation))
+            ->assertOk()
+            ->assertJsonPath('conversation.archived', true);
+
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('viewingArchived', false)
+                ->where('archivedCount', 1)
+                ->where('conversations', fn ($rows) => collect($rows)->isEmpty()));
+
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index', ['arquivadas' => 1]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('viewingArchived', true)
+                ->where('conversations.0.id', $conversation->id));
+
+        // Mensagem do líder desarquiva para o membro.
+        $this->actingAs($leader)->post(route('mobile.ns-whats.leader.messages.store', $conversation), [
+            'content' => 'Olá, estou respondendo.',
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('church_conversation_archives', [
+            'conversation_id' => $conversation->id,
+            'user_id' => $member->id,
+        ]);
+
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('archivedCount', 0)
+                ->where('conversations.0.id', $conversation->id));
     }
 
     /**

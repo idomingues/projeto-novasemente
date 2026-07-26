@@ -315,7 +315,7 @@ export default function PublicationFeedCard({
     };
 
     const coverFrame = showCover ? (
-        <div className={`relative overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${coverAspectClass}`}>
+        <div className={`group relative overflow-hidden bg-zinc-100 dark:bg-zinc-800 ${coverAspectClass}`}>
             <img
                 src={src}
                 alt=""
@@ -465,10 +465,10 @@ export default function PublicationFeedCard({
                             {item.href ? (
                                 <Link
                                     href={item.href}
-                                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 dark:bg-teal-500 dark:text-teal-950 dark:hover:bg-teal-400"
+                                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-black px-3.5 py-2 text-[13px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
                                 >
                                     {actionLabel}
-                                    <ChevronDownIcon className="h-4 w-4 -rotate-90" aria-hidden />
+                                    <ChevronDownIcon className="h-3.5 w-3.5 -rotate-90" aria-hidden />
                                 </Link>
                             ) : null}
                         </div>
@@ -537,12 +537,15 @@ export default function PublicationFeedCard({
                                                     href={item.href}
                                                     className={
                                                         item.type === 'polls'
-                                                            ? 'inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 dark:bg-teal-500 dark:text-teal-950 dark:hover:bg-teal-400'
+                                                            ? 'inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-black px-3.5 py-2 text-[13px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200'
                                                             : 'inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm font-semibold text-zinc-800 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-700'
                                                     }
                                                 >
                                                     {actionLabel}
-                                                    <ChevronDownIcon className="h-4 w-4 -rotate-90" aria-hidden />
+                                                    <ChevronDownIcon
+                                                        className={`-rotate-90 ${item.type === 'polls' ? 'h-3.5 w-3.5' : 'h-4 w-4'}`}
+                                                        aria-hidden
+                                                    />
                                                 </Link>
                                             ) : null}
 

@@ -218,7 +218,7 @@ export default function LiderContact({
 
     return (
         <MobileLayout>
-            <Head title="NS Whats" />
+            <Head title="NS Conecta" />
             <div
                 className={`-mx-4 sm:-mx-6 md:-mx-8 -mt-2 mb-0 flex min-h-0 ${shellHeight} overflow-hidden border-y border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:rounded-2xl md:border`}
             >
@@ -229,7 +229,7 @@ export default function LiderContact({
                     }`}
                 >
                     <div className="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                        <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">NS Whats</h1>
+                        <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">NS Conecta</h1>
                         <button
                             type="button"
                             onClick={openCompose}
@@ -536,7 +536,7 @@ export default function LiderContact({
                             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm dark:bg-zinc-800">
                                 <UserGroupIcon className="h-8 w-8 text-emerald-700 dark:text-emerald-300" aria-hidden />
                             </div>
-                            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">NS Whats</h2>
+                            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">NS Conecta</h2>
                             <p className="mt-2 max-w-sm text-sm text-zinc-600 dark:text-zinc-400">
                                 Selecione uma conversa à esquerda ou inicie uma nova para falar com líderes e áreas da
                                 igreja.

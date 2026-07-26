@@ -50,14 +50,15 @@ class CreateConversation
 
         $subject = Str::limit(preg_replace('/\s+/u', ' ', $message) ?? $message, 80, '…');
 
-        $conversation = DB::transaction(function () use ($member, $churchId, $ministry, $recipientUserId, $message, $subject) {
+        $wasExisting = false;
+
+        $conversation = DB::transaction(function () use ($member, $churchId, $ministry, $recipientUserId, $message, $subject, &$wasExisting) {
             $existing = null;
             if ($recipientUserId !== null) {
                 $existing = ChurchConversation::query()
                     ->where('church_id', $churchId)
                     ->where('member_user_id', $member->id)
                     ->where('current_ministry_id', $ministry->id)
-                    ->where('status', '!=', ChurchConversation::STATUS_CLOSED)
                     ->where(function ($q) use ($recipientUserId) {
                         $q->where('assignee_user_id', $recipientUserId)
                             ->orWhere('preferred_leader_user_id', $recipientUserId);
@@ -65,6 +66,8 @@ class CreateConversation
                     ->lockForUpdate()
                     ->first();
             }
+
+            $wasExisting = $existing !== null;
 
             if ($existing) {
                 $conversation = $existing;
@@ -117,9 +120,17 @@ class CreateConversation
             return $conversation->fresh();
         });
 
-        $this->notifier->notifyNewConversation($conversation->fresh([
+        $fresh = $conversation->fresh([
             'member', 'currentMinistry', 'assignee', 'preferredLeader',
-        ]));
+        ]);
+
+        if ($wasExisting) {
+            $this->notifier->clearMemberAlertThrottle($fresh);
+            $fresh = $fresh->fresh(['member', 'currentMinistry', 'assignee', 'preferredLeader']);
+            $this->notifier->notifyStaffOfMemberMessage($fresh, $member, $message);
+        } else {
+            $this->notifier->notifyNewConversation($fresh);
+        }
 
         return $conversation->fresh();
     }

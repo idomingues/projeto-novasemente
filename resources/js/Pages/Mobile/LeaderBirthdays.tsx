@@ -107,7 +107,7 @@ export default function LeaderBirthdays({
                                 {capitalizeMonthLabel(monthLabel)}
                             </h1>
                             <p className="mt-1.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-                                Pessoas da sua área em {churchName}. Envie parabéns pelo NS Whats.
+                                Pessoas da sua área em {churchName}. Envie parabéns pelo NS Conecta.
                             </p>
                         </div>
                         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/80 shadow-sm ring-1 ring-rose-100 dark:bg-zinc-900/70 dark:ring-rose-900/50">

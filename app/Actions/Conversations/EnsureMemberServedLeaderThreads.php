@@ -3,7 +3,10 @@
 namespace App\Actions\Conversations;
 
 use App\Models\ChurchConversation;
+use App\Models\ChurchConversationArchive;
 use App\Models\ChurchConversationEvent;
+use App\Models\ChurchConversationMessage;
+use App\Models\ChurchConversationRead;
 use App\Models\User;
 use App\Models\Volunteer;
 use App\Support\NsWhatsAccess;
@@ -11,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Garante uma conversa aberta com cada líder dos departamentos em que o usuário serve,
- * mesmo sem mensagens — para o líder aparecer na lista do NS Whats.
+ * mesmo sem mensagens — para o líder aparecer na lista do NS Conecta.
  */
 class EnsureMemberServedLeaderThreads
 {
@@ -57,22 +60,19 @@ class EnsureMemberServedLeaderThreads
         int $leaderId,
         string $leaderName,
     ): void {
-        $exists = ChurchConversation::query()
-            ->where('church_id', $churchId)
-            ->where('member_user_id', $member->id)
-            ->where('current_ministry_id', $ministryId)
-            ->where('status', '!=', ChurchConversation::STATUS_CLOSED)
-            ->where(function ($q) use ($leaderId) {
-                $q->where('assignee_user_id', $leaderId)
-                    ->orWhere('preferred_leader_user_id', $leaderId);
-            })
-            ->exists();
-
-        if ($exists) {
-            return;
-        }
-
         DB::transaction(function () use ($member, $churchId, $ministryId, $leaderId, $leaderName) {
+            $existing = $this->leaderThreadsQuery($member->id, $churchId, $ministryId, $leaderId)
+                ->lockForUpdate()
+                ->orderByDesc('last_activity_at')
+                ->orderByDesc('id')
+                ->get();
+
+            if ($existing->isNotEmpty()) {
+                $this->mergeDuplicates($existing);
+
+                return;
+            }
+
             $conversation = ChurchConversation::query()->create([
                 'church_id' => $churchId,
                 'member_user_id' => $member->id,
@@ -99,5 +99,86 @@ class EnsureMemberServedLeaderThreads
                 'created_at' => now(),
             ]);
         });
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<ChurchConversation>
+     */
+    private function leaderThreadsQuery(int $memberId, int $churchId, int $ministryId, int $leaderId)
+    {
+        return ChurchConversation::query()
+            ->where('church_id', $churchId)
+            ->where('member_user_id', $memberId)
+            ->where('current_ministry_id', $ministryId)
+            ->where(function ($q) use ($leaderId) {
+                $q->where('assignee_user_id', $leaderId)
+                    ->orWhere('preferred_leader_user_id', $leaderId);
+            });
+    }
+
+    /**
+     * Mantém a conversa mais recente e move mensagens/leituras das demais.
+     *
+     * @param  \Illuminate\Support\Collection<int, ChurchConversation>  $threads
+     */
+    private function mergeDuplicates($threads): void
+    {
+        if ($threads->count() <= 1) {
+            return;
+        }
+
+        /** @var ChurchConversation $keep */
+        $keep = $threads->first();
+        foreach ($threads->skip(1) as $duplicate) {
+            ChurchConversationMessage::query()
+                ->where('conversation_id', $duplicate->id)
+                ->update(['conversation_id' => $keep->id]);
+
+            ChurchConversationEvent::query()
+                ->where('conversation_id', $duplicate->id)
+                ->update(['conversation_id' => $keep->id]);
+
+            ChurchConversationRead::query()
+                ->where('conversation_id', $duplicate->id)
+                ->each(function (ChurchConversationRead $read) use ($keep) {
+                    $existing = ChurchConversationRead::query()
+                        ->where('conversation_id', $keep->id)
+                        ->where('user_id', $read->user_id)
+                        ->first();
+                    if ($existing) {
+                        if (($read->last_read_message_id ?? 0) > ($existing->last_read_message_id ?? 0)) {
+                            $existing->update([
+                                'last_read_message_id' => $read->last_read_message_id,
+                                'read_at' => $read->read_at,
+                            ]);
+                        }
+                        $read->delete();
+                    } else {
+                        $read->update(['conversation_id' => $keep->id]);
+                    }
+                });
+
+            if (class_exists(ChurchConversationArchive::class)) {
+                ChurchConversationArchive::query()
+                    ->where('conversation_id', $duplicate->id)
+                    ->each(function (ChurchConversationArchive $archive) use ($keep) {
+                        $exists = ChurchConversationArchive::query()
+                            ->where('conversation_id', $keep->id)
+                            ->where('user_id', $archive->user_id)
+                            ->exists();
+                        if ($exists) {
+                            $archive->delete();
+                        } else {
+                            $archive->update(['conversation_id' => $keep->id]);
+                        }
+                    });
+            }
+
+            $duplicate->delete();
+        }
+
+        $keep->forceFill([
+            'last_activity_at' => $keep->messages()->max('created_at') ?: $keep->last_activity_at ?: now(),
+        ])->save();
     }
 }

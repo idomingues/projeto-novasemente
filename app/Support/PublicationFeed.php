@@ -275,6 +275,8 @@ class PublicationFeed
                     : PublicationFeedCoverResolver::forNews($post, $baseUrl, $church);
 
                 $instagramUrl = trim((string) ($post->instagram_url ?? ''));
+                $deepLink = NewsLaunchDeepLinks::hrefFor($post);
+                $deepAction = NewsLaunchDeepLinks::actionLabelFor($post);
 
                 return self::entry(
                     type: $typeKey,
@@ -284,16 +286,17 @@ class PublicationFeed
                     excerpt: self::plainText($post->excerpt, $post->body),
                     imageUrl: $cover,
                     publishedAt: $post->published_at,
-                    href: route($showRoute, [$param => $post->slug], absolute: false),
+                    href: $deepLink ?? route($showRoute, [$param => $post->slug], absolute: false),
                     meta: $meta,
                     coverPlayOverlay: PublicationFeedCoverResolver::newsShowsPlayOverlay($post),
                     body: self::fullContent($post->body, $post->excerpt),
                     bodyIsHtml: self::looksLikeHtml((string) ($post->body ?? '')),
-                    requiresOpen: in_array($post->content_type, [
+                    requiresOpen: $deepLink !== null || in_array($post->content_type, [
                         News::TYPE_PDF,
                         News::TYPE_YOUTUBE,
                     ], true),
                     instagramUrl: $instagramUrl !== '' ? $instagramUrl : null,
+                    actionLabel: $deepAction,
                 );
             });
     }
@@ -636,6 +639,7 @@ class PublicationFeed
         bool $bodyIsHtml = false,
         bool $requiresOpen = false,
         ?string $instagramUrl = null,
+        ?string $actionLabel = null,
     ): array {
         $definition = self::TYPE_DEFINITIONS[$type] ?? null;
         $resolvedExcerpt = $excerpt !== '' ? $excerpt : (
@@ -646,13 +650,14 @@ class PublicationFeed
             $resolvedBody = $resolvedExcerpt;
         }
         $resolvedInstagram = trim((string) ($instagramUrl ?? ''));
+        $resolvedAction = trim((string) ($actionLabel ?? ''));
 
         return [
             'id' => $type.'-'.$pk,
             'type' => $type,
             'type_label' => $typeLabel,
             'type_description' => $definition['description'] ?? '',
-            'action_label' => $definition['action'] ?? 'Abrir',
+            'action_label' => $resolvedAction !== '' ? $resolvedAction : ($definition['action'] ?? 'Abrir'),
             'title' => $title,
             'excerpt' => $resolvedExcerpt,
             'body' => $resolvedBody,

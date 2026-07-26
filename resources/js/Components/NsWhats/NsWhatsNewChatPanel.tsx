@@ -1,9 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeftIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { router } from '@inertiajs/react';
 import TextInput from '@/Components/TextInput';
 import UserListAvatar from '@/Components/UserListAvatar';
+import ListSearchHint from '@/Components/ListSearchHint';
 import { getMinistryIconByKey } from '@/lib/ministryIcons';
+import {
+    isListSearchBelowMinimum,
+    LIST_SEARCH_DEBOUNCE_MS,
+    LIST_SEARCH_MIN_LENGTH,
+    serverSearchTerm,
+} from '@/utils/listSearch';
 
 export type ComposeMinistry = {
     id: number;
@@ -15,6 +22,11 @@ export type ComposeMinistry = {
 };
 
 export type ComposePerson = { id: number; name: string; photo_url?: string | null; role?: string };
+
+export type ComposePeopleMatch = ComposePerson & {
+    ministry_id: number;
+    ministry_name: string;
+};
 
 export type DraftTarget = {
     ministryId: number;
@@ -31,8 +43,9 @@ type Props = {
     selectedMinistry: ComposeMinistry | null;
     leaders: ComposePerson[];
     members: ComposePerson[];
+    peopleMatches?: ComposePeopleMatch[];
+    peopleSearch?: string;
     fallbackMinistryConfigured: boolean;
-    tab: string;
     search: string;
     /** Destino escolhido → painel de mensagem à direita (PC) / tela de conversa (mobile). */
     onSelectTarget: (draft: DraftTarget) => void;
@@ -49,13 +62,18 @@ function personCountLabel(leaders: number, members: number): string {
     return parts.join(' · ') || 'Departamento';
 }
 
+function roleLabel(role?: string): string {
+    return role === 'leader' ? 'Líder' : 'Voluntário';
+}
+
 export default function NsWhatsNewChatPanel({
     ministries,
     selectedMinistry,
     leaders,
     members,
+    peopleMatches = [],
+    peopleSearch = '',
     fallbackMinistryConfigured,
-    tab,
     search,
     onSelectTarget,
     onClearTarget,
@@ -63,8 +81,22 @@ export default function NsWhatsNewChatPanel({
     selectedRecipientId = null,
     selectedUseFallback = false,
 }: Props) {
-    const [q, setQ] = useState('');
+    const [q, setQ] = useState(peopleSearch);
     const [personQ, setPersonQ] = useState('');
+    const [peopleLoading, setPeopleLoading] = useState(false);
+    const lastRequestedPessoa = useRef(peopleSearch);
+
+    const indexQuery = (extra: Record<string, string | number | undefined> = {}) => ({
+        q: search || undefined,
+        nova: 1,
+        ...extra,
+    });
+
+    useEffect(() => {
+        setQ(peopleSearch);
+        lastRequestedPessoa.current = peopleSearch;
+        setPeopleLoading(false);
+    }, [peopleSearch]);
 
     useEffect(() => {
         if (selectedMinistry) {
@@ -74,6 +106,35 @@ export default function NsWhatsNewChatPanel({
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedMinistry?.id]);
+
+    useEffect(() => {
+        if (selectedMinistry) {
+            return;
+        }
+
+        const term = serverSearchTerm(q) ?? '';
+        if (term === (lastRequestedPessoa.current || '')) {
+            return;
+        }
+
+        const handle = window.setTimeout(() => {
+            lastRequestedPessoa.current = term;
+            setPeopleLoading(true);
+            router.get(
+                route('mobile.ns-whats.index'),
+                indexQuery({ pessoa: term || undefined }),
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    only: ['peopleMatches', 'peopleSearch', 'composing'],
+                    onFinish: () => setPeopleLoading(false),
+                },
+            );
+        }, LIST_SEARCH_DEBOUNCE_MS);
+
+        return () => window.clearTimeout(handle);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [q, selectedMinistry?.id]);
 
     const filtered = useMemo(() => {
         const term = q.trim().toLowerCase();
@@ -97,26 +158,21 @@ export default function NsWhatsNewChatPanel({
         return members.filter((p) => p.name.toLowerCase().includes(term));
     }, [members, personQ]);
 
-    const indexQuery = (extra: Record<string, string | number | undefined> = {}) => ({
-        tab,
-        q: search || undefined,
-        nova: 1,
-        ...extra,
-    });
-
     const pickMinistry = (id: number) => {
         onClearTarget();
-        router.get(route('mobile.ns-whats.index'), indexQuery({ ministry: id }), {
+        router.get(route('mobile.ns-whats.index'), indexQuery({ ministry: id, pessoa: undefined }), {
             preserveState: true,
             preserveScroll: true,
+            only: ['ministries', 'selectedMinistry', 'leaders', 'members', 'peopleMatches', 'peopleSearch', 'composing'],
         });
     };
 
     const clearMinistry = () => {
         onClearTarget();
-        router.get(route('mobile.ns-whats.index'), indexQuery({ ministry: undefined }), {
+        router.get(route('mobile.ns-whats.index'), indexQuery({ ministry: undefined, pessoa: serverSearchTerm(q) }), {
             preserveState: true,
             preserveScroll: true,
+            only: ['ministries', 'selectedMinistry', 'leaders', 'members', 'peopleMatches', 'peopleSearch', 'composing'],
         });
     };
 
@@ -126,11 +182,15 @@ export default function NsWhatsNewChatPanel({
         subtitle: string;
         photoUrl?: string | null;
         useFallback?: boolean;
+        ministryId?: number;
+        ministryName?: string;
     }) => {
-        if (!selectedMinistry && !opts.useFallback) return;
+        const ministryId = opts.ministryId ?? selectedMinistry?.id;
+        const ministryName = opts.ministryName ?? selectedMinistry?.name;
+        if ((!ministryId || !ministryName) && !opts.useFallback) return;
         onSelectTarget({
-            ministryId: selectedMinistry?.id ?? 0,
-            ministryName: selectedMinistry?.name ?? 'Fila geral',
+            ministryId: ministryId ?? 0,
+            ministryName: ministryName ?? 'Fila geral',
             recipientUserId: opts.recipientUserId,
             title: opts.title,
             subtitle: opts.subtitle,
@@ -140,6 +200,8 @@ export default function NsWhatsNewChatPanel({
     };
 
     const isSelected = (id: number | '') => selectedRecipientId !== null && selectedRecipientId === id;
+    const showPeopleHint = isListSearchBelowMinimum(q);
+    const hasPeopleQuery = Boolean(serverSearchTerm(q));
 
     if (selectedMinistry) {
         return (
@@ -230,7 +292,7 @@ export default function NsWhatsNewChatPanel({
                                 openDraftOrSelect({
                                     recipientUserId: m.id,
                                     title: m.name,
-                                    subtitle: `Membro · ${selectedMinistry.name}`,
+                                    subtitle: `Voluntário · ${selectedMinistry.name}`,
                                     photoUrl: m.photo_url,
                                 })
                             }
@@ -243,7 +305,7 @@ export default function NsWhatsNewChatPanel({
                             <UserListAvatar name={m.name} photoUrl={m.photo_url} size="md" previewOnClick={false} />
                             <div className="min-w-0">
                                 <div className="truncate text-[13px] font-semibold">{m.name}</div>
-                                <div className="text-[11px] text-zinc-500">Membro</div>
+                                <div className="text-[11px] text-zinc-500">Voluntário</div>
                             </div>
                         </button>
                     ))}
@@ -270,37 +332,89 @@ export default function NsWhatsNewChatPanel({
                     <TextInput
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
-                        placeholder="Pesquisar departamento"
+                        placeholder="Pesquisar departamento, líder ou voluntário"
                         className="w-full rounded-full border-0 bg-zinc-100 py-1.5 pl-8 pr-3 text-[12px] shadow-none dark:bg-zinc-900"
                     />
                 </label>
+                <ListSearchHint show={showPeopleHint} minLength={LIST_SEARCH_MIN_LENGTH} />
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 py-2">
-                <div className="grid grid-cols-2 gap-2">
-                    {filtered.map((m) => {
-                        const Icon = getMinistryIconByKey(m.icon ?? null);
-                        return (
+                {hasPeopleQuery ? (
+                    <div className="mb-3 space-y-2">
+                        <p className="px-1 text-[11px] font-medium text-zinc-500">
+                            {peopleLoading ? 'Buscando pessoas…' : 'Pessoas'}
+                        </p>
+                        {!peopleLoading && peopleMatches.length === 0 ? (
+                            <p className="px-1 pb-1 text-[12px] text-zinc-400">Nenhum líder ou voluntário encontrado.</p>
+                        ) : null}
+                        {peopleMatches.map((person) => (
                             <button
-                                key={m.id}
+                                key={`p-${person.id}-${person.ministry_id}-${person.role ?? 'member'}`}
                                 type="button"
-                                onClick={() => pickMinistry(m.id)}
-                                className="flex cursor-pointer flex-col items-start rounded-xl border border-zinc-200 bg-white p-2.5 text-left transition hover:border-emerald-400 dark:border-zinc-800 dark:bg-zinc-900"
+                                onClick={() =>
+                                    openDraftOrSelect({
+                                        recipientUserId: person.id,
+                                        title: person.name,
+                                        subtitle: `${roleLabel(person.role)} · ${person.ministry_name}`,
+                                        photoUrl: person.photo_url,
+                                        ministryId: person.ministry_id,
+                                        ministryName: person.ministry_name,
+                                    })
+                                }
+                                className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left ${
+                                    isSelected(person.id)
+                                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40'
+                                        : 'border-zinc-200 dark:border-zinc-700'
+                                }`}
                             >
-                                <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                                    <Icon className="h-4 w-4" />
+                                <UserListAvatar name={person.name} photoUrl={person.photo_url} size="md" previewOnClick={false} />
+                                <div className="min-w-0">
+                                    <div className="truncate text-[13px] font-semibold text-zinc-900 dark:text-white">{person.name}</div>
+                                    <div className="truncate text-[11px] text-zinc-500">
+                                        {roleLabel(person.role)} · {person.ministry_name}
+                                    </div>
                                 </div>
-                                <div className="text-[12px] font-semibold leading-tight text-zinc-900 dark:text-white">{m.name}</div>
-                                <p className="mt-1 text-[10px] text-zinc-400">
-                                    {personCountLabel(m.leaders_count, m.members_count ?? 0)}
-                                </p>
                             </button>
-                        );
-                    })}
-                </div>
+                        ))}
+                    </div>
+                ) : null}
 
-                {filtered.length === 0 ? (
+                {filtered.length > 0 ? (
+                    <>
+                        {hasPeopleQuery ? (
+                            <p className="mb-2 px-1 text-[11px] font-medium text-zinc-500">Departamentos</p>
+                        ) : null}
+                        <div className="grid grid-cols-2 gap-2">
+                            {filtered.map((m) => {
+                                const Icon = getMinistryIconByKey(m.icon ?? null);
+                                return (
+                                    <button
+                                        key={m.id}
+                                        type="button"
+                                        onClick={() => pickMinistry(m.id)}
+                                        className="flex cursor-pointer flex-col items-start rounded-xl border border-zinc-200 bg-white p-2.5 text-left transition hover:border-emerald-400 dark:border-zinc-800 dark:bg-zinc-900"
+                                    >
+                                        <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                                            <Icon className="h-4 w-4" />
+                                        </div>
+                                        <div className="text-[12px] font-semibold leading-tight text-zinc-900 dark:text-white">{m.name}</div>
+                                        <p className="mt-1 text-[10px] text-zinc-400">
+                                            {personCountLabel(m.leaders_count, m.members_count ?? 0)}
+                                        </p>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </>
+                ) : null}
+
+                {!hasPeopleQuery && filtered.length === 0 ? (
                     <p className="py-8 text-center text-[12px] text-zinc-500">Nenhum departamento localizado.</p>
+                ) : null}
+
+                {hasPeopleQuery && filtered.length === 0 && peopleMatches.length === 0 && !peopleLoading ? (
+                    <p className="py-6 text-center text-[12px] text-zinc-500">Nenhum resultado para essa busca.</p>
                 ) : null}
 
                 {fallbackMinistryConfigured ? (

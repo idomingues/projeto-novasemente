@@ -3,13 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Conversations\ClaimConversation;
-use App\Actions\Conversations\CloseConversation;
 use App\Actions\Conversations\CreateConversation;
 use App\Actions\Conversations\EditConversationMessage;
 use App\Actions\Conversations\EnsureMemberServedLeaderThreads;
 use App\Actions\Conversations\ForwardConversation;
 use App\Actions\Conversations\MarkConversationRead;
-use App\Actions\Conversations\ReopenConversation;
 use App\Actions\Conversations\SendConversationMessage;
 use App\Actions\Conversations\TransferConversation;
 use App\Models\Church;
@@ -45,18 +43,28 @@ class MobileNsWhatsController extends Controller
 
         app(EnsureMemberServedLeaderThreads::class)->handle($user, (int) $churchId);
 
-        $tab = (string) $request->query('tab', 'open');
-        if (! in_array($tab, ['open', 'closed'], true)) {
-            $tab = 'open';
-        }
-
         $servedMinistryIds = NsWhatsAccess::ministryIdsWhereUserServes($user, (int) $churchId);
-        $servedLeaderIds = [];
+        /** @var array<int, array<int, true>> ministryId => [leaderUserId => true] */
+        $servedLeadersByMinistry = [];
         foreach ($servedMinistryIds as $ministryId) {
             foreach (NsWhatsAccess::leadersForMinistry((int) $churchId, $ministryId, $user) as $leaderRow) {
-                $servedLeaderIds[(int) $leaderRow['id']] = true;
+                $servedLeadersByMinistry[$ministryId][(int) $leaderRow['id']] = true;
             }
         }
+
+        $isPinnedLeaderThread = static function (ChurchConversation $c, User $viewer) use ($servedLeadersByMinistry): bool {
+            if ((int) $c->member_user_id !== (int) $viewer->id) {
+                return false;
+            }
+            $ministryId = (int) ($c->current_ministry_id ?? 0);
+            $assigneeId = (int) ($c->assignee_user_id ?? 0);
+            if ($ministryId < 1 || $assigneeId < 1) {
+                return false;
+            }
+
+            // Papel é por departamento: só fixa se a pessoa lidera ESTE depto (não outro).
+            return isset($servedLeadersByMinistry[$ministryId][$assigneeId]);
+        };
 
         $query = ChurchConversation::query()
             ->where('church_id', $churchId)
@@ -68,11 +76,22 @@ class MobileNsWhatsController extends Controller
             ->with(['currentMinistry:id,name,icon', 'assignee:id,name,photo_url', 'member:id,name,photo_url', 'messages' => fn ($q) => $q->orderBy('created_at')])
             ->orderByDesc('last_activity_at');
 
-        if ($tab === 'closed') {
-            $query->where('status', ChurchConversation::STATUS_CLOSED);
+        $viewingArchived = $request->boolean('arquivadas');
+        if ($viewingArchived) {
+            $query->whereHas('archives', fn ($q) => $q->where('user_id', $user->id));
         } else {
-            $query->where('status', '!=', ChurchConversation::STATUS_CLOSED);
+            $query->whereDoesntHave('archives', fn ($q) => $q->where('user_id', $user->id));
         }
+
+        $archivedCount = (int) ChurchConversation::query()
+            ->where('church_id', $churchId)
+            ->where(function ($q) use ($user) {
+                $q->where('member_user_id', $user->id)
+                    ->orWhere('assignee_user_id', $user->id)
+                    ->orWhere('preferred_leader_user_id', $user->id);
+            })
+            ->whereHas('archives', fn ($q) => $q->where('user_id', $user->id))
+            ->count();
 
         $search = trim((string) $request->query('q', ''));
         if (mb_strlen($search) >= 2) {
@@ -88,24 +107,31 @@ class MobileNsWhatsController extends Controller
         }
 
         $conversations = $query->limit(80)->get()
-            ->sortBy(function (ChurchConversation $c) use ($user, $servedLeaderIds) {
+            ->sortBy(function (ChurchConversation $c) use ($user, $isPinnedLeaderThread) {
                 $asMember = (int) $c->member_user_id === (int) $user->id;
-                $isServedLeaderThread = $asMember
-                    && $c->assignee_user_id
-                    && isset($servedLeaderIds[(int) $c->assignee_user_id]);
+                $isServedLeaderThread = $isPinnedLeaderThread($c, $user);
 
-                // Líderes dos departamentos em que serve ficam no topo.
-                $pin = $isServedLeaderThread ? 0 : 1;
+                // 0 = líderes dos deptos em que serve; 1 = time (como líder); 2 = demais.
+                $pin = $isServedLeaderThread ? 0 : ($asMember ? 2 : 1);
                 $activity = $c->last_activity_at?->getTimestamp() ?? 0;
 
                 return sprintf('%d-%020d', $pin, PHP_INT_MAX - $activity);
             })
             ->values()
-            ->map(function (ChurchConversation $c) use ($user, $servedLeaderIds) {
+            // Evita o mesmo líder/depto aparecer duas vezes em «Seus líderes».
+            ->unique(function (ChurchConversation $c) use ($user, $isPinnedLeaderThread) {
+                if ($isPinnedLeaderThread($c, $user)) {
+                    $leaderId = (int) ($c->assignee_user_id ?? $c->preferred_leader_user_id ?? 0);
+
+                    return 'pin:'.(int) $c->current_ministry_id.':'.$leaderId;
+                }
+
+                return 'id:'.$c->id;
+            })
+            ->values()
+            ->map(function (ChurchConversation $c) use ($user, $isPinnedLeaderThread) {
                 $asMember = (int) $c->member_user_id === (int) $user->id;
-                $pinnedLeader = $asMember
-                    && $c->assignee_user_id
-                    && isset($servedLeaderIds[(int) $c->assignee_user_id]);
+                $pinnedLeader = $isPinnedLeaderThread($c, $user);
 
                 $payload = $asMember
                     ? array_merge(ConversationPresenter::forMember($c, $user), ['viewerRole' => 'member'])
@@ -149,6 +175,7 @@ class MobileNsWhatsController extends Controller
         $ministries = NsWhatsAccess::ministriesWithContacts($churchId, $user);
         $leaders = [];
         $members = [];
+        $peopleMatches = [];
         $selectedMinistry = null;
         $composeDraft = null;
         if ($ministryId) {
@@ -157,6 +184,11 @@ class MobileNsWhatsController extends Controller
                 $leaders = NsWhatsAccess::leadersForMinistry($churchId, $ministryId, $user);
                 $members = NsWhatsAccess::membersForMinistry($churchId, $ministryId, $user);
             }
+        }
+
+        $pessoa = trim((string) $request->query('pessoa', ''));
+        if ($composing && ! $ministryId && mb_strlen($pessoa) >= 2) {
+            $peopleMatches = NsWhatsAccess::searchPeople($churchId, $pessoa, $user);
         }
 
         if ($composing && $selectedMinistry && $recipientId) {
@@ -177,8 +209,9 @@ class MobileNsWhatsController extends Controller
         }
 
         return Inertia::render('Mobile/NsWhats/Index', [
-            'tab' => $tab,
             'search' => $search,
+            'viewingArchived' => $viewingArchived,
+            'archivedCount' => $archivedCount,
             'conversations' => $conversations,
             'selected' => $selected,
             'composing' => (bool) $composing,
@@ -187,10 +220,9 @@ class MobileNsWhatsController extends Controller
             'selectedMinistry' => $selectedMinistry,
             'leaders' => $leaders,
             'members' => $members,
+            'peopleMatches' => $peopleMatches,
+            'peopleSearch' => $pessoa,
             'storeUrl' => route('mobile.ns-whats.store'),
-            'departmentQueueUrl' => NsWhatsAccess::isMinistryLeaderAccount($user) || NsWhatsAccess::isModuleAdmin($user)
-                ? route('mobile.ns-whats.leader.index', ['filter' => 'unclaimed'])
-                : null,
             'fallbackMinistryConfigured' => Church::query()
                 ->whereKey($churchId)
                 ->whereNotNull('conversation_fallback_ministry_id')
@@ -321,53 +353,49 @@ class MobileNsWhatsController extends Controller
         return redirect()->route('mobile.ns-whats.index', ['conversa' => $message->conversation_id]);
     }
 
-    public function close(Request $request, ChurchConversation $conversation, CloseConversation $close): RedirectResponse
-    {
-        $this->authorize('close', $conversation);
-        $close->handle($conversation, $request->user(), 'member');
-
-        return redirect()->route('mobile.ns-whats.index', ['conversa' => $conversation->id])
-            ->with('success', 'Conversa finalizada.');
-    }
-
-    public function reopen(Request $request, ChurchConversation $conversation, ReopenConversation $reopen): RedirectResponse
-    {
-        $this->authorize('reopen', $conversation);
-        $reopen->handle($conversation, $request->user());
-
-        return redirect()->route('mobile.ns-whats.index', ['conversa' => $conversation->id])
-            ->with('success', 'Conversa reaberta.');
-    }
-
-    public function archive(Request $request, ChurchConversation $conversation): RedirectResponse
+    public function archive(Request $request, ChurchConversation $conversation, \App\Actions\Conversations\ArchiveConversationForUser $archive): RedirectResponse|JsonResponse
     {
         $this->authorize('archive', $conversation);
-        $valid = $request->validate([
-            'also_close' => ['sometimes', 'boolean'],
-        ]);
-        if (! empty($valid['also_close']) && $conversation->allowsChat()) {
-            app(CloseConversation::class)->handle($conversation, $request->user(), 'member');
-        }
-        $conversation->member_archived_at = now();
-        $conversation->save();
-        ChurchConversationEvent::create([
-            'conversation_id' => $conversation->id,
-            'type' => 'archived_by_member',
-            'actor_user_id' => $request->user()->id,
-            'before' => null,
-            'after' => null,
-            'created_at' => now(),
-        ]);
+        $user = $request->user();
+        abort_unless($user, 401);
+        $archive->archive($conversation, $user);
 
-        return redirect()->route('mobile.ns-whats.index', ['tab' => 'closed'])
+        if ($request->expectsJson()) {
+            $fresh = $conversation->fresh(['currentMinistry', 'assignee', 'preferredLeader', 'member', 'messages.author']);
+            $asMember = (int) $conversation->member_user_id === (int) $user->id;
+            $payload = $asMember
+                ? array_merge(ConversationPresenter::forMember($fresh, $user), ['viewerRole' => 'member'])
+                : array_merge(ConversationPresenter::forLeader($fresh, $user), ['viewerRole' => 'staff']);
+
+            return response()->json([
+                'conversation' => $payload,
+                'message' => 'Conversa arquivada.',
+            ]);
+        }
+
+        return redirect()->route('mobile.ns-whats.index')
             ->with('success', 'Conversa arquivada.');
     }
 
-    public function unarchive(Request $request, ChurchConversation $conversation): RedirectResponse
+    public function unarchive(Request $request, ChurchConversation $conversation, \App\Actions\Conversations\ArchiveConversationForUser $archive): RedirectResponse|JsonResponse
     {
         $this->authorize('archive', $conversation);
-        $conversation->member_archived_at = null;
-        $conversation->save();
+        $user = $request->user();
+        abort_unless($user, 401);
+        $archive->unarchive($conversation, $user);
+
+        if ($request->expectsJson()) {
+            $fresh = $conversation->fresh(['currentMinistry', 'assignee', 'preferredLeader', 'member', 'messages.author']);
+            $asMember = (int) $conversation->member_user_id === (int) $user->id;
+            $payload = $asMember
+                ? array_merge(ConversationPresenter::forMember($fresh, $user), ['viewerRole' => 'member'])
+                : array_merge(ConversationPresenter::forLeader($fresh, $user), ['viewerRole' => 'staff']);
+
+            return response()->json([
+                'conversation' => $payload,
+                'message' => 'Conversa desarquivada.',
+            ]);
+        }
 
         return redirect()->route('mobile.ns-whats.index', ['conversa' => $conversation->id])
             ->with('success', 'Conversa desarquivada.');

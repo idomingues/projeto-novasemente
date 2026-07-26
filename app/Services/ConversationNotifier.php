@@ -11,30 +11,58 @@ use Illuminate\Support\Str;
 
 class ConversationNotifier
 {
+    /** Sem resposta do outro lado, nova mensagem só gera alerta após este intervalo. */
+    public const MESSAGE_ALERT_COOLDOWN_SECONDS = 3600;
+
     public function notifyNewConversation(ChurchConversation $conversation): void
     {
         $memberName = $conversation->member?->name ?? 'Membro';
         $ministry = $conversation->currentMinistry?->name ?? 'Departamento';
-        $title = 'Nova conversa no NS Whats';
-        $body = "{$memberName} iniciou uma conversa com {$ministry}.";
+        $title = 'Nova conversa no NS Conecta';
+        $body = "{$memberName} começou a falar com {$ministry}.";
 
+        $notified = false;
         foreach ($this->staffRecipients($conversation) as $user) {
+            if ((int) $user->id === (int) $conversation->member_user_id) {
+                continue;
+            }
             $this->pushInbox($user, $title, $body, $this->staffActionUrl($conversation));
+            $notified = true;
+        }
+
+        if ($notified) {
+            $this->markStaffAlerted($conversation);
         }
     }
 
     public function notifyStaffOfMemberMessage(ChurchConversation $conversation, User $member, ?string $content = null): void
     {
-        $title = 'Nova mensagem no NS Whats';
-        $preview = $content !== null && trim($content) !== ''
-            ? Str::limit($member->name.': '.trim($content), 140)
-            : ($member->name).' respondeu na conversa.';
+        if (! $this->shouldAlertStaff($conversation)) {
+            return;
+        }
 
+        $isNewTurn = $conversation->staff_alerted_at === null;
+
+        $title = 'NS Conecta';
+        $preview = $isNewTurn
+            ? "{$member->name} começou a falar com você."
+            : (
+                $content !== null && trim($content) !== ''
+                    ? Str::limit($member->name.': '.trim($content), 140)
+                    : "{$member->name} enviou uma nova mensagem."
+            );
+
+        $notified = false;
         foreach ($this->staffRecipients($conversation) as $user) {
             if ((int) $user->id === (int) $member->id) {
                 continue;
             }
             $this->pushInbox($user, $title, $preview, $this->staffActionUrl($conversation));
+            $notified = true;
+        }
+
+        if ($notified) {
+            $this->markStaffAlerted($conversation);
         }
     }
 
@@ -45,12 +73,23 @@ class ConversationNotifier
             return;
         }
 
-        $this->pushInbox(
-            $member,
-            'Nova mensagem no NS Whats',
-            Str::limit($staff->name.': '.$content, 140),
-            $this->memberActionUrl($conversation),
-        );
+        if (! $this->shouldAlertMember($conversation)) {
+            return;
+        }
+
+        $isNewTurn = $conversation->member_alerted_at === null;
+
+        $title = 'NS Conecta';
+        $body = $isNewTurn
+            ? "{$staff->name} começou a falar com você."
+            : (
+                trim($content) !== ''
+                    ? Str::limit($staff->name.': '.trim($content), 140)
+                    : "{$staff->name} enviou uma nova mensagem."
+            );
+
+        $this->pushInbox($member, $title, $body, $this->memberActionUrl($conversation));
+        $this->markMemberAlerted($conversation);
     }
 
     public function notifyMemberOfAssigneeChange(ChurchConversation $conversation): void
@@ -62,7 +101,7 @@ class ConversationNotifier
         $name = $conversation->assignee?->name ?? 'um líder';
         $this->pushInbox(
             $member,
-            'NS Whats — responsável atualizado',
+            'NS Conecta — responsável atualizado',
             "{$name} está acompanhando sua conversa.",
             $this->memberActionUrl($conversation),
         );
@@ -72,7 +111,7 @@ class ConversationNotifier
     {
         $this->pushInbox(
             $toLeader,
-            'Conversa transferida no NS Whats',
+            'Conversa transferida no NS Conecta',
             'Uma conversa foi transferida para você.',
             $this->staffActionUrl($conversation),
         );
@@ -101,60 +140,84 @@ class ConversationNotifier
                     ? 'Nova conversa encaminhada'
                     : 'Nova conversa na fila',
                 $conversation->assignee_user_id
-                    ? 'Uma conversa foi encaminhada para você no NS Whats.'
+                    ? 'Uma conversa foi encaminhada para você no NS Conecta.'
                     : 'Uma conversa foi encaminhada para o seu departamento.',
                 $this->staffActionUrl($conversation),
             );
         }
     }
 
-    public function notifyClosed(ChurchConversation $conversation, User $actor): void
+    public function shouldAlertStaff(ChurchConversation $conversation): bool
     {
-        $isMember = (int) $actor->id === (int) $conversation->member_user_id;
-        if ($isMember) {
-            foreach ($this->staffRecipients($conversation) as $user) {
-                if ((int) $user->id === (int) $actor->id) {
-                    continue;
-                }
-                $this->pushInbox(
-                    $user,
-                    'Conversa finalizada',
-                    'O membro finalizou a conversa no NS Whats.',
-                    $this->staffActionUrl($conversation),
-                );
-            }
-
-            return;
+        $lastAlertedAt = $conversation->staff_alerted_at;
+        if ($lastAlertedAt === null) {
+            return true;
         }
 
-        $member = User::query()->find($conversation->member_user_id);
-        if ($member && (int) $member->id !== (int) $actor->id) {
-            $this->pushInbox(
-                $member,
-                'Conversa finalizada',
-                'Sua conversa no NS Whats foi finalizada.',
-                $this->memberActionUrl($conversation),
-            );
+        return $lastAlertedAt->lte(now()->subSeconds(self::MESSAGE_ALERT_COOLDOWN_SECONDS));
+    }
+
+    public function shouldAlertMember(ChurchConversation $conversation): bool
+    {
+        $lastAlertedAt = $conversation->member_alerted_at;
+        if ($lastAlertedAt === null) {
+            return true;
+        }
+
+        return $lastAlertedAt->lte(now()->subSeconds(self::MESSAGE_ALERT_COOLDOWN_SECONDS));
+    }
+
+    private function markStaffAlerted(ChurchConversation $conversation): void
+    {
+        try {
+            if (! \Illuminate\Support\Facades\Schema::hasColumn('church_conversations', 'staff_alerted_at')) {
+                return;
+            }
+            $conversation->forceFill(['staff_alerted_at' => now()])->save();
+        } catch (\Throwable $e) {
+            report($e);
         }
     }
 
-    public function notifyReopened(ChurchConversation $conversation, User $actor): void
+    private function markMemberAlerted(ChurchConversation $conversation): void
     {
-        $isMember = (int) $actor->id === (int) $conversation->member_user_id;
-        if ($isMember) {
-            $this->notifyStaffOfMemberMessage($conversation, $actor, 'Conversa reaberta pelo membro.');
-
-            return;
+        try {
+            if (! \Illuminate\Support\Facades\Schema::hasColumn('church_conversations', 'member_alerted_at')) {
+                return;
+            }
+            $conversation->forceFill(['member_alerted_at' => now()])->save();
+        } catch (\Throwable $e) {
+            report($e);
         }
+    }
 
-        $member = User::query()->find($conversation->member_user_id);
-        if ($member && (int) $member->id !== (int) $actor->id) {
-            $this->pushInbox(
-                $member,
-                'Conversa reaberta',
-                'Sua conversa no NS Whats foi reaberta.',
-                $this->memberActionUrl($conversation),
-            );
+    /** Próxima mensagem da equipe deve alertar o membro (novo turno). */
+    public function clearMemberAlertThrottle(ChurchConversation $conversation): void
+    {
+        try {
+            if (! \Illuminate\Support\Facades\Schema::hasColumn('church_conversations', 'member_alerted_at')) {
+                return;
+            }
+            if ($conversation->member_alerted_at !== null) {
+                $conversation->forceFill(['member_alerted_at' => null])->save();
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /** Próxima mensagem do membro deve alertar a equipe (novo turno). */
+    public function clearStaffAlertThrottle(ChurchConversation $conversation): void
+    {
+        try {
+            if (! \Illuminate\Support\Facades\Schema::hasColumn('church_conversations', 'staff_alerted_at')) {
+                return;
+            }
+            if ($conversation->staff_alerted_at !== null) {
+                $conversation->forceFill(['staff_alerted_at' => null])->save();
+            }
+        } catch (\Throwable $e) {
+            report($e);
         }
     }
 
@@ -197,7 +260,6 @@ class ConversationNotifier
 
     private function staffActionUrl(ChurchConversation $conversation): string
     {
-        // Abre em «Meus NS Whats» (conversas recebidas / assumidas).
         return route('mobile.ns-whats.index', ['conversa' => $conversation->id], absolute: false);
     }
 

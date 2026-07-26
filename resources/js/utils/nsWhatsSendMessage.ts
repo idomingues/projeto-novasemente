@@ -19,7 +19,7 @@ export type NsWhatsConversationPayload = {
     ministryName?: string | null;
     assigneeName?: string | null;
     canChat: boolean;
-    canReopen: boolean;
+    archived?: boolean;
     lastActivityAt?: string | null;
     unreadCount: number;
     lastPreview: string;
@@ -34,6 +34,10 @@ export type NsWhatsSendResult =
     | { ok: false; error: string };
 
 export type NsWhatsLoadConversationResult =
+    | { ok: true; conversation: NsWhatsConversationPayload }
+    | { ok: false; error: string };
+
+export type NsWhatsMutateConversationResult =
     | { ok: true; conversation: NsWhatsConversationPayload }
     | { ok: false; error: string };
 
@@ -97,6 +101,37 @@ export async function loadNsWhatsConversation(url: string): Promise<NsWhatsLoadC
 
     if (!res.ok) {
         return { ok: false, error: 'Não foi possível abrir a conversa.' };
+    }
+
+    try {
+        const body = (await res.json()) as { conversation?: NsWhatsConversationPayload };
+        if (!body.conversation) {
+            return { ok: false, error: 'Resposta inválida do servidor.' };
+        }
+        return { ok: true, conversation: body.conversation };
+    } catch {
+        return { ok: false, error: 'Resposta inválida do servidor.' };
+    }
+}
+
+/**
+ * Ações POST na conversa (arquivar / desarquivar) via fetch JSON, sem visita Inertia.
+ */
+export async function mutateNsWhatsConversation(url: string): Promise<NsWhatsMutateConversationResult> {
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-CSRF-TOKEN': csrfToken(),
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({}),
+    });
+
+    if (!res.ok) {
+        return { ok: false, error: 'Não foi possível concluir a ação. Tente novamente.' };
     }
 
     try {

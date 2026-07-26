@@ -39,6 +39,7 @@ use App\Support\ChurchAppFeatures;
 use App\Support\HomeCardKeys;
 use App\Support\HomeFeaturedWeek;
 use App\Support\HomeModuleSpotlight;
+use App\Support\NewsLaunchDeepLinks;
 use App\Support\NotificationFeed;
 use App\Support\NsWhatsAccess;
 use App\Support\PublicationEngagement;
@@ -509,7 +510,7 @@ class MobileController extends Controller
         ]);
     }
 
-    public function newsShow(Request $request, News $news): Response
+    public function newsShow(Request $request, News $news): Response|RedirectResponse
     {
         $churchId = $this->currentChurch()?->id;
         if ($churchId === null || $news->church_id !== $churchId) {
@@ -523,6 +524,11 @@ class MobileController extends Controller
         }
         if ($news->published_at === null || $news->published_at->isFuture()) {
             abort(404);
+        }
+
+        $deepLink = NewsLaunchDeepLinks::hrefFor($news);
+        if ($deepLink !== null) {
+            return redirect()->to($deepLink);
         }
 
         $news->loadMissing(['author:id,name,photo_url']);
