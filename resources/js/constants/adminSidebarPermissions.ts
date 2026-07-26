@@ -64,6 +64,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'ministry-lead.volunteers.assistant': ['volunteers.ministry_operate', 'volunteers.manage'],
     'rooms.index': ['rooms.view', 'rooms.manage'],
     'room-bookings.index': ['rooms.view', 'rooms.manage', 'rooms.schedule'],
+    'polls.index': ['polls.view', 'polls.manage'],
     'programacao.index': ['programacao.view', 'programacao.manage'],
     'inventory.index': ['inventory.view', 'inventory.manage'],
     'roles.index': ['roles.manage'],

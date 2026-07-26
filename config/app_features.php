@@ -207,5 +207,17 @@ return [
                 'mobile.leader-solicitations.*',
             ],
         ],
+        'polls' => [
+            'label' => 'Enquetes',
+            'group' => 'inicio',
+            'routes' => [
+                'mobile.polls',
+                'mobile.polls.*',
+                'polls.display',
+                'polls.display.data',
+                'polls.vote',
+                'polls.vote.store',
+            ],
+        ],
     ],
 ];

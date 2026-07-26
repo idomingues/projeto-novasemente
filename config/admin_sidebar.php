@@ -43,6 +43,7 @@ return [
         ['name' => 'Comunidades', 'route' => 'communities.index', 'icon' => 'user-group'],
         ['name' => 'Caixa de Promessas', 'route' => 'promise-box-verses.index', 'icon' => 'sparkles'],
         ['name' => 'Culto', 'route' => 'culto.index', 'icon' => 'film'],
+        ['name' => 'Enquetes', 'route' => 'polls.index', 'icon' => 'chart-bar-square'],
         ['name' => 'Oferta Nova Semente', 'route' => 'donation-campaigns.index', 'icon' => 'banknotes'],
         ['name' => 'Doação', 'route' => 'charity-campaigns.index', 'icon' => 'banknotes'],
         ['name' => 'Serviços', 'route' => 'talents.admin.dashboard', 'icon' => 'user-group'],

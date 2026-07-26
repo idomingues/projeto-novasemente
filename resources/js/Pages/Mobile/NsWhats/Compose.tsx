@@ -264,7 +264,7 @@ export default function NsWhatsCompose({
                                 Enviar
                             </PrimaryButton>
                         </div>
-                        <InputError message={errors.ministry_id || errors.recipient_user_id || errors.leader_user_id} />
+                        <InputError message={errors.ministry_id || errors.recipient_user_id} />
                     </form>
                 </div>
             </MobileLayout>

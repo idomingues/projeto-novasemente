@@ -20,6 +20,7 @@ import {
     PhotoIcon,
     PlayCircleIcon,
     ChatBubbleLeftRightIcon,
+    ChartBarIcon,
     ClipboardDocumentListIcon,
     SparklesIcon,
     UserCircleIcon,
@@ -91,6 +92,14 @@ const homeQuickActions: QuickAction[] = [
         route: 'mobile.ns-whats.index',
         featureKey: 'ns_whats',
         icon: ChatBubbleLeftRightIcon,
+    },
+    {
+        id: 'enquetes',
+        label: 'Enquetes',
+        subtitle: 'Responda e veja o resultado da congregação',
+        route: 'mobile.polls.index',
+        featureKey: 'polls',
+        icon: ChartBarIcon,
     },
     {
         id: 'ano-biblico',

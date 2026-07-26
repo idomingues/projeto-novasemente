@@ -213,6 +213,7 @@ export default function Sidebar({
         'revista-adventista.index',
         'revista-adventista-acervo.index',
         'culto.index',
+        'polls.index',
         'events.index',
         'acervo.index',
         'musica.index',

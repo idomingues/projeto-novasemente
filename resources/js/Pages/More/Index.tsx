@@ -16,6 +16,7 @@ import {
     LifebuoyIcon,
     NewspaperIcon,
     ChatBubbleLeftRightIcon,
+    ChartBarIcon,
 } from '@heroicons/react/24/outline';
 import { PHOTOS_DRIVE_FOLDER_URL } from '@/constants/externalLinks';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
@@ -41,6 +42,13 @@ const items: MoreMenuItem[] = [
         route: 'mobile.ns-whats.index',
         featureKey: 'ns_whats',
         icon: ChatBubbleLeftRightIcon,
+    },
+    {
+        name: 'Enquetes',
+        description: 'Responda e veja o resultado da congregação',
+        route: 'mobile.polls.index',
+        featureKey: 'polls',
+        icon: ChartBarIcon,
     },
     { name: 'Dízimos e Pacto', description: 'Contribuições e pacto', route: 'mobile.offerings', featureKey: 'offerings', icon: HandRaisedIcon },
     { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', featureKey: 'culto', icon: FilmIcon },

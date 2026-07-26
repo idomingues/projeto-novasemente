@@ -56,6 +56,7 @@ final class PageViewShellRoutes
         return [
             'notifications.feed',
             'ministry-lead.volunteers.pipeline.detail',
+            'polls.display.data',
         ];
     }
 

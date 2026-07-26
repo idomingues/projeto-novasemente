@@ -48,6 +48,10 @@ use App\Http\Controllers\RevistaAdventistaArticleController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\PastoralAgendaController;
 use App\Http\Controllers\PastorController;
+use App\Http\Controllers\PollController;
+use App\Http\Controllers\PollDisplayController;
+use App\Http\Controllers\PollPublicVoteController;
+use App\Http\Controllers\PollMobileController;
 use App\Http\Controllers\FaceAiController;
 use App\Http\Controllers\PhotoAlbumController;
 use App\Http\Controllers\PrayerRequestController;
@@ -94,6 +98,25 @@ Route::view('/politica-de-privacidade', 'privacy-policy')->name('privacy-policy'
 Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy.en');
 Route::view('/exclusao-de-conta', 'account-deletion')->name('account-deletion');
 Route::view('/account-deletion', 'account-deletion')->name('account-deletion.en');
+
+// Painel público de resultados da enquete (TV / projetor)
+Route::get('/enquete/p/{token}', [PollDisplayController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->name('polls.display');
+Route::get('/enquete/p/{token}/dados', [PollDisplayController::class, 'data'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:60,1')
+    ->name('polls.display.data');
+
+// Voto público (sem login) — 1 voto por usuário ou por IP
+Route::get('/enquete/v/{token}', [PollPublicVoteController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->name('polls.vote');
+Route::post('/enquete/v/{token}', [PollPublicVoteController::class, 'store'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:20,1')
+    ->name('polls.vote.store');
+
 Route::get('/mais', [\App\Http\Controllers\MoreController::class, 'index'])->name('more.index');
 Route::get('/varios/escala', [VariosController::class, 'schedule'])->name('varios.schedule');
 Route::get('/varios/servicos', [VariosController::class, 'services'])->name('varios.services');
@@ -611,6 +634,12 @@ Route::middleware('auth')->group(function () {
     Route::put('/rooms/{room}', [\App\Http\Controllers\RoomController::class, 'update'])->name('rooms.update')->middleware('permission:rooms.manage');
     Route::delete('/rooms/{room}', [\App\Http\Controllers\RoomController::class, 'destroy'])->name('rooms.destroy')->middleware('permission:rooms.manage');
 
+    // Enquetes (admin)
+    Route::get('/enquetes', [PollController::class, 'index'])->name('polls.index')->middleware('permission:polls.view|polls.manage');
+    Route::post('/enquetes', [PollController::class, 'store'])->name('polls.store')->middleware('permission:polls.manage');
+    Route::put('/enquetes/{poll}', [PollController::class, 'update'])->name('polls.update')->middleware('permission:polls.manage');
+    Route::delete('/enquetes/{poll}', [PollController::class, 'destroy'])->name('polls.destroy')->middleware('permission:polls.manage');
+
     Route::get('/programacao', [\App\Http\Controllers\WeeklyProgramController::class, 'index'])->name('programacao.index')->middleware('permission:programacao.view|programacao.manage');
     Route::post('/programacao', [\App\Http\Controllers\WeeklyProgramController::class, 'store'])->name('programacao.store')->middleware('permission:programacao.manage');
     Route::put('/programacao/{weeklyProgram}', [\App\Http\Controllers\WeeklyProgramController::class, 'update'])->name('programacao.update')->middleware('permission:programacao.manage');
@@ -1070,6 +1099,13 @@ Route::middleware('auth')->group(function () {
     Route::patch('/suporte/{token}/close', [SupportAdminController::class, 'closeTicket'])
         ->name('support.close')
         ->middleware('role:super_admin');
+
+    // Enquetes (membro — login obrigatório)
+    Route::get('/mobile/enquetes', [PollMobileController::class, 'index'])->name('mobile.polls.index');
+    Route::get('/mobile/enquetes/{poll}', [PollMobileController::class, 'show'])->name('mobile.polls.show');
+    Route::post('/mobile/enquetes/{poll}/votar', [PollMobileController::class, 'vote'])
+        ->middleware('throttle:30,1')
+        ->name('mobile.polls.vote');
 
     // Solicitações (membro — requer login para enviar/acompanhar)
     Route::get('/mobile/talentos', [TalentConnectionController::class, 'index'])->name('mobile.talents.index');
