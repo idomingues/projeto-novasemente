@@ -133,6 +133,8 @@ export default function NsWhatsCompose({
     };
 
     if (selectedMinistry) {
+        const MinistryIcon = getMinistryIconByKey(selectedMinistry.icon ?? null);
+
         return (
             <MobileLayout>
                 <Head title={`NS Conecta — ${selectedMinistry.name}`} />
@@ -149,16 +151,28 @@ export default function NsWhatsCompose({
                         <button
                             type="button"
                             onClick={selectDepartmentQueue}
-                            className={`w-full cursor-pointer rounded-xl border px-4 py-3 text-left ${
+                            className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-left shadow-sm ${
                                 recipientId === ''
-                                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40'
-                                    : 'border-zinc-200 dark:border-zinc-700'
+                                    ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600/30 dark:border-teal-400 dark:bg-teal-950/50 dark:ring-teal-400/40'
+                                    : 'border-teal-300/80 bg-gradient-to-r from-teal-50 to-[#f5f1e9] dark:border-teal-700 dark:from-teal-950/60 dark:to-zinc-900'
                             }`}
                         >
-                            <div className="font-semibold text-zinc-900 dark:text-white">Enviar para o departamento</div>
-                            <p className="mt-1 text-xs text-zinc-500">
-                                Sem escolher pessoa — qualquer líder autorizado poderá assumir e responder.
-                            </p>
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-700/15 text-teal-800 dark:bg-teal-400/20 dark:text-teal-200">
+                                <MinistryIcon className="h-5 w-5" aria-hidden strokeWidth={1.75} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <div className="font-semibold text-teal-950 dark:text-teal-50">
+                                        Enviar para o departamento
+                                    </div>
+                                    <span className="rounded-full bg-teal-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white dark:bg-teal-400 dark:text-teal-950">
+                                        Depto
+                                    </span>
+                                </div>
+                                <p className="mt-1 text-xs text-teal-900/70 dark:text-teal-100/70">
+                                    Fila de {selectedMinistry.name} · qualquer líder pode responder
+                                </p>
+                            </div>
                         </button>
 
                         {(leaders.length > 0 || members.length > 0) ? (
@@ -180,24 +194,43 @@ export default function NsWhatsCompose({
 
                                 {filteredLeaders.length > 0 ? (
                                     <div className="space-y-2">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Líderes</p>
+                                        <p className="text-xs font-bold uppercase tracking-[0.12em] text-teal-800 dark:text-teal-300">
+                                            {filteredLeaders.length === 1
+                                                ? 'Líder do departamento'
+                                                : 'Líderes do departamento'}
+                                        </p>
                                         {filteredLeaders.map((l) => (
                                             <button
                                                 key={`leader-${l.id}`}
                                                 type="button"
                                                 onClick={() => selectPerson(l.id)}
-                                                className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-left ${
+                                                className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-left shadow-sm ${
                                                     recipientId === l.id
-                                                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40'
-                                                        : 'border-zinc-200 dark:border-zinc-700'
+                                                        ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600/30 dark:border-teal-400 dark:bg-teal-950/50 dark:ring-teal-400/40'
+                                                        : 'border-teal-300/80 bg-gradient-to-r from-teal-50 to-[#f5f1e9] dark:border-teal-700 dark:from-teal-950/60 dark:to-zinc-900'
                                                 }`}
                                             >
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold dark:bg-zinc-800">
-                                                    {l.name.slice(0, 2).toUpperCase()}
+                                                <div className="relative shrink-0">
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-700/15 text-sm font-semibold text-teal-900 dark:bg-teal-400/20 dark:text-teal-100">
+                                                        {l.name.slice(0, 2).toUpperCase()}
+                                                    </div>
+                                                    <span
+                                                        className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-teal-600 ring-2 ring-white dark:bg-teal-400 dark:ring-zinc-900"
+                                                        aria-hidden
+                                                    />
                                                 </div>
-                                                <div>
-                                                    <div className="font-semibold text-zinc-900 dark:text-white">{l.name}</div>
-                                                    <div className="text-xs text-zinc-500">Líder de {selectedMinistry.name}</div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                        <div className="font-semibold text-teal-950 dark:text-teal-50">
+                                                            {l.name}
+                                                        </div>
+                                                        <span className="rounded-full bg-teal-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white dark:bg-teal-400 dark:text-teal-950">
+                                                            Líder
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs text-teal-900/70 dark:text-teal-100/70">
+                                                        Líder do {selectedMinistry.name}
+                                                    </div>
                                                 </div>
                                             </button>
                                         ))}
@@ -206,7 +239,9 @@ export default function NsWhatsCompose({
 
                                 {filteredMembers.length > 0 ? (
                                     <div className="space-y-2">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Voluntários do departamento</p>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                                            Voluntários do departamento
+                                        </p>
                                         {filteredMembers.map((m) => (
                                             <button
                                                 key={`member-${m.id}`}

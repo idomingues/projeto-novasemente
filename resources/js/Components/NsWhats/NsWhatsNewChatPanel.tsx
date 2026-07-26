@@ -204,6 +204,8 @@ export default function NsWhatsNewChatPanel({
     const hasPeopleQuery = Boolean(serverSearchTerm(q));
 
     if (selectedMinistry) {
+        const MinistryIcon = getMinistryIconByKey(selectedMinistry.icon ?? null);
+
         return (
             <div className="flex h-full min-h-0 flex-col">
                 <div className="shrink-0 space-y-2 border-b border-zinc-100 px-3 py-2 dark:border-zinc-800">
@@ -232,14 +234,28 @@ export default function NsWhatsNewChatPanel({
                                 subtitle: 'Fila do departamento',
                             })
                         }
-                        className={`w-full cursor-pointer rounded-xl border px-3 py-2.5 text-left ${
+                        className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl border px-2.5 py-2.5 text-left shadow-sm ${
                             isSelected('')
-                                ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40'
-                                : 'border-zinc-200 dark:border-zinc-700'
+                                ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600/30 dark:border-teal-400 dark:bg-teal-950/50 dark:ring-teal-400/40'
+                                : 'border-teal-300/80 bg-gradient-to-r from-teal-50 to-[#f5f1e9] dark:border-teal-700 dark:from-teal-950/60 dark:to-zinc-900'
                         }`}
                     >
-                        <div className="text-[13px] font-semibold text-zinc-900 dark:text-white">Enviar para o departamento</div>
-                        <p className="mt-0.5 text-[11px] text-zinc-500">Qualquer líder autorizado poderá responder.</p>
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-700/15 text-teal-800 dark:bg-teal-400/20 dark:text-teal-200">
+                            <MinistryIcon className="h-5 w-5" aria-hidden strokeWidth={1.75} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                                <div className="truncate text-[13px] font-semibold text-teal-950 dark:text-teal-50">
+                                    Enviar para o departamento
+                                </div>
+                                <span className="shrink-0 rounded-full bg-teal-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white dark:bg-teal-400 dark:text-teal-950">
+                                    Depto
+                                </span>
+                            </div>
+                            <p className="mt-0.5 truncate text-[11px] text-teal-900/70 dark:text-teal-100/70">
+                                Fila de {selectedMinistry.name} · qualquer líder pode responder
+                            </p>
+                        </div>
                     </button>
 
                     {(filteredLeaders.length > 0 || filteredMembers.length > 0) && (
@@ -258,57 +274,88 @@ export default function NsWhatsNewChatPanel({
                         </label>
                     ) : null}
 
-                    {filteredLeaders.map((l) => (
-                        <button
-                            key={`l-${l.id}`}
-                            type="button"
-                            onClick={() =>
-                                openDraftOrSelect({
-                                    recipientUserId: l.id,
-                                    title: l.name,
-                                    subtitle: `Líder · ${selectedMinistry.name}`,
-                                    photoUrl: l.photo_url,
-                                })
-                            }
-                            className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left ${
-                                isSelected(l.id)
-                                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40'
-                                    : 'border-zinc-200 dark:border-zinc-700'
-                            }`}
-                        >
-                            <UserListAvatar name={l.name} photoUrl={l.photo_url} size="md" previewOnClick={false} />
-                            <div className="min-w-0">
-                                <div className="truncate text-[13px] font-semibold">{l.name}</div>
-                                <div className="text-[11px] text-zinc-500">Líder</div>
-                            </div>
-                        </button>
-                    ))}
+                    {filteredLeaders.length > 0 ? (
+                        <div className="space-y-1.5">
+                            <p className="px-1 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-800 dark:text-teal-300">
+                                {filteredLeaders.length === 1 ? 'Líder do departamento' : 'Líderes do departamento'}
+                            </p>
+                            {filteredLeaders.map((l) => (
+                                <button
+                                    key={`l-${l.id}`}
+                                    type="button"
+                                    onClick={() =>
+                                        openDraftOrSelect({
+                                            recipientUserId: l.id,
+                                            title: l.name,
+                                            subtitle: `Líder · ${selectedMinistry.name}`,
+                                            photoUrl: l.photo_url,
+                                        })
+                                    }
+                                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl border px-2.5 py-2.5 text-left shadow-sm ${
+                                        isSelected(l.id)
+                                            ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600/30 dark:border-teal-400 dark:bg-teal-950/50 dark:ring-teal-400/40'
+                                            : 'border-teal-300/80 bg-gradient-to-r from-teal-50 to-[#f5f1e9] dark:border-teal-700 dark:from-teal-950/60 dark:to-zinc-900'
+                                    }`}
+                                >
+                                    <div className="relative shrink-0">
+                                        <UserListAvatar name={l.name} photoUrl={l.photo_url} size="md" previewOnClick={false} />
+                                        <span
+                                            className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-teal-600 ring-2 ring-white dark:bg-teal-400 dark:ring-zinc-900"
+                                            aria-hidden
+                                        />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="truncate text-[13px] font-semibold text-teal-950 dark:text-teal-50">
+                                                {l.name}
+                                            </div>
+                                            <span className="shrink-0 rounded-full bg-teal-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white dark:bg-teal-400 dark:text-teal-950">
+                                                Líder
+                                            </span>
+                                        </div>
+                                                        <div className="truncate text-[11px] text-teal-900/70 dark:text-teal-100/70">
+                                                            Líder do {selectedMinistry.name}
+                                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    ) : null}
 
-                    {filteredMembers.map((m) => (
-                        <button
-                            key={`m-${m.id}`}
-                            type="button"
-                            onClick={() =>
-                                openDraftOrSelect({
-                                    recipientUserId: m.id,
-                                    title: m.name,
-                                    subtitle: `Voluntário · ${selectedMinistry.name}`,
-                                    photoUrl: m.photo_url,
-                                })
-                            }
-                            className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left ${
-                                isSelected(m.id)
-                                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40'
-                                    : 'border-zinc-200 dark:border-zinc-700'
-                            }`}
-                        >
-                            <UserListAvatar name={m.name} photoUrl={m.photo_url} size="md" previewOnClick={false} />
-                            <div className="min-w-0">
-                                <div className="truncate text-[13px] font-semibold">{m.name}</div>
-                                <div className="text-[11px] text-zinc-500">Voluntário</div>
-                            </div>
-                        </button>
-                    ))}
+                    {filteredMembers.length > 0 ? (
+                        <div className="space-y-1.5 pt-1">
+                            <p className="px-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+                                Voluntários
+                            </p>
+                            {filteredMembers.map((m) => (
+                                <button
+                                    key={`m-${m.id}`}
+                                    type="button"
+                                    onClick={() =>
+                                        openDraftOrSelect({
+                                            recipientUserId: m.id,
+                                            title: m.name,
+                                            subtitle: `Voluntário · ${selectedMinistry.name}`,
+                                            photoUrl: m.photo_url,
+                                        })
+                                    }
+                                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left ${
+                                        isSelected(m.id)
+                                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40'
+                                            : 'border-zinc-200 dark:border-zinc-700'
+                                    }`}
+                                >
+                                    <UserListAvatar name={m.name} photoUrl={m.photo_url} size="md" previewOnClick={false} />
+                                    <div className="min-w-0">
+                                        <div className="truncate text-[13px] font-semibold text-zinc-900 dark:text-white">
+                                            {m.name}
+                                        </div>
+                                        <div className="text-[11px] text-zinc-500">Voluntário</div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
             </div>
         );
