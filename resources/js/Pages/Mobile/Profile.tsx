@@ -223,7 +223,7 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
         ...(route().has('mobile.ns-whats.index')
             ? ([
                   {
-                      title: 'Minhas Mensagens - NS Whats',
+                      title: 'Meus NS Whats',
                       description: 'Suas conversas e mensagens recebidas',
                       icon: ChatBubbleLeftRightIcon,
                       href: route('mobile.ns-whats.index'),
@@ -232,17 +232,6 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
                           typeof profileCounts.ns_whats_pending === 'number' && profileCounts.ns_whats_pending > 0
                               ? profileCounts.ns_whats_pending
                               : null,
-                  },
-              ] as Row[])
-            : []),
-        ...(route().has('mobile.ns-whats.leader.index') && isMinistryLeader
-            ? ([
-                  {
-                      title: 'Fila do departamento',
-                      description: 'Responder mensagens enviadas ao departamento (sem líder específico)',
-                      icon: ChatBubbleLeftRightIcon,
-                      href: route('mobile.ns-whats.leader.index', { filter: 'unclaimed' }),
-                      tone: 'member',
                   },
               ] as Row[])
             : []),

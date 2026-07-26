@@ -37,8 +37,8 @@ const PASTORAL_ROUTE = 'mobile.pastoral-appointments.request' as const;
 
 const items: MoreMenuItem[] = [
     {
-        name: 'NS Whats',
-        description: 'Converse com líderes e áreas da igreja',
+        name: 'Meus NS Whats',
+        description: 'Suas conversas e mensagens recebidas',
         route: 'mobile.ns-whats.index',
         featureKey: 'ns_whats',
         icon: ChatBubbleLeftRightIcon,

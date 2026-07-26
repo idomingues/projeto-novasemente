@@ -129,7 +129,7 @@ final class PageViewRouteLabels
         'mobile.schedule.checkin' => 'Check-in de escala',
         'escalas.index' => 'Escalas (painel)',
         'varios.contact' => 'Contato (web)',
-        'mobile.ns-whats.index' => 'Minhas Mensagens - NS Whats',
+        'mobile.ns-whats.index' => 'Meus NS Whats',
         'mobile.ns-whats.compose' => 'NS Whats — Nova conversa',
         'mobile.ns-whats.leader.index' => 'NS Whats — Atendimento',
         'conversations.index' => 'NS Whats',

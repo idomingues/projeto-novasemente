@@ -13,7 +13,6 @@ import {
     GlobeAltIcon,
     HandRaisedIcon,
     HeartIcon,
-    InboxIcon,
     LifebuoyIcon,
     MapPinIcon,
     MusicalNoteIcon,
@@ -93,21 +92,11 @@ const homeCardClass =
 const homeQuickActions: QuickAction[] = [
     {
         id: 'ns-whats',
-        label: 'Minhas Mensagens - NS Whats',
+        label: 'Meus NS Whats',
         subtitle: 'Suas conversas e mensagens recebidas',
         route: 'mobile.ns-whats.index',
         featureKey: 'ns_whats',
         icon: ChatBubbleLeftRightIcon,
-    },
-    {
-        id: 'ns-whats-departamento',
-        label: 'Fila do departamento',
-        subtitle: 'Responder mensagens enviadas ao departamento',
-        route: 'mobile.ns-whats.leader.index',
-        routeParams: { filter: 'unclaimed' },
-        featureKey: 'ns_whats',
-        icon: InboxIcon,
-        leaderOnly: true,
     },
     {
         id: 'enquetes',

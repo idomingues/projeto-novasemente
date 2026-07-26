@@ -347,7 +347,7 @@ export default function NsWhatsIndex({
 
     return (
         <MobileLayout flush>
-            <Head title="Minhas Mensagens - NS Whats" />
+            <Head title="NS Whats" />
             <div className="flex h-full min-h-0 overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:rounded-none md:border-0">
                 <aside
                     className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:w-[20rem] md:shrink-0 md:border-r lg:w-[22rem] ${bottomNavClearance} ${
@@ -358,7 +358,7 @@ export default function NsWhatsIndex({
                         <>
                             <div className="flex shrink-0 items-center justify-between gap-2 px-3 pb-0.5 pt-2.5">
                                 <h1 className="text-[20px] font-bold leading-none tracking-tight text-zinc-900 dark:text-white">
-                                    Minhas Mensagens
+                                    NS Whats
                                 </h1>
                                 <div className="flex items-center gap-1.5">
                                     {departmentQueueUrl ? (
