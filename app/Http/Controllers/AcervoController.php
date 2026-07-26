@@ -35,7 +35,7 @@ class AcervoController extends Controller
 
         return Inertia::render('Acervo/Index', [
             'items' => $items,
-            'canManage' => $user !== null && $user->can('music.manage'),
+            'canManage' => $user !== null && $user->can('series.manage'),
         ]);
     }
 

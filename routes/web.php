@@ -691,10 +691,10 @@ Route::middleware('auth')->group(function () {
         ->name('publication-comments.destroy')
         ->middleware('permission:news.manage');
     Route::get('/saude', [HealthController::class, 'index'])->name('health.index');
-    Route::post('/saude', [HealthController::class, 'store'])->name('health.store')->middleware('permission:news.manage');
-    Route::put('/saude/{health}', [HealthController::class, 'update'])->name('health.update')->middleware('permission:news.manage');
-    Route::patch('/saude/{health}/active', [HealthController::class, 'setActive'])->name('health.active')->middleware('permission:news.manage');
-    Route::delete('/saude/{health}', [HealthController::class, 'destroy'])->name('health.destroy')->middleware('permission:news.manage');
+    Route::post('/saude', [HealthController::class, 'store'])->name('health.store')->middleware('permission:health.manage');
+    Route::put('/saude/{health}', [HealthController::class, 'update'])->name('health.update')->middleware('permission:health.manage');
+    Route::patch('/saude/{health}/active', [HealthController::class, 'setActive'])->name('health.active')->middleware('permission:health.manage');
+    Route::delete('/saude/{health}', [HealthController::class, 'destroy'])->name('health.destroy')->middleware('permission:health.manage');
     Route::get('/revista-adventista', [RevistaAdventistaArticleController::class, 'index'])->name('revista-adventista.index');
     Route::patch('/revista-adventista/{revistaAdventistaArticle}/active', [RevistaAdventistaArticleController::class, 'setActive'])
         ->name('revista-adventista.active')
@@ -1012,7 +1012,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/services', function () {
         return Inertia::render('Dashboard');
     })->name('services.index');
-    Route::get('/acervo', [AcervoController::class, 'index'])->name('acervo.index')->middleware('permission:music.manage');
+    Route::get('/acervo', [AcervoController::class, 'index'])->name('acervo.index')->middleware('permission:series.manage');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index')->middleware('role_or_permission:super_admin|library.manage|campaigns.manage|finance.view');
     Route::get('/settings/funcionalidades', [SettingsController::class, 'appFeatures'])
         ->name('settings.app-features.index')
@@ -1041,9 +1041,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/talents-moderator-email', [SettingsController::class, 'updateTalentsModeratorEmail'])
         ->name('settings.talents-moderator-email.update')
         ->middleware('role_or_permission:super_admin|admin|talents.moderate');
-    Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store')->middleware('permission:music.manage');
-    Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update')->middleware('permission:music.manage');
-    Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy')->middleware('permission:music.manage');
+    Route::post('/acervo', [AcervoController::class, 'store'])->name('acervo.store')->middleware('permission:series.manage');
+    Route::put('/acervo/{acervo}', [AcervoController::class, 'update'])->name('acervo.update')->middleware('permission:series.manage');
+    Route::delete('/acervo/{acervo}', [AcervoController::class, 'destroy'])->name('acervo.destroy')->middleware('permission:series.manage');
     // Pastores (gestão por igreja)
     Route::get('/pastores', [PastorController::class, 'index'])->name('pastors.index')->middleware('role_or_permission:super_admin|admin|pastors.view|pastors.manage');
     Route::post('/pastores', [PastorController::class, 'store'])->name('pastors.store')->middleware('role_or_permission:super_admin|admin|pastors.manage');

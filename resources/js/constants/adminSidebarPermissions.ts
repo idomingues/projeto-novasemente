@@ -71,7 +71,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'news.index': ['news.view', 'news.manage'],
     'publication-comments.index': ['news.manage'],
     'publication-comments.destroy': ['news.manage'],
-    'health.index': ['news.view', 'news.manage'],
+    'health.index': ['health.view', 'health.manage'],
     'revista-adventista.index': ['news.view', 'news.manage'],
     'revista-adventista.active': ['news.manage'],
     'revista-adventista.sync-articles': ['news.manage'],
@@ -149,7 +149,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'varios.classe-comecos': [],
     'varios.acervo': [],
     /** Mesma permissão de gestão de músicas / inserir itens no acervo */
-    'acervo.index': ['music.manage'],
+    'acervo.index': ['series.manage'],
     'donation-campaigns.index': ['campaigns.view', 'campaigns.manage', 'finance.view'],
     'charity-campaigns.index': ['donations.view', 'donations.manage', 'finance.view'],
     'donation-item-campaigns.index': ['campaigns.view', 'campaigns.manage'],

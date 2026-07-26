@@ -21,10 +21,10 @@ class HealthIndexTest extends TestCase
         $this->seed();
 
         $church = Church::query()->firstOrFail();
-        Permission::firstOrCreate(['name' => 'news.manage']);
+        Permission::firstOrCreate(['name' => 'health.manage']);
         $admin = User::factory()->create(['church_id' => $church->id]);
         $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
-        $admin->givePermissionTo('news.manage');
+        $admin->givePermissionTo('health.manage');
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
@@ -69,10 +69,10 @@ class HealthIndexTest extends TestCase
         $this->seed();
 
         $church = Church::query()->firstOrFail();
-        Permission::firstOrCreate(['name' => 'news.manage']);
+        Permission::firstOrCreate(['name' => 'health.manage']);
         $admin = User::factory()->create(['church_id' => $church->id]);
         $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
-        $admin->givePermissionTo('news.manage');
+        $admin->givePermissionTo('health.manage');
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])
@@ -118,10 +118,10 @@ class HealthIndexTest extends TestCase
         $this->seed();
 
         $church = Church::query()->firstOrFail();
-        Permission::firstOrCreate(['name' => 'news.manage']);
+        Permission::firstOrCreate(['name' => 'health.manage']);
         $admin = User::factory()->create(['church_id' => $church->id]);
         $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
-        $admin->givePermissionTo('news.manage');
+        $admin->givePermissionTo('health.manage');
 
         $excerpt = str_repeat('a', 500);
 
@@ -143,10 +143,10 @@ class HealthIndexTest extends TestCase
         $this->seed();
 
         $church = Church::query()->firstOrFail();
-        Permission::firstOrCreate(['name' => 'news.manage']);
+        Permission::firstOrCreate(['name' => 'health.manage']);
         $admin = User::factory()->create(['church_id' => $church->id]);
         $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
-        $admin->givePermissionTo('news.manage');
+        $admin->givePermissionTo('health.manage');
 
         $longExcerpt = str_repeat('a', 620);
 
@@ -168,10 +168,10 @@ class HealthIndexTest extends TestCase
         $this->seed();
 
         $church = Church::query()->firstOrFail();
-        Permission::firstOrCreate(['name' => 'news.manage']);
+        Permission::firstOrCreate(['name' => 'health.manage']);
         $admin = User::factory()->create(['church_id' => $church->id]);
         $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
-        $admin->givePermissionTo('news.manage');
+        $admin->givePermissionTo('health.manage');
 
         $pdf = UploadedFile::fake()->create('Artigo Blue Zone.pdf', 2400, 'application/pdf');
         $excerpt = str_repeat('a', 400);
@@ -199,10 +199,10 @@ class HealthIndexTest extends TestCase
         $this->seed();
 
         $church = Church::query()->firstOrFail();
-        Permission::firstOrCreate(['name' => 'news.manage']);
+        Permission::firstOrCreate(['name' => 'health.manage']);
         $admin = User::factory()->create(['church_id' => $church->id]);
         $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
-        $admin->givePermissionTo('news.manage');
+        $admin->givePermissionTo('health.manage');
 
         $pdf = UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf');
 
@@ -224,10 +224,10 @@ class HealthIndexTest extends TestCase
         $this->seed();
 
         $church = Church::query()->firstOrFail();
-        Permission::firstOrCreate(['name' => 'news.manage']);
+        Permission::firstOrCreate(['name' => 'health.manage']);
         $admin = User::factory()->create(['church_id' => $church->id]);
         $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
-        $admin->givePermissionTo('news.manage');
+        $admin->givePermissionTo('health.manage');
 
         $pdf = UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf');
 
@@ -258,10 +258,10 @@ class HealthIndexTest extends TestCase
         $this->seed();
 
         $church = Church::query()->firstOrFail();
-        Permission::firstOrCreate(['name' => 'news.manage']);
+        Permission::firstOrCreate(['name' => 'health.manage']);
         $admin = User::factory()->create(['church_id' => $church->id]);
         $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
-        $admin->givePermissionTo('news.manage');
+        $admin->givePermissionTo('health.manage');
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])

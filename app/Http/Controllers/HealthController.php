@@ -229,7 +229,7 @@ class HealthController extends Controller
     {
         $search = (string) $request->input('search', '');
         $user = $request->user();
-        $canManage = $user?->can('news.manage') ?? false;
+        $canManage = $user?->can('health.manage') ?? false;
         $churchId = $this->currentChurchId();
 
         $query = News::query()->with('author')
@@ -281,7 +281,7 @@ class HealthController extends Controller
 
     public function store(Request $request)
     {
-        $this->authorize('news.manage');
+        $this->authorize('health.manage');
 
         $data = $this->assertPayload($request, null);
 
@@ -350,7 +350,7 @@ class HealthController extends Controller
 
     public function update(Request $request, News $health)
     {
-        $this->authorize('news.manage');
+        $this->authorize('health.manage');
         abort_unless($health->section === News::SECTION_HEALTH, 404);
 
         $data = $this->assertPayload($request, $health);
@@ -421,7 +421,7 @@ class HealthController extends Controller
 
     public function setActive(Request $request, News $health)
     {
-        $this->authorize('news.manage');
+        $this->authorize('health.manage');
         abort_unless($health->section === News::SECTION_HEALTH, 404);
 
         $data = $request->validate([
@@ -438,7 +438,7 @@ class HealthController extends Controller
 
     public function destroy(News $health)
     {
-        $this->authorize('news.manage');
+        $this->authorize('health.manage');
         abort_unless($health->section === News::SECTION_HEALTH, 404);
 
         $health->delete();

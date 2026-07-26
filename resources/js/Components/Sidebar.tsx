@@ -109,7 +109,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Voluntários', route: 'ministry-lead.volunteers.central', icon: UserGroupIcon },
     { name: 'Usuários', route: 'users.index', icon: UsersIcon },
     { name: 'Oração', route: 'prayer.index', icon: PrayingHandsIcon },
-    { name: 'News', route: 'news.index', icon: NewspaperIcon },
+    { name: 'Notícias', route: 'news.index', icon: NewspaperIcon },
     { name: 'Saúde', route: 'health.index', icon: HeartIcon },
     { name: 'Revista Adventista', route: 'revista-adventista.index', icon: NewspaperIcon },
     { name: 'Acervo Revista Adventista', route: 'revista-adventista-acervo.index', icon: BookOpenIcon },
