@@ -9,6 +9,7 @@ final class HomeCardKeys
 {
     /** @var list<string> */
     public const ALLOWED = [
+        'ns-whats',
         'ano-biblico',
         'voluntario',
         'batismo',

@@ -287,7 +287,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
                 /**
-                 * Papel `lider_ministerio` ou marca no perfil: esconde fluxos de membro (ex.: «Falar com líder»).
+                 * Papel `lider_ministerio` ou marca no perfil (atalhos de líder no Perfil, etc.).
                  * Quem só tem o papel Spatie sem `is_ministry_leader` na BD continua a ser líder para a app.
                  */
                 'isMinistryLeaderAccount' => $request->user()

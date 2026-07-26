@@ -206,13 +206,24 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
                   },
               ] as Row[])
             : []),
-        ...(!isMinistryLeader
+        ...(route().has('mobile.ns-whats.index')
             ? ([
                   {
-                      title: 'Falar com um Líder',
-                      description: 'Conversa com líder de ministério (membro logado)',
+                      title: 'NS Whats',
+                      description: 'Converse com líderes e áreas da igreja',
                       icon: ChatBubbleLeftRightIcon,
-                      href: route('mobile.contact'),
+                      href: route('mobile.ns-whats.index'),
+                      tone: 'member',
+                  },
+              ] as Row[])
+            : []),
+        ...(route().has('mobile.ns-whats.leader.index') && isMinistryLeader
+            ? ([
+                  {
+                      title: 'NS Whats — Atendimento',
+                      description: 'Conversas do seu departamento',
+                      icon: ChatBubbleLeftRightIcon,
+                      href: route('mobile.ns-whats.leader.index'),
                       tone: 'member',
                   },
               ] as Row[])

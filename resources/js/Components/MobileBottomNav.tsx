@@ -37,6 +37,11 @@ const navItems: NavItem[] = [
             'varios.services',
             'mobile.services',
             'varios.contact',
+            'mobile.ns-whats.index',
+            'mobile.ns-whats.compose',
+            'mobile.ns-whats.show',
+            'mobile.ns-whats.leader.index',
+            'mobile.ns-whats.leader.show',
             'mobile.contact',
             'mobile.contact.store',
             'mobile.leader-solicitations.index',
@@ -134,7 +139,7 @@ const navItems: NavItem[] = [
 ];
 
 /** Barra inferior: Home, Culto, Publicações, Oração, Bíblia. */
-export default function MobileBottomNav() {
+export default function MobileBottomNav({ borderless = false }: { borderless?: boolean }) {
     const { isEnabled } = useAppFeatures();
     const visibleItems = navItems.filter((item) => {
         if (!item.featureKey) {
@@ -146,7 +151,9 @@ export default function MobileBottomNav() {
 
     return (
         <nav
-            className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+            className={`fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-zinc-900 ${
+                borderless ? '' : 'border-t border-zinc-200 dark:border-zinc-800'
+            }`}
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             aria-label="Menu principal"
         >

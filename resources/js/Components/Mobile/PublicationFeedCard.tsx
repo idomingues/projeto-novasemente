@@ -328,7 +328,7 @@ export default function PublicationFeedCard({
     );
 
     return (
-        <li className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)] dark:border-zinc-800 dark:bg-zinc-900">
+        <li className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)] dark:border-zinc-800 dark:bg-zinc-900">
             <article>
                 <div className="w-full">{media}</div>
 
@@ -395,7 +395,7 @@ export default function PublicationFeedCard({
 
                     {isPhotos ? (
                         <div className="space-y-1.5 pt-0.5">
-                            <p className="text-[1.375rem] font-semibold leading-tight tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+                            <p className="text-[1.375rem] font-semibold leading-tight tracking-tight text-zinc-900 dark:text-white lg:text-base xl:text-[15px]">
                                 {photoDateTitle || item.title}
                             </p>
                             {photographerLabel ? (

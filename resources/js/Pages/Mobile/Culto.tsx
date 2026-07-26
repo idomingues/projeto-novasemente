@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
+import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import { Head, Link } from '@inertiajs/react';
-import { FilmIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import { FilmIcon } from '@heroicons/react/24/outline';
 import { useEffect } from 'react';
 import type React from 'react';
 
@@ -46,11 +47,11 @@ function CultoVideoCard({
 }: Pick<CultoItem, 'id' | 'title' | 'youtube_url' | 'youtube_thumb_url' | 'published_at'> & { isLive?: boolean }) {
     const Wrapper = ({ children }: { children: React.ReactNode }) =>
         isLive ? (
-            <a href={youtube_url} target="_blank" rel="noopener noreferrer" className="block">
+            <a href={youtube_url} target="_blank" rel="noopener noreferrer" className="group block cursor-pointer">
                 {children}
             </a>
         ) : (
-            <Link href={route('mobile.culto.show', id)} className="block">
+            <Link href={route('mobile.culto.show', id)} className="group block cursor-pointer">
                 {children}
             </Link>
         );
@@ -66,24 +67,22 @@ function CultoVideoCard({
             <Wrapper>
                 {youtube_thumb_url ? (
                     <div className="relative aspect-video overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                        <img src={youtube_thumb_url} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                            <PlayCircleIcon className="w-16 h-16 text-white drop-shadow-lg" />
-                        </div>
+                        <img src={youtube_thumb_url} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+                        <VideoPlayOverlay alwaysVisible />
                         {isLive ? (
                             <span className="absolute top-2 left-2 rounded-md bg-rose-600 px-2 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md">
                                 AO VIVO
                             </span>
                         ) : null}
                         {!isLive && published_at ? (
-                            <span className="absolute bottom-2 left-3 px-2.5 py-1 rounded-lg bg-black/60 text-white text-xs font-medium backdrop-blur-sm">
+                            <span className="absolute bottom-2 left-3 rounded-lg bg-black/55 px-2.5 py-1 text-xs font-medium text-white/95 backdrop-blur-sm">
                                 {formatDate(published_at)}
                             </span>
                         ) : null}
                     </div>
                 ) : (
-                    <div className="aspect-video bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center relative">
-                        <FilmIcon className="w-12 h-12 text-zinc-400 dark:text-zinc-500" />
+                    <div className="relative flex aspect-video items-center justify-center bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800">
+                        <FilmIcon className="h-12 w-12 text-zinc-400 dark:text-zinc-500" />
                         {isLive ? (
                             <span className="absolute top-2 left-2 rounded-md bg-rose-600 px-2 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md">
                                 AO VIVO
@@ -91,12 +90,14 @@ function CultoVideoCard({
                         ) : null}
                     </div>
                 )}
-                <div className="p-4">
-                    <h2 className="font-semibold text-zinc-900 dark:text-white text-lg leading-snug line-clamp-2">{title}</h2>
+                <div className="px-4 py-3.5">
+                    <h2 className="line-clamp-2 text-[15px] font-medium leading-relaxed tracking-wide text-zinc-700 dark:text-zinc-300">
+                        {title}
+                    </h2>
                     {!isLive && published_at ? (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">{formatDate(published_at)}</p>
+                        <p className="mt-1.5 text-xs font-normal text-zinc-500 dark:text-zinc-400">{formatDate(published_at)}</p>
                     ) : isLive ? (
-                        <p className="text-xs text-rose-600 dark:text-rose-400 mt-1.5 font-medium">Transmissão em direto no YouTube</p>
+                        <p className="mt-1.5 text-xs font-medium text-rose-600 dark:text-rose-400">Transmissão ao vivo no YouTube</p>
                     ) : null}
                 </div>
             </Wrapper>

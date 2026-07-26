@@ -81,7 +81,7 @@ export default function PublicationsFeed({ items }: Props) {
     return (
         <MobileLayout>
             <Head title="Publicações" />
-            <div className="mx-auto w-full max-w-lg space-y-5 sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
+            <div className="mx-auto w-full max-w-lg space-y-8 sm:max-w-none">
                 {feedItems.length === 0 ? (
                     <div className="px-2 py-20 text-center">
                         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/15 to-emerald-600/10 ring-1 ring-inset ring-teal-600/15 dark:from-teal-400/10 dark:to-emerald-500/5 dark:ring-teal-400/20">
@@ -96,7 +96,7 @@ export default function PublicationsFeed({ items }: Props) {
                     </div>
                 ) : (
                     <>
-                        <ul className="space-y-4 py-1">
+                        <ul className="grid grid-cols-1 gap-6 py-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {feedItems.map((item) => (
                                 <PublicationFeedCard
                                     key={item.id}

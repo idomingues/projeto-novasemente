@@ -18,6 +18,7 @@ return [
         // Teste admin (fase 1) — fora de Publicação para ficar visível com OPERAÇÃO aberta
         ['name' => 'IA Foto', 'route' => 'face-ai.index', 'icon' => 'sparkles'],
         // PASTOR (ordem fixa em Sidebar.tsx — pastorRouteOrder)
+        ['name' => 'NS Whats', 'route' => 'conversations.index', 'icon' => 'chat-bubble'],
         ['name' => 'Atendimento', 'route' => 'solicitations.index', 'icon' => 'inbox'],
         ['name' => 'Batismo', 'route' => 'baptism-requests.index', 'icon' => 'sparkles'],
         ['name' => 'Agenda', 'route' => 'pastoral-agenda.index', 'icon' => 'clock'],

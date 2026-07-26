@@ -196,5 +196,16 @@ return [
             'group' => 'menu_mais',
             'routes' => ['mobile.support', 'mobile.support.*'],
         ],
+        'ns_whats' => [
+            'label' => 'NS Whats',
+            'group' => 'inicio',
+            'routes' => [
+                'mobile.ns-whats',
+                'mobile.ns-whats.*',
+                'mobile.contact',
+                'mobile.contact.*',
+                'mobile.leader-solicitations.*',
+            ],
+        ],
     ],
 ];

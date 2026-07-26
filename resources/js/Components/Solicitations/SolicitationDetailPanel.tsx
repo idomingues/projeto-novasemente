@@ -124,6 +124,10 @@ export type SolicitationDetailPanelProps = {
     staffArchivedAt?: string | null;
     /** Botões de estado (ex.: batismo) em vez do select genérico. */
     statusChangeOptions?: { value: string; label: string; description: string }[];
+    /**
+     * `embedded`: chat sem cabeçalho interno, ocupa a altura do pai (layout tipo WhatsApp).
+     */
+    chatChrome?: 'default' | 'embedded';
 };
 
 function formatTime(iso: string): string {
@@ -212,10 +216,12 @@ export default function SolicitationDetailPanel({
     onPanelActionSuccess,
     detailsBeforeAdminFooter,
     statusChangeOptions,
+    chatChrome = 'default',
 }: SolicitationDetailPanelProps) {
     const inertiaScrollOpts = { preserveScroll: true };
     const panelSaveOpts = preserveStateOnPanelActions ? inertiaListModalSave : inertiaScrollOpts;
     const isModal = variant === 'modal';
+    const chatEmbedded = chatChrome === 'embedded';
     const showDetails = sectionProp === 'full' || sectionProp === 'details';
     const showChat = sectionProp === 'full' || sectionProp === 'chat';
     const isLeaderChat = solicitation.type === 'leader_chat';
@@ -372,7 +378,7 @@ export default function SolicitationDetailPanel({
     return (
         <div
             className={
-                isModalChatOnly
+                chatEmbedded || isModalChatOnly
                     ? 'flex min-h-0 flex-1 flex-col'
                     : `${isModal ? 'space-y-5 pb-1' : 'space-y-6'}`
             }
@@ -756,39 +762,45 @@ export default function SolicitationDetailPanel({
 
             {showChat && (
                 <div
-                    className={`flex flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-950 shadow-sm ${
-                        isModalChatOnly
-                            ? 'min-h-0 flex-1'
-                            : isModal
-                              ? 'max-h-[min(58dvh,520px)]'
-                              : 'min-h-[min(55dvh,560px)] max-h-[min(72dvh,680px)]'
+                    className={`flex flex-col overflow-hidden ${
+                        chatEmbedded
+                            ? 'min-h-0 flex-1 border-0 bg-[#efeae2] dark:bg-zinc-950 rounded-none shadow-none'
+                            : `rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-950 shadow-sm ${
+                                  isModalChatOnly
+                                      ? 'min-h-0 flex-1'
+                                      : isModal
+                                        ? 'max-h-[min(58dvh,520px)]'
+                                        : 'min-h-[min(55dvh,560px)] max-h-[min(72dvh,680px)]'
+                              }`
                     }`}
                 >
-                    <div className="shrink-0 border-b border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 px-4 py-3 backdrop-blur-sm sm:px-4">
-                        <div className="flex items-start gap-2">
-                            <ChatBubbleLeftRightIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                            <div className="min-w-0">
-                                <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
-                                    {composerRole === 'staff'
-                                        ? 'Conversa com o membro'
-                                        : isLeaderChat
-                                          ? 'Conversa com o líder'
-                                          : 'Conversa com a igreja'}
-                                </h2>
-                                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                                    {!canChat
-                                        ? 'Este pedido está encerrado — histórico só para consulta.'
-                                        : composerRole === 'staff'
-                                          ? `Histórico abaixo — escreva a resposta no fim. ${CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE}`
-                                          : 'Histórico abaixo — escreva a sua mensagem no fim do chat.'}
-                                </p>
+                    {!chatEmbedded ? (
+                        <div className="shrink-0 border-b border-zinc-200/90 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 px-4 py-3 backdrop-blur-sm sm:px-4">
+                            <div className="flex items-start gap-2">
+                                <ChatBubbleLeftRightIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                                <div className="min-w-0">
+                                    <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
+                                        {composerRole === 'staff'
+                                            ? 'Conversa com o membro'
+                                            : isLeaderChat
+                                              ? 'Conversa com o líder'
+                                              : 'Conversa com a igreja'}
+                                    </h2>
+                                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                        {!canChat
+                                            ? 'Este pedido está encerrado — histórico só para consulta.'
+                                            : composerRole === 'staff'
+                                              ? `Histórico abaixo — escreva a resposta no fim. ${CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE}`
+                                              : 'Histórico abaixo — escreva a sua mensagem no fim do chat.'}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    ) : null}
 
                     <div
                         className={`min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 py-3 sm:px-3 ${
-                            isModalChatOnly ? 'min-h-[12rem]' : ''
+                            isModalChatOnly && !chatEmbedded ? 'min-h-[12rem]' : ''
                         }`}
                     >
                         {messages.length === 0 ? (
@@ -801,26 +813,35 @@ export default function SolicitationDetailPanel({
                             <div className="flex flex-col gap-2">
                                 {messages.map((m) => {
                                     const staff = isStaffBubble(m.senderType);
+                                    // No chat embutido (estilo WhatsApp), as suas mensagens ficam à direita.
+                                    // Nos demais painéis, staff à esquerda e membro à direita (visão histórica).
+                                    const alignEnd = chatEmbedded
+                                        ? composerRole === 'member'
+                                            ? !staff
+                                            : staff
+                                        : !staff;
                                     return (
-                                        <div key={m.id} className={`flex w-full ${staff ? 'justify-start' : 'justify-end'}`}>
+                                        <div key={m.id} className={`flex w-full ${alignEnd ? 'justify-end' : 'justify-start'}`}>
                                             <div
                                                 className={`max-w-[min(88%,28rem)] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap shadow-sm ${
-                                                    staff
-                                                        ? 'rounded-bl-md bg-white text-zinc-900 ring-1 ring-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-700'
-                                                        : 'rounded-br-md bg-emerald-600 text-white dark:bg-emerald-700'
+                                                    alignEnd
+                                                        ? 'rounded-br-md bg-emerald-600 text-white dark:bg-emerald-700'
+                                                        : 'rounded-bl-md bg-white text-zinc-900 ring-1 ring-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-700'
                                                 }`}
                                             >
+                                                {(!alignEnd || !chatEmbedded) && (
+                                                    <div
+                                                        className={`mb-1 text-[11px] font-semibold ${
+                                                            alignEnd ? 'text-emerald-100' : 'text-zinc-500 dark:text-zinc-400'
+                                                        }`}
+                                                    >
+                                                        {staff ? staffBubbleLabel : (m.senderName ?? memberBubbleLabel)}
+                                                    </div>
+                                                )}
+                                                <div className={alignEnd ? 'text-white' : ''}>{m.content}</div>
                                                 <div
-                                                    className={`text-[11px] font-semibold mb-1 ${
-                                                        staff ? 'text-zinc-500 dark:text-zinc-400' : 'text-emerald-100'
-                                                    }`}
-                                                >
-                                                    {staff ? staffBubbleLabel : (m.senderName ?? memberBubbleLabel)}
-                                                </div>
-                                                <div className={staff ? '' : 'text-white'}>{m.content}</div>
-                                                <div
-                                                    className={`mt-1 text-[10px] tabular-nums ${
-                                                        staff ? 'text-zinc-400 dark:text-zinc-500' : 'text-emerald-100/90'
+                                                    className={`mt-1 text-right text-[10px] tabular-nums ${
+                                                        alignEnd ? 'text-emerald-100/90' : 'text-zinc-400 dark:text-zinc-500'
                                                     }`}
                                                 >
                                                     {formatTime(m.createdAt)}
@@ -834,8 +855,12 @@ export default function SolicitationDetailPanel({
                     </div>
 
                     {canChat && (composerRole === 'member' || (composerRole === 'staff' && staffCanReply)) && (
-                        <div className="shrink-0 border-t border-zinc-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] dark:border-zinc-800 dark:bg-zinc-900/95 sm:p-4">
-                            <form onSubmit={sendMessage} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                        <div
+                            className={`shrink-0 border-t border-zinc-200/80 bg-[#f0f2f5] p-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] dark:border-zinc-800 dark:bg-zinc-900 sm:p-3 ${
+                                chatEmbedded ? '' : 'bg-white/95 dark:bg-zinc-900/95 p-3 sm:p-4'
+                            }`}
+                        >
+                            <form onSubmit={sendMessage} className="flex items-end gap-2">
                                 <div className="min-w-0 flex-1">
                                     <label className="sr-only" htmlFor="sol_chat_input">
                                         {composerRole === 'staff' ? 'Mensagem para o membro' : 'A sua mensagem'}
@@ -844,20 +869,24 @@ export default function SolicitationDetailPanel({
                                         id="sol_chat_input"
                                         value={msgForm.data.content}
                                         onChange={(e) => msgForm.setData('content', e.target.value)}
-                                        rows={isModalChatOnly ? 3 : isModal ? 2 : 3}
+                                        rows={chatEmbedded ? 1 : isModalChatOnly ? 3 : isModal ? 2 : 3}
                                         placeholder={
                                             composerRole === 'staff'
-                                                ? 'Resposta ao membro… (Shift+Enter para nova linha)'
-                                                : 'Escreva a sua mensagem…'
+                                                ? 'Mensagem…'
+                                                : 'Mensagem…'
                                         }
-                                        className="w-full rounded-xl border-zinc-300 shadow-sm dark:border-zinc-600"
+                                        className={`w-full shadow-sm dark:border-zinc-600 ${
+                                            chatEmbedded
+                                                ? 'min-h-[42px] max-h-32 rounded-3xl border-0 bg-white px-4 py-2.5 dark:bg-zinc-800'
+                                                : 'rounded-xl border-zinc-300'
+                                        }`}
                                     />
                                     <InputError message={msgForm.errors.content} className="mt-1" />
                                 </div>
                                 <PrimaryButton
                                     type="submit"
                                     disabled={msgForm.processing}
-                                    className="h-11 shrink-0 justify-center px-6 sm:mb-0.5"
+                                    className={`h-11 shrink-0 justify-center ${chatEmbedded ? 'rounded-full px-4' : 'px-6 sm:mb-0.5'}`}
                                 >
                                     Enviar
                                 </PrimaryButton>
@@ -869,6 +898,7 @@ export default function SolicitationDetailPanel({
 
             {(showDetails || showChat) &&
             !canManage &&
+            !chatEmbedded &&
             (memberHideConversationUrl || leaderHideConversationUrl) ? (
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/60 p-4 space-y-3">
                     <div className="text-sm font-semibold text-zinc-900 dark:text-white">Confidencialidade</div>

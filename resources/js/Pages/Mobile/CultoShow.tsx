@@ -50,7 +50,7 @@ export default function MobileCultoShow({ culto }: Props) {
                                 <p className="text-sm text-zinc-500 dark:text-zinc-400">{formatDate(culto.published_at)}</p>
                             ) : null}
                         </div>
-                        <h1 className="text-xl font-bold leading-tight tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+                        <h1 className="text-xl font-medium leading-relaxed tracking-wide text-zinc-700 dark:text-zinc-200 sm:text-2xl">
                             {culto.title}
                         </h1>
                     </div>

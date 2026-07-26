@@ -12,7 +12,9 @@ use Illuminate\Validation\Rule;
 
 class SolicitationAssignees
 {
-    /** Departamento fixo em «Falar com líder» (equipe de voluntariado). */
+    /**
+     * @deprecated Mantido por compatibilidade; o NS Whats lista líderes de todos os departamentos.
+     */
     public const LEADER_CONTACT_MINISTRY_NAME = 'Voluntariado';
 
     /**
@@ -61,9 +63,10 @@ class SolicitationAssignees
     }
 
     /**
-     * Líderes com conta na app do departamento Voluntariado (contato fixo para todos os membros).
+     * Líderes com conta na app, em qualquer departamento da igreja (NS Whats).
+     * Quem está logado não aparece na lista (não pode falar consigo mesmo).
      *
-     * @return list<array{value: int, label: string}>
+     * @return list<array{value: int, label: string, name: string, ministries: list<string>}>
      */
     public static function leaderContactVolunteerOptions(?int $churchId, ?User $member = null): array
     {
@@ -71,27 +74,40 @@ class SolicitationAssignees
             return [];
         }
 
-        $ministryId = self::leaderContactMinistryId($churchId);
-        if ($ministryId === null) {
-            return [];
-        }
-
         return Volunteer::query()
             ->where('active', true)
             ->whereNotNull('user_id')
-            ->whereHas('user', function ($uq) use ($churchId, $ministryId) {
+            ->when($member !== null, fn ($q) => $q->where('user_id', '!=', $member->id))
+            ->whereHas('user', function ($uq) use ($churchId) {
                 $uq->where(function ($roleQ) {
                     $roleQ->where('is_ministry_leader', true)
                         ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
-                })->whereHas('ministries', fn ($mq) => $mq
-                    ->where('church_id', $churchId)
-                    ->where('ministries.id', $ministryId));
+                })->whereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
             })
-            ->with(['user:id,name,is_ministry_leader', 'user.ministries:id,name,church_id', 'user.roles:id,name'])
+            ->with([
+                'user:id,name,is_ministry_leader',
+                'user.ministries' => fn ($mq) => $mq->where('church_id', $churchId)->orderBy('name'),
+                'user.roles:id,name',
+            ])
             ->orderBy('name')
             ->get()
             ->map(function (Volunteer $v) {
-                return ['value' => (int) $v->id, 'label' => $v->display_name];
+                $ministries = $v->user?->ministries
+                    ?->pluck('name')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all() ?? [];
+                $dept = implode(', ', $ministries);
+                $name = $v->display_name;
+                $label = $dept !== '' ? $name.' — '.$dept : $name;
+
+                return [
+                    'value' => (int) $v->id,
+                    'label' => $label,
+                    'name' => $name,
+                    'ministries' => array_values($ministries),
+                ];
             })
             ->values()
             ->all();
@@ -99,57 +115,56 @@ class SolicitationAssignees
 
     public static function isValidLeaderContactVolunteer(int $volunteerId, int $churchId, User $member): bool
     {
-        $ministryId = self::leaderContactMinistryId($churchId);
-        if ($ministryId === null) {
-            return false;
-        }
-
         return Volunteer::query()
             ->whereKey($volunteerId)
             ->where('active', true)
             ->whereNotNull('user_id')
-            ->whereHas('user', function ($uq) use ($churchId, $ministryId) {
+            ->where('user_id', '!=', $member->id)
+            ->whereHas('user', function ($uq) use ($churchId) {
                 $uq->where(function ($roleQ) {
                     $roleQ->where('is_ministry_leader', true)
                         ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
-                })->whereHas('ministries', fn ($mq) => $mq
-                    ->where('church_id', $churchId)
-                    ->where('ministries.id', $ministryId));
+                })->whereHas('ministries', fn ($mq) => $mq->where('church_id', $churchId));
             })
             ->exists();
     }
 
     /**
-     * Departamento fixo exibido em «Falar com líder».
+     * Departamentos da igreja que têm pelo menos um líder com conta (NS Whats).
+     *
+     * @return list<array{id: int, name: string}>
+     */
+    public static function leaderContactMinistriesForChurch(?int $churchId): array
+    {
+        if ($churchId === null) {
+            return [];
+        }
+
+        return Ministry::query()
+            ->where('church_id', $churchId)
+            ->whereHas('users', function ($uq) {
+                $uq->where(function ($roleQ) {
+                    $roleQ->where('is_ministry_leader', true)
+                        ->orWhereHas('roles', fn ($r) => $r->where('name', 'lider_ministerio'));
+                });
+            })
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Ministry $m) => ['id' => (int) $m->id, 'name' => (string) $m->name])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @deprecated Use leaderContactMinistriesForChurch. Mantido para telas antigas.
      *
      * @return array{id: int, name: string}|null
      */
     public static function leaderContactMinistryForChurch(?int $churchId): ?array
     {
-        if ($churchId === null) {
-            return null;
-        }
+        $list = self::leaderContactMinistriesForChurch($churchId);
 
-        $ministry = Ministry::query()
-            ->where('church_id', $churchId)
-            ->where('name', self::LEADER_CONTACT_MINISTRY_NAME)
-            ->first(['id', 'name']);
-
-        if ($ministry === null) {
-            return null;
-        }
-
-        return ['id' => (int) $ministry->id, 'name' => (string) $ministry->name];
-    }
-
-    private static function leaderContactMinistryId(int $churchId): ?int
-    {
-        $id = Ministry::query()
-            ->where('church_id', $churchId)
-            ->where('name', self::LEADER_CONTACT_MINISTRY_NAME)
-            ->value('id');
-
-        return $id !== null ? (int) $id : null;
+        return $list[0] ?? null;
     }
 
     /**

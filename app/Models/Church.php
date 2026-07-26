@@ -44,6 +44,8 @@ class Church extends Model
         'library_sunset_meditation_segments',
         'library_sunset_meditation_year',
         'solicitations_handler_volunteer_id',
+        'conversation_fallback_ministry_id',
+        'conversation_reopen_days',
     ];
 
     protected $casts = [

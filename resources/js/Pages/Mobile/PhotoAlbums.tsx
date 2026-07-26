@@ -70,7 +70,7 @@ export default function MobilePhotoAlbums({ albums }: Props) {
         <MobileLayout>
             <Head title="Fotos" />
 
-            <div className="mx-auto w-full max-w-lg space-y-5 sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
+            <div className="mx-auto w-full max-w-lg space-y-8 sm:max-w-none">
                 {feedItems.length === 0 ? (
                     <div className="py-12 text-center lg:py-20">
                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">
@@ -82,7 +82,7 @@ export default function MobilePhotoAlbums({ albums }: Props) {
                         </p>
                     </div>
                 ) : (
-                    <ul className="space-y-4">
+                    <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {feedItems.map((item) => (
                             <PublicationFeedCard
                                 key={item.id}

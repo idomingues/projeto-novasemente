@@ -7,6 +7,7 @@ use App\Models\AppNotification;
 use App\Models\Church;
 use App\Models\ChurchService;
 use App\Models\ChurchSolicitation;
+use App\Models\ChurchSolicitationMessage;
 use App\Models\Culto;
 use App\Models\Event;
 use App\Models\LibraryBook;
@@ -37,6 +38,7 @@ use App\Services\YoutubePlaylistImportService;
 use App\Support\ChurchAppFeatures;
 use App\Support\HomeCardKeys;
 use App\Support\HomeFeaturedWeek;
+use App\Support\HomeModuleSpotlight;
 use App\Support\NotificationFeed;
 use App\Support\PublicationEngagement;
 use App\Support\PublicationFeed;
@@ -249,6 +251,7 @@ class MobileController extends Controller
         $sabbathBanner = app(SabbathSunsetService::class)->homeBannerPayload();
         $weeklyProgramCards = app(\App\Services\WeeklyProgramService::class)->homeCards($church);
         $featuredWeek = HomeFeaturedWeek::forChurch($church);
+        $moduleSpotlight = HomeModuleSpotlight::forChurch($church);
         $bookmarkedHomeCards = [];
         if ($user !== null && Schema::hasTable('user_home_card_bookmarks')) {
             $bookmarkedHomeCards = UserHomeCardBookmark::query()
@@ -267,6 +270,7 @@ class MobileController extends Controller
             'sabbathBanner' => $weeklyProgramCards === [] ? $sabbathBanner : null,
             'weeklyProgramCards' => $weeklyProgramCards,
             'featuredWeek' => $featuredWeek,
+            'moduleSpotlight' => $moduleSpotlight,
             'bookmarkedHomeCards' => $bookmarkedHomeCards,
         ]);
     }
@@ -1654,12 +1658,6 @@ class MobileController extends Controller
     {
         $user = $request->user();
         abort_unless($user, 401);
-        if ($user->hasRole('lider_ministerio') || (bool) ($user->is_ministry_leader ?? false)) {
-            return redirect()->route('mobile.profile')->with(
-                'error',
-                'Esta área é para membros contactarem líderes. Como líder de ministério, use as outras opções do perfil.'
-            );
-        }
         $churchId = Church::resolveWorkingId($request);
 
         $contactUrl = route('mobile.contact');
@@ -1693,6 +1691,7 @@ class MobileController extends Controller
 
         return Inertia::render('Mobile/LiderContact', [
             'leaderOptions' => SolicitationAssignees::leaderContactVolunteerOptions($churchId, $user),
+            'contactMinistries' => SolicitationAssignees::leaderContactMinistriesForChurch($churchId),
             'contactMinistry' => SolicitationAssignees::leaderContactMinistryForChurch($churchId),
             'storeUrl' => route('mobile.contact.store'),
             'myLeaderChats' => $myLeaderChats,
@@ -1703,24 +1702,17 @@ class MobileController extends Controller
     {
         $user = $request->user();
         abort_unless($user, 401);
-        if ($user->hasRole('lider_ministerio') || (bool) ($user->is_ministry_leader ?? false)) {
-            return redirect()->route('mobile.profile')->with(
-                'error',
-                'Esta área é para membros contactarem líderes.'
-            );
-        }
         $churchId = Church::resolveWorkingId($request);
         abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
 
         $valid = $request->validate([
             'assigned_volunteer_id' => ['required', 'integer'],
-            'subject' => ['required', 'string', 'max:150'],
-            'message' => ['required', 'string', 'max:5000'],
+            'message' => ['required', 'string', 'min:3', 'max:5000'],
         ]);
 
         if (! SolicitationAssignees::isValidLeaderContactVolunteer((int) $valid['assigned_volunteer_id'], (int) $churchId, $user)) {
             throw ValidationException::withMessages([
-                'assigned_volunteer_id' => ['Escolha um líder da equipe de Voluntariado.'],
+                'assigned_volunteer_id' => ['Escolha um líder de departamento (não é possível falar consigo mesmo).'],
             ]);
         }
 
@@ -1728,19 +1720,37 @@ class MobileController extends Controller
             ->whereKey((int) $valid['assigned_volunteer_id'])
             ->where('active', true)
             ->whereNotNull('user_id')
+            ->with(['user.ministries' => fn ($q) => $q->where('church_id', $churchId)])
             ->firstOrFail();
+
+        $message = trim($valid['message']);
+        $subject = Str::limit(preg_replace('/\s+/u', ' ', $message) ?? $message, 80, '…');
+        $ministryIds = $volunteer->user?->ministries?->pluck('id')->map(fn ($id) => (int) $id)->values()->all() ?? [];
+        $ministryNames = $volunteer->user?->ministries?->pluck('name')->filter()->values()->all() ?? [];
 
         $solicitation = ChurchSolicitation::create([
             'church_id' => (int) $churchId,
             'user_id' => $user->id,
             'type' => 'leader_chat',
             'status' => 'pending',
-            'subject' => $valid['subject'],
-            'message' => $valid['message'],
+            'subject' => $subject,
+            'message' => $message,
             'preferred_date' => null,
             'assigned_pastor_id' => null,
             'assigned_volunteer_id' => (int) $volunteer->id,
-            'meta' => null,
+            'meta' => [
+                'ns_whats' => [
+                    'ministry_ids' => $ministryIds,
+                    'ministry_names' => $ministryNames,
+                ],
+            ],
+        ]);
+
+        ChurchSolicitationMessage::create([
+            'church_solicitation_id' => $solicitation->id,
+            'sender_type' => 'member',
+            'sender_user_id' => $user->id,
+            'content' => $message,
         ]);
 
         app(SolicitationChatNotifier::class)->notifyAssignedLeaderOfNewRequest($solicitation);

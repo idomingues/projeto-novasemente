@@ -41,6 +41,7 @@ class MobileChurchSolicitationController extends Controller
     public const TYPES_OUTSIDE_PASTORAL_INDEX = [
         self::TYPE_VOLUNTEER_REQUEST,
         self::TYPE_COMMUNICATION_REQUEST,
+        'leader_chat',
     ];
 
     private function currentChurchId(Request $request): ?int
@@ -55,7 +56,7 @@ class MobileChurchSolicitationController extends Controller
             'bible_study' => 'Pedido de estudo bíblico',
             'baby_presentation' => 'Apresentação de bebé',
             'pastor_visit' => 'Visita aos pastores',
-            'leader_chat' => 'Conversa com líder de ministério',
+            'leader_chat' => 'NS Whats',
             'volunteer_request' => 'Pedido de voluntário',
             'communication_request' => 'Solicitação de comunicação',
             self::TYPE_PASTORAL_INFORMAL => 'Atendimento pastoral (informal)',

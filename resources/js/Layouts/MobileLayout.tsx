@@ -8,10 +8,17 @@ import MobileBottomNav from '@/Components/MobileBottomNav';
 import { adminSidebarRoutePermissions } from '@/constants/adminSidebarPermissions';
 import GuestAppBar from '@/Components/GuestAppBar';
 
+type MobileLayoutProps = PropsWithChildren<{
+    modalOverlayOpen?: boolean;
+    /** Página full-bleed (ex.: chat): sem pt-6 extra, main sem scroll externo. */
+    flush?: boolean;
+}>;
+
 export default function MobileLayout({
     children,
     modalOverlayOpen = false,
-}: PropsWithChildren<{ modalOverlayOpen?: boolean }>) {
+    flush = false,
+}: MobileLayoutProps) {
     const { props, url } = usePage();
     const auth = (props as { auth?: { user?: { name: string }; canAccessAdminMenu?: boolean } }).auth;
     const isAuthenticated = !!auth?.user;
@@ -23,8 +30,18 @@ export default function MobileLayout({
     }, [url]);
 
     if (isAuthenticated) {
+        const mainPad = modalOverlayOpen
+            ? 'overflow-hidden p-0'
+            : flush
+              ? 'overflow-hidden px-0 pb-0 pt-[calc(4rem+env(safe-area-inset-top,0px))] md:px-0 md:pb-0 md:pt-[calc(6rem+env(safe-area-inset-top,0px))]'
+              : 'overflow-y-auto overflow-x-hidden px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(6rem+env(safe-area-inset-top,0px))] sm:px-6 md:px-8';
+
         return (
-            <div className="h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
+            <div
+                className={`h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black ${
+                    flush ? 'bg-[#efeae2] dark:bg-zinc-950' : 'bg-zinc-50 dark:bg-zinc-950'
+                }`}
+            >
                 {canAccessAdminMenu && !modalOverlayOpen ? (
                     <Sidebar
                         mobileOpen={menuOpen}
@@ -39,18 +56,22 @@ export default function MobileLayout({
                     ) : null}
 
                     <main
-                        className={`min-h-0 flex-1 overscroll-y-contain overscroll-x-none md:[scrollbar-gutter:stable] sm:px-6 md:px-8 ${
-                            modalOverlayOpen
-                                ? 'overflow-hidden p-0'
-                                : 'overflow-y-auto overflow-x-hidden px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(6rem+env(safe-area-inset-top,0px))]'
+                        className={`min-h-0 flex-1 overscroll-y-contain overscroll-x-none md:[scrollbar-gutter:stable] ${mainPad} ${
+                            flush ? 'bg-[#efeae2] dark:bg-zinc-950' : ''
                         }`}
                     >
-                        <div className="max-w-7xl xl:max-w-[90rem] mx-auto w-full min-w-0 pt-6 pb-2">
+                        <div
+                            className={
+                                flush || modalOverlayOpen
+                                    ? 'mx-auto flex h-full min-h-0 w-full min-w-0 max-w-7xl flex-col xl:max-w-[90rem]'
+                                    : 'mx-auto w-full min-w-0 max-w-7xl pt-6 pb-2 xl:max-w-[90rem]'
+                            }
+                        >
                             {children}
                         </div>
                     </main>
 
-                    {!modalOverlayOpen ? <MobileBottomNav /> : null}
+                    {!modalOverlayOpen ? <MobileBottomNav borderless={flush} /> : null}
 
                     <FlashMessages />
                     <InboxNotificationPoller />

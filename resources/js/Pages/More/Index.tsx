@@ -15,6 +15,7 @@ import {
     HandRaisedIcon,
     LifebuoyIcon,
     NewspaperIcon,
+    ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import { PHOTOS_DRIVE_FOLDER_URL } from '@/constants/externalLinks';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
@@ -34,6 +35,13 @@ interface Props {
 const PASTORAL_ROUTE = 'mobile.pastoral-appointments.request' as const;
 
 const items: MoreMenuItem[] = [
+    {
+        name: 'NS Whats',
+        description: 'Converse com líderes e áreas da igreja',
+        route: 'mobile.ns-whats.index',
+        featureKey: 'ns_whats',
+        icon: ChatBubbleLeftRightIcon,
+    },
     { name: 'Dízimos e Pacto', description: 'Contribuições e pacto', route: 'mobile.offerings', featureKey: 'offerings', icon: HandRaisedIcon },
     { name: 'Culto', description: 'Vídeos do culto online', route: 'mobile.culto', featureKey: 'culto', icon: FilmIcon },
     { name: 'Música', description: 'Cante conosco', route: 'musica.index', featureKey: 'musica', icon: MusicalNoteIcon },

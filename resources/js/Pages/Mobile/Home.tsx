@@ -19,6 +19,7 @@ import {
     NewspaperIcon,
     PhotoIcon,
     PlayCircleIcon,
+    ChatBubbleLeftRightIcon,
     ClipboardDocumentListIcon,
     SparklesIcon,
     UserCircleIcon,
@@ -32,6 +33,9 @@ import WeeklyProgramHomeCarousel from '@/Components/Mobile/WeeklyProgramHomeCaro
 import type { WeeklyProgramHomeCardData } from '@/Components/Mobile/WeeklyProgramHomeCard';
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
 import HomeFeaturedWeek, { type HomeFeaturedWeekPayload } from '@/Components/Mobile/HomeFeaturedWeek';
+import HomeModuleSpotlightBanner, {
+    type HomeModuleSpotlightPayload,
+} from '@/Components/Mobile/HomeModuleSpotlightBanner';
 import HomeCardBookmarkButton from '@/Components/Mobile/HomeCardBookmarkButton';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
@@ -44,6 +48,7 @@ interface Props {
     sabbathBanner?: SabbathHomeBannerData | null;
     weeklyProgramCards?: WeeklyProgramHomeCardData[];
     featuredWeek?: HomeFeaturedWeekPayload | null;
+    moduleSpotlight?: HomeModuleSpotlightPayload | null;
     bookmarkedHomeCards?: string[];
 }
 
@@ -79,6 +84,14 @@ const homeCardClass =
 
 /** Atalhos da Home: itens exclusivos + todos do antigo menu Mais (sem duplicar por rota). */
 const homeQuickActions: QuickAction[] = [
+    {
+        id: 'ns-whats',
+        label: 'NS Whats',
+        subtitle: 'Converse com líderes e áreas da igreja',
+        route: 'mobile.ns-whats.index',
+        featureKey: 'ns_whats',
+        icon: ChatBubbleLeftRightIcon,
+    },
     {
         id: 'ano-biblico',
         label: 'Ano Bíblico',
@@ -327,6 +340,7 @@ export default function MobileHome({
     sabbathBanner = null,
     weeklyProgramCards = [],
     featuredWeek = null,
+    moduleSpotlight = null,
     bookmarkedHomeCards = [],
 }: Props) {
     const page = usePage();
@@ -463,6 +477,11 @@ export default function MobileHome({
                     <WeeklyProgramHomeCarousel cards={weeklyProgramCards} appUrl={appUrl} />
                 ) : sabbathBanner ? (
                     <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} />
+                ) : null}
+
+                {moduleSpotlight &&
+                (!moduleSpotlight.feature_key || isEnabled(moduleSpotlight.feature_key)) ? (
+                    <HomeModuleSpotlightBanner spotlight={moduleSpotlight} />
                 ) : null}
 
                 <HomeFeaturedWeek items={featuredItems} />

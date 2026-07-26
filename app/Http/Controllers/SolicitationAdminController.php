@@ -386,7 +386,6 @@ class SolicitationAdminController extends Controller
                 ['value' => 'bible_study', 'label' => 'Estudo bíblico'],
                 ['value' => 'baby_presentation', 'label' => 'Apresentação de bebé'],
                 ['value' => 'pastor_visit', 'label' => 'Visita aos pastores'],
-                ['value' => 'leader_chat', 'label' => 'Conversa com líder'],
                 ['value' => MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL, 'label' => 'Atendimento informal'],
                 ['value' => 'other', 'label' => 'Outros'],
             ],
