@@ -37,11 +37,19 @@ export default function LeaderIndex({ filter, search: initialSearch, conversatio
 
     return (
         <MobileLayout>
-            <Head title="NS Whats — Atendimento" />
+            <Head title="Fila do departamento" />
             <div className="space-y-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Conversas do departamento</h1>
-                    <p className="mt-1 text-sm text-zinc-500">NS Whats — atendimento como líder</p>
+                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Fila do departamento</h1>
+                    <p className="mt-1 text-sm text-zinc-500">
+                        Mensagens enviadas ao departamento sem um líder específico — assuma e responda.
+                    </p>
+                    <Link
+                        href={route('mobile.ns-whats.index')}
+                        className="mt-2 inline-flex cursor-pointer text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-300"
+                    >
+                        Ir para Meus NS Whats
+                    </Link>
                 </div>
 
                 <div className="flex flex-wrap gap-1">

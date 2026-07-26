@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     ArrowLeftIcon,
     CheckCircleIcon,
@@ -46,6 +46,10 @@ type Conversation = {
     assigneeName?: string | null;
     canChat: boolean;
     canReopen: boolean;
+    canClaim?: boolean;
+    canReply?: boolean;
+    viewerRole?: 'member' | 'staff';
+    directedToMe?: boolean;
     lastActivityAt?: string | null;
     unreadCount: number;
     lastPreview: string;
@@ -66,6 +70,7 @@ interface Props {
     leaders: ComposePerson[];
     members: ComposePerson[];
     storeUrl: string;
+    departmentQueueUrl?: string | null;
     fallbackMinistryConfigured: boolean;
 }
 
@@ -121,6 +126,7 @@ export default function NsWhatsIndex({
     leaders,
     members,
     storeUrl,
+    departmentQueueUrl = null,
     fallbackMinistryConfigured,
 }: Props) {
     const [search, setSearch] = useState(initialSearch);
@@ -283,7 +289,7 @@ export default function NsWhatsIndex({
         const tempId = -Date.now();
         const optimistic: NsWhatsMessagePayload = {
             id: tempId,
-            authorRole: 'member',
+            authorRole: active.viewerRole === 'staff' ? 'leader' : 'member',
             authorName: null,
             body: content,
             kind: 'public',
@@ -336,7 +342,7 @@ export default function NsWhatsIndex({
 
     return (
         <MobileLayout flush>
-            <Head title="NS Whats" />
+            <Head title="Meus NS Whats" />
             <div className="flex h-full min-h-0 overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:rounded-none md:border-0">
                 <aside
                     className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:w-[20rem] md:shrink-0 md:border-r lg:w-[22rem] ${bottomNavClearance} ${
@@ -347,16 +353,27 @@ export default function NsWhatsIndex({
                         <>
                             <div className="flex shrink-0 items-center justify-between gap-2 px-3 pb-0.5 pt-2.5">
                                 <h1 className="text-[20px] font-bold leading-none tracking-tight text-zinc-900 dark:text-white">
-                                    Conversas
+                                    Meus NS Whats
                                 </h1>
-                                <button
-                                    type="button"
-                                    onClick={startCompose}
-                                    className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-black text-white shadow-sm transition hover:bg-zinc-800 active:scale-95 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-                                    aria-label="Nova conversa"
-                                >
-                                    <PlusIcon className="h-5 w-5" strokeWidth={2.25} />
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                    {departmentQueueUrl ? (
+                                        <Link
+                                            href={departmentQueueUrl}
+                                            className="inline-flex cursor-pointer items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold text-zinc-700 transition hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                                            title="Fila do departamento"
+                                        >
+                                            Fila do depto
+                                        </Link>
+                                    ) : null}
+                                    <button
+                                        type="button"
+                                        onClick={startCompose}
+                                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-black text-white shadow-sm transition hover:bg-zinc-800 active:scale-95 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                                        aria-label="Nova conversa"
+                                    >
+                                        <PlusIcon className="h-5 w-5" strokeWidth={2.25} />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="shrink-0 px-2.5 pb-1.5 pt-2">
@@ -406,9 +423,11 @@ export default function NsWhatsIndex({
                                     <ul className="space-y-1 px-2 py-1.5">
                                         {roster.map((c) => {
                                             const isActive = selectedId === c.id;
-                                            const preview = c.ministryName
-                                                ? `${c.ministryName}${c.lastPreview ? ` · ${c.lastPreview}` : ''}`
-                                                : c.lastPreview;
+                                            const preview = c.viewerRole === 'staff'
+                                                ? `${c.ministryName ? `${c.ministryName} · ` : ''}${c.lastPreview}`
+                                                : c.ministryName
+                                                  ? `${c.ministryName}${c.lastPreview ? ` · ${c.lastPreview}` : ''}`
+                                                  : c.lastPreview;
                                             return (
                                                 <li key={c.id}>
                                                     <button
@@ -431,6 +450,11 @@ export default function NsWhatsIndex({
                                                             <div className="flex items-center justify-between gap-2">
                                                                 <span className="truncate text-[14px] font-semibold text-zinc-900 dark:text-white">
                                                                     {c.headerTitle}
+                                                                    {c.viewerRole === 'staff' ? (
+                                                                        <span className="ml-1.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                                                                            · Recebida
+                                                                        </span>
+                                                                    ) : null}
                                                                 </span>
                                                                 <span
                                                                     className={`shrink-0 text-[11px] ${

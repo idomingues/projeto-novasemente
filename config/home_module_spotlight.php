@@ -15,7 +15,7 @@ return [
             'route' => 'mobile.ns-whats.index',
             'badge' => 'Em destaque',
             'title' => 'NS Whats',
-            'subtitle' => 'Converse com departamentos, líderes e membros da igreja — direto pelo app.',
+            'subtitle' => 'Converse com departamentos, líderes e voluntários.',
             'cta' => 'Abrir NS Whats',
             'starts_at' => '2026-07-20',
             'ends_at' => '2026-08-31',

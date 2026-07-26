@@ -399,7 +399,7 @@ export default function Index({
             <div className="space-y-6">
                 <PageHeader
                     title="Enquetes"
-                    description="Publique perguntas objetivas no estilo WhatsApp para a congregação responder."
+                    subtitle="Publique perguntas objetivas no estilo WhatsApp para a congregação responder."
                     actions={
                         canManage ? (
                             <AddButton variant="icon" onClick={openCreateModal} title="Nova enquete">
@@ -458,18 +458,16 @@ export default function Index({
                                 {canManage && (
                                     <ListCardActionRow className="mt-3">
                                         <ListCardIconActionButton
-                                            title="Editar"
+                                            label="Editar"
+                                            icon={<PencilIcon className="h-4 w-4" />}
                                             onClick={() => openEditModal(poll)}
-                                        >
-                                            <PencilIcon className="h-4 w-4" />
-                                        </ListCardIconActionButton>
+                                        />
                                         <ListCardIconActionButton
-                                            title="Excluir"
+                                            label="Excluir"
+                                            icon={<TrashIcon className="h-4 w-4" />}
                                             tone="danger"
                                             onClick={() => void handleDelete(poll.id)}
-                                        >
-                                            <TrashIcon className="h-4 w-4" />
-                                        </ListCardIconActionButton>
+                                        />
                                     </ListCardActionRow>
                                 )}
                             </li>

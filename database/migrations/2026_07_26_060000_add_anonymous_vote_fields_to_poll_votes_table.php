@@ -98,18 +98,49 @@ return new class extends Migration
 
     private function dropForeignIfExists(string $table, string $constraint): void
     {
-        $dbName = DB::getDatabaseName();
-        $exists = DB::table('information_schema.TABLE_CONSTRAINTS')
-            ->where('CONSTRAINT_SCHEMA', $dbName)
-            ->where('TABLE_NAME', $table)
-            ->where('CONSTRAINT_NAME', $constraint)
-            ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
-            ->exists();
-
-        if (! $exists) {
+        if (! Schema::hasTable($table)) {
             return;
         }
 
-        DB::statement("ALTER TABLE `{$table}` DROP FOREIGN KEY `{$constraint}`");
+        $driver = Schema::getConnection()->getDriverName();
+
+        if ($driver === 'sqlite') {
+            // SQLite recreates tables on dropForeign; ignore missing constraints.
+            try {
+                Schema::table($table, function (Blueprint $blueprint) use ($constraint) {
+                    $blueprint->dropForeign($constraint);
+                });
+            } catch (\Throwable) {
+                //
+            }
+
+            return;
+        }
+
+        if ($driver === 'mysql') {
+            $dbName = DB::getDatabaseName();
+            $exists = DB::table('information_schema.TABLE_CONSTRAINTS')
+                ->where('CONSTRAINT_SCHEMA', $dbName)
+                ->where('TABLE_NAME', $table)
+                ->where('CONSTRAINT_NAME', $constraint)
+                ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
+                ->exists();
+
+            if (! $exists) {
+                return;
+            }
+
+            DB::statement("ALTER TABLE `{$table}` DROP FOREIGN KEY `{$constraint}`");
+
+            return;
+        }
+
+        try {
+            Schema::table($table, function (Blueprint $blueprint) use ($constraint) {
+                $blueprint->dropForeign($constraint);
+            });
+        } catch (\Throwable) {
+            //
+        }
     }
 };

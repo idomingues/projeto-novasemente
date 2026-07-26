@@ -156,6 +156,7 @@ final class PageViewRouteLabels
         'ministry-lead.my-volunteers.update' => 'Meus voluntários — atualizar',
         'ministry-lead.my-volunteers.history' => 'Meus voluntários — histórico',
         'ministry-lead.my-volunteers.volunteer.history' => 'Meus voluntários — histórico',
+        'mobile.leader.birthdays' => 'Aniversariantes do mês (líder)',
 
         // —— Pastores / rotas auxiliares ——
         'pastors.weekly-schedule.update' => 'Escala semanal do pastor (atualizar)',

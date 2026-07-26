@@ -87,6 +87,7 @@ final class ConversationPresenter
             'canForward' => $policy->forward($viewer, $c),
             'canInternalNote' => $policy->addInternalNote($viewer, $c),
             'canReply' => $policy->sendMessage($viewer, $c),
+            'canChat' => $policy->sendMessage($viewer, $c),
             'headerTitle' => $c->member?->name ?? 'Membro',
             'headerSubtitle' => $c->subject ?: ($c->currentMinistry?->name ?? 'NS Whats'),
             'headerPhotoUrl' => $c->member?->photo_url,

@@ -49,8 +49,12 @@ class MobileNsWhatsController extends Controller
 
         $query = ChurchConversation::query()
             ->where('church_id', $churchId)
-            ->where('member_user_id', $user->id)
-            ->with(['currentMinistry:id,name,icon', 'assignee:id,name,photo_url', 'messages' => fn ($q) => $q->orderBy('created_at')])
+            ->where(function ($q) use ($user) {
+                $q->where('member_user_id', $user->id)
+                    ->orWhere('assignee_user_id', $user->id)
+                    ->orWhere('preferred_leader_user_id', $user->id);
+            })
+            ->with(['currentMinistry:id,name,icon', 'assignee:id,name,photo_url', 'member:id,name,photo_url', 'messages' => fn ($q) => $q->orderBy('created_at')])
             ->orderByDesc('last_activity_at');
 
         if ($tab === 'closed') {
@@ -73,7 +77,13 @@ class MobileNsWhatsController extends Controller
         }
 
         $conversations = $query->limit(80)->get()
-            ->map(fn (ChurchConversation $c) => ConversationPresenter::forMember($c, $user))
+            ->map(function (ChurchConversation $c) use ($user) {
+                $asMember = (int) $c->member_user_id === (int) $user->id;
+
+                return $asMember
+                    ? array_merge(ConversationPresenter::forMember($c, $user), ['viewerRole' => 'member'])
+                    : array_merge(ConversationPresenter::forLeader($c, $user), ['viewerRole' => 'staff']);
+            })
             ->values()
             ->all();
 
@@ -82,12 +92,20 @@ class MobileNsWhatsController extends Controller
         if ($openId) {
             $row = ChurchConversation::query()
                 ->where('church_id', $churchId)
-                ->where('member_user_id', $user->id)
                 ->whereKey((int) $openId)
+                ->where(function ($q) use ($user) {
+                    $q->where('member_user_id', $user->id)
+                        ->orWhere('assignee_user_id', $user->id)
+                        ->orWhere('preferred_leader_user_id', $user->id);
+                })
                 ->first();
             if ($row && $user->can('view', $row)) {
                 app(MarkConversationRead::class)->handle($row, $user);
-                $selected = ConversationPresenter::forMember($row->fresh(['currentMinistry', 'assignee', 'messages.author']), $user);
+                $fresh = $row->fresh(['currentMinistry', 'assignee', 'member', 'preferredLeader', 'messages.author']);
+                $asMember = (int) $row->member_user_id === (int) $user->id;
+                $selected = $asMember
+                    ? array_merge(ConversationPresenter::forMember($fresh, $user), ['viewerRole' => 'member'])
+                    : array_merge(ConversationPresenter::forLeader($fresh, $user), ['viewerRole' => 'staff']);
             }
         }
 
@@ -116,6 +134,9 @@ class MobileNsWhatsController extends Controller
             'leaders' => $leaders,
             'members' => $members,
             'storeUrl' => route('mobile.ns-whats.store'),
+            'departmentQueueUrl' => NsWhatsAccess::isMinistryLeaderAccount($user) || NsWhatsAccess::isModuleAdmin($user)
+                ? route('mobile.ns-whats.leader.index', ['filter' => 'unclaimed'])
+                : null,
             'fallbackMinistryConfigured' => Church::query()
                 ->whereKey($churchId)
                 ->whereNotNull('conversation_fallback_ministry_id')
@@ -177,11 +198,14 @@ class MobileNsWhatsController extends Controller
         if ($request->expectsJson()) {
             app(MarkConversationRead::class)->handle($conversation, $user);
 
+            $fresh = $conversation->fresh(['currentMinistry', 'assignee', 'preferredLeader', 'member', 'messages.author']);
+            $asMember = (int) $conversation->member_user_id === (int) $user->id;
+            $payload = $asMember
+                ? array_merge(ConversationPresenter::forMember($fresh, $user), ['viewerRole' => 'member'])
+                : array_merge(ConversationPresenter::forLeader($fresh, $user), ['viewerRole' => 'staff']);
+
             return response()->json([
-                'conversation' => ConversationPresenter::forMember(
-                    $conversation->fresh(['currentMinistry', 'assignee', 'preferredLeader', 'messages.author']),
-                    $user
-                ),
+                'conversation' => $payload,
             ]);
         }
 

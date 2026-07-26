@@ -65,11 +65,40 @@ final class NsWhatsAccess
             return true;
         }
 
-        if ($conversation->assignee_user_id === null) {
-            return false;
+        if ((int) ($conversation->assignee_user_id ?? 0) === (int) $user->id) {
+            return true;
         }
 
-        return (int) $conversation->assignee_user_id === (int) $user->id;
+        if ((int) ($conversation->preferred_leader_user_id ?? 0) === (int) $user->id) {
+            return true;
+        }
+
+        // Fila do departamento (sem líder específico): líder do depto pode responder e assume a conversa.
+        if ($conversation->assignee_user_id === null) {
+            return self::leadsMinistry($user, (int) $conversation->current_ministry_id);
+        }
+
+        return false;
+    }
+
+    public static function isMinistryLeaderAccount(User $user): bool
+    {
+        return $user->hasRole('lider_ministerio') || (bool) ($user->is_ministry_leader ?? false);
+    }
+
+    public static function hasStaffInboxAccess(User $user, int $churchId): bool
+    {
+        if (self::isModuleAdmin($user) || self::isMinistryLeaderAccount($user)) {
+            return true;
+        }
+
+        return ChurchConversation::query()
+            ->where('church_id', $churchId)
+            ->where(function ($q) use ($user) {
+                $q->where('assignee_user_id', $user->id)
+                    ->orWhere('preferred_leader_user_id', $user->id);
+            })
+            ->exists();
     }
 
     public static function reopenDaysForChurch(?Church $church): int

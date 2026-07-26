@@ -13,6 +13,7 @@ import {
     GlobeAltIcon,
     HandRaisedIcon,
     HeartIcon,
+    InboxIcon,
     LifebuoyIcon,
     MapPinIcon,
     MusicalNoteIcon,
@@ -55,7 +56,10 @@ interface Props {
 
 type PageProps = {
     appUrl?: string;
-    auth?: { user?: { name: string; email?: string; photo_url?: string | null } | null };
+    auth?: {
+        user?: { name: string; email?: string; photo_url?: string | null } | null;
+        isMinistryLeaderAccount?: boolean;
+    };
     csrf_token?: string;
 };
 
@@ -72,6 +76,7 @@ type QuickAction = {
     route?: string;
     routeParams?: Record<string, string | number>;
     featureKey?: string;
+    leaderOnly?: boolean;
     onClick?: () => void;
     icon: MenuIcon;
 };
@@ -87,11 +92,21 @@ const homeCardClass =
 const homeQuickActions: QuickAction[] = [
     {
         id: 'ns-whats',
-        label: 'NS Whats',
-        subtitle: 'Converse com líderes e áreas da igreja',
+        label: 'Meus NS Whats',
+        subtitle: 'Suas conversas e mensagens recebidas',
         route: 'mobile.ns-whats.index',
         featureKey: 'ns_whats',
         icon: ChatBubbleLeftRightIcon,
+    },
+    {
+        id: 'ns-whats-departamento',
+        label: 'Fila do departamento',
+        subtitle: 'Responder mensagens enviadas ao departamento',
+        route: 'mobile.ns-whats.leader.index',
+        routeParams: { filter: 'unclaimed' },
+        featureKey: 'ns_whats',
+        icon: InboxIcon,
+        leaderOnly: true,
     },
     {
         id: 'enquetes',
@@ -355,6 +370,7 @@ export default function MobileHome({
     const page = usePage();
     const { appUrl = '', auth, csrf_token: csrfProp } = page.props as unknown as PageProps;
     const user = auth?.user ?? null;
+    const isMinistryLeader = auth?.isMinistryLeaderAccount === true;
     const displayName = user?.name ? firstName(user.name) : '';
     const [promiseOpen, setPromiseOpen] = useState(false);
     const [bookmarks, setBookmarks] = useState<string[]>(bookmarkedHomeCards);
@@ -425,6 +441,7 @@ export default function MobileHome({
                 action.id === 'caixa-promessas' ? { ...action, onClick: openPromise } : action,
             )
             .filter((action) => !action.featureKey || isEnabled(action.featureKey))
+            .filter((action) => !action.leaderOnly || isMinistryLeader)
             .map((action) => ({ kind: 'action' as const, id: action.id, label: action.label, action }));
 
         const items = [...actions, { kind: 'sobre' as const, id: 'sobre-o-app', label: 'Sobre o APP' }];
@@ -440,7 +457,7 @@ export default function MobileHome({
             }
             return a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' });
         });
-    }, [isEnabled, bookmarks]);
+    }, [isEnabled, bookmarks, isMinistryLeader]);
 
     useEffect(() => {
         if (!showPostRegistrationBanner || typeof window === 'undefined') {

@@ -36,6 +36,67 @@ class NsWhatsConversationTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('Mobile/NsWhats/Index'));
     }
 
+    public function test_assignee_sees_directed_conversation_in_meus_ns_whats_and_can_reply(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.store'), [
+            'ministry_id' => $ministry->id,
+            'recipient_user_id' => $leader->id,
+            'message' => 'Mensagem direta para o líder.',
+        ])->assertRedirect();
+
+        $conversation = ChurchConversation::query()->firstOrFail();
+
+        $this->actingAs($leader)
+            ->get(route('mobile.ns-whats.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/Index')
+                ->has('conversations', 1)
+                ->where('conversations.0.viewerRole', 'staff')
+                ->where('conversations.0.id', $conversation->id));
+
+        $this->actingAs($leader)
+            ->post(route('mobile.ns-whats.messages.store', $conversation), [
+                'content' => 'Resposta do responsável.',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('church_conversation_messages', [
+            'conversation_id' => $conversation->id,
+            'author_user_id' => $leader->id,
+            'body' => 'Resposta do responsável.',
+        ]);
+    }
+
+    public function test_leader_can_reply_to_department_queue_without_specific_leader(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.store'), [
+            'ministry_id' => $ministry->id,
+            'message' => 'Fila geral do departamento por favor.',
+        ])->assertRedirect();
+
+        $conversation = ChurchConversation::query()->firstOrFail();
+        $this->assertNull($conversation->assignee_user_id);
+
+        $this->actingAs($leader)
+            ->post(route('mobile.ns-whats.leader.messages.store', $conversation), [
+                'content' => 'Olá, eu assumo e respondo pela fila.',
+            ])
+            ->assertRedirect();
+
+        $conversation->refresh();
+        $this->assertSame((int) $leader->id, (int) $conversation->assignee_user_id);
+        $this->assertDatabaseHas('church_conversation_messages', [
+            'conversation_id' => $conversation->id,
+            'author_user_id' => $leader->id,
+            'body' => 'Olá, eu assumo e respondo pela fila.',
+        ]);
+    }
+
     public function test_messages_notify_both_sides_via_app_inbox(): void
     {
         [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();

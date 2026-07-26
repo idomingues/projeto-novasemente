@@ -1158,6 +1158,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/mobile/ns-whats/{conversation}/desarquivar', [\App\Http\Controllers\MobileNsWhatsController::class, 'unarchive'])->name('mobile.ns-whats.unarchive');
     Route::post('/mobile/ns-whats/{conversation}/ler', [\App\Http\Controllers\MobileNsWhatsController::class, 'markRead'])->name('mobile.ns-whats.read');
 
+    Route::get('/mobile/aniversariantes', [\App\Http\Controllers\MobileLeaderBirthdaysController::class, 'index'])
+        ->name('mobile.leader.birthdays');
+
     Route::get('/mobile/ns-whats-lider', [\App\Http\Controllers\MobileNsWhatsLeaderController::class, 'index'])->name('mobile.ns-whats.leader.index');
     Route::get('/mobile/ns-whats-lider/{conversation}', [\App\Http\Controllers\MobileNsWhatsLeaderController::class, 'show'])->name('mobile.ns-whats.leader.show');
     Route::post('/mobile/ns-whats-lider/{conversation}/messages', [\App\Http\Controllers\MobileNsWhatsLeaderController::class, 'sendMessage'])->name('mobile.ns-whats.leader.messages.store');

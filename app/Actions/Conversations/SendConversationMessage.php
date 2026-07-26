@@ -33,6 +33,28 @@ class SendConversationMessage
         $authorRole = $isMember ? 'member' : ($actor->hasAnyRole(['admin', 'super_admin']) ? 'admin' : 'leader');
 
         $message = DB::transaction(function () use ($conversation, $actor, $body, $kind, $isMember, $authorRole) {
+            if ($kind === ChurchConversationMessage::KIND_PUBLIC && ! $isMember && $conversation->assignee_user_id === null) {
+                $conversation->assignee_user_id = $actor->id;
+                $conversation->save();
+
+                ChurchConversationMessage::create([
+                    'conversation_id' => $conversation->id,
+                    'author_user_id' => null,
+                    'author_role' => 'system',
+                    'body' => $actor->name.' assumiu a conversa.',
+                    'kind' => ChurchConversationMessage::KIND_SYSTEM,
+                ]);
+
+                ChurchConversationEvent::create([
+                    'conversation_id' => $conversation->id,
+                    'type' => 'claimed',
+                    'actor_user_id' => $actor->id,
+                    'before' => ['assignee_user_id' => null],
+                    'after' => ['assignee_user_id' => $actor->id],
+                    'created_at' => now(),
+                ]);
+            }
+
             $message = ChurchConversationMessage::create([
                 'conversation_id' => $conversation->id,
                 'author_user_id' => $actor->id,
@@ -47,13 +69,6 @@ class SendConversationMessage
                     $conversation->status = ChurchConversation::STATUS_AWAITING_DEPARTMENT;
                 } else {
                     $conversation->status = ChurchConversation::STATUS_AWAITING_MEMBER;
-                    if ($conversation->assignee_user_id === null) {
-                        $conversation->assignee_user_id = $actor->id;
-                    }
-                    if ($conversation->status === ChurchConversation::STATUS_NEW
-                        || $conversation->getOriginal('status') === ChurchConversation::STATUS_NEW) {
-                        $conversation->status = ChurchConversation::STATUS_AWAITING_MEMBER;
-                    }
                 }
                 $conversation->save();
 

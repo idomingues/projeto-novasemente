@@ -9,6 +9,7 @@ import {
     ClockIcon,
     InboxIcon,
     CalendarDaysIcon,
+    CakeIcon,
     ChatBubbleLeftRightIcon,
     SparklesIcon,
     LifebuoyIcon,
@@ -204,13 +205,24 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
                       href: route('ministry-lead.my-volunteers.index'),
                       tone: 'member',
                   },
+                  ...(route().has('mobile.leader.birthdays')
+                      ? ([
+                            {
+                                title: 'Aniversariantes do mês',
+                                description: 'Foto, nome e data dos seus voluntários — com destaque no dia',
+                                icon: CakeIcon,
+                                href: route('mobile.leader.birthdays'),
+                                tone: 'member',
+                            },
+                        ] as Row[])
+                      : []),
               ] as Row[])
             : []),
         ...(route().has('mobile.ns-whats.index')
             ? ([
                   {
-                      title: 'NS Whats',
-                      description: 'Converse com líderes e áreas da igreja',
+                      title: 'Meus NS Whats',
+                      description: 'Suas conversas e mensagens recebidas',
                       icon: ChatBubbleLeftRightIcon,
                       href: route('mobile.ns-whats.index'),
                       tone: 'member',
@@ -220,10 +232,10 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
         ...(route().has('mobile.ns-whats.leader.index') && isMinistryLeader
             ? ([
                   {
-                      title: 'NS Whats — Atendimento',
-                      description: 'Conversas do seu departamento',
+                      title: 'Fila do departamento',
+                      description: 'Responder mensagens enviadas ao departamento (sem líder específico)',
                       icon: ChatBubbleLeftRightIcon,
-                      href: route('mobile.ns-whats.leader.index'),
+                      href: route('mobile.ns-whats.leader.index', { filter: 'unclaimed' }),
                       tone: 'member',
                   },
               ] as Row[])

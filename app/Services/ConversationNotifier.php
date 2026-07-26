@@ -197,7 +197,8 @@ class ConversationNotifier
 
     private function staffActionUrl(ChurchConversation $conversation): string
     {
-        return route('mobile.ns-whats.leader.show', $conversation, absolute: false);
+        // Abre em «Meus NS Whats» (conversas recebidas / assumidas).
+        return route('mobile.ns-whats.index', ['conversa' => $conversation->id], absolute: false);
     }
 
     private function memberActionUrl(ChurchConversation $conversation): string
