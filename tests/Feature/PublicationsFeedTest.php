@@ -274,7 +274,7 @@ class PublicationsFeedTest extends TestCase
             'slug' => NewsLaunchDeepLinks::NS_CONECTA_SLUG,
             'content_type' => News::TYPE_INSTAGRAM_FEED,
             'body' => 'Toque em NS Conecta.',
-            'image_url' => '/storage/news/ns-conecta-feed-arte.png',
+            'image_url' => '/storage/news/ns-conecta-feed-arte-v2.png',
             'published_at' => now(),
             'is_active' => true,
         ]);

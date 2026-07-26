@@ -3,12 +3,12 @@
 /**
  * Módulos em destaque na Home do app (campanhas por período).
  *
- * Todas as campanhas ativas (data atual entre starts_at e ends_at) e com
- * a funcionalidade ligada na igreja entram no carrossel, que troca a cada
- * interval_seconds. Ajuste datas/títulos aqui ou desative com ends_at no passado.
+ * Campanhas ativas (starts_at…ends_at + feature ligada) pinam o card na grade
+ * e mostram o badge «New». O banner/carrossel da Home está desligado por enquanto.
+ * Ajuste datas/títulos aqui ou desative com ends_at no passado.
  */
 return [
-    /** Segundos entre slides do carrossel «Em destaque». */
+    /** Segundos entre slides (reservado se o banner voltar). */
     'interval_seconds' => 6,
 
     'campaigns' => [
@@ -16,7 +16,7 @@ return [
             'id' => 'ns_whats_2026_07',
             'feature_key' => 'ns_whats',
             'route' => 'mobile.ns-whats.index',
-            /** Card correspondente na grade da Home (pin + estilo New no 1º mês). */
+            /** Card correspondente na grade da Home (pin + badge New). */
             'home_card_id' => 'ns-whats',
             'badge' => 'New',
             'title' => 'NS Conecta',

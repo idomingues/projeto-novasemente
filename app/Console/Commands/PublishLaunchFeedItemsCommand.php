@@ -90,9 +90,29 @@ TXT;
             throw new \RuntimeException('Arte NS Conecta não encontrada em database/seed-assets/publications/ns-conecta-feed-arte.png');
         }
 
-        $storageRelative = 'news/ns-conecta-feed-arte.png';
+        // Nome versionado para forçar refresh de cache em produção (arte NS Conecta, altura −25%).
+        $storageRelative = 'news/ns-conecta-feed-arte-v2.png';
         Storage::disk('public')->makeDirectory('news');
         Storage::disk('public')->put($storageRelative, File::get($seed));
+
+        $publicDest = public_path('images/publications/ns-conecta-feed-arte.png');
+        File::ensureDirectoryExists(dirname($publicDest));
+        File::copy($seed, $publicDest);
+
+        foreach ([
+            'news/ns-whats-feed-arte.png',
+            'news/ns-whats-20260726-arte.png',
+            'news/ns-conecta-feed-arte.png',
+        ] as $stale) {
+            if (Storage::disk('public')->exists($stale)) {
+                Storage::disk('public')->delete($stale);
+            }
+        }
+        $legacyPublic = public_path('images/publications/ns-whats-feed-arte.png');
+        if (File::isFile($legacyPublic)) {
+            File::delete($legacyPublic);
+        }
+
         $imageUrl = StorageUrl::publicMediaUrl($storageRelative);
 
         return News::query()->updateOrCreate(

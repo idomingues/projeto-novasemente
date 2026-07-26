@@ -278,7 +278,7 @@ export default function HomeModuleSpotlightBanner({ spotlight, isFeatureEnabled 
                     canSwipe ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer active:scale-[0.995]'
                 }`}
                 style={{ WebkitUserSelect: 'none' }}
-                aria-label={`${active.badge}: ${active.title}. ${canSwipe ? 'Arraste para ver o próximo ou o anterior.' : ''}`}
+                aria-label={`${active.title}. ${canSwipe ? 'Arraste para ver o próximo ou o anterior.' : ''}`}
             >
                 <span
                     className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-teal-600 dark:bg-teal-400"
@@ -297,10 +297,7 @@ export default function HomeModuleSpotlightBanner({ spotlight, isFeatureEnabled 
                     </div>
 
                     <div className="min-w-0 flex-1">
-                        <p className="inline-flex items-center rounded-full bg-teal-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white dark:bg-teal-400 dark:text-teal-950">
-                            {active.badge || 'New'}
-                        </p>
-                        <h2 className="mt-1 truncate text-[17px] font-semibold leading-tight tracking-tight text-teal-950 dark:text-teal-50">
+                        <h2 className="truncate text-[17px] font-semibold leading-tight tracking-tight text-teal-950 dark:text-teal-50">
                             {active.title}
                         </h2>
                         {active.subtitle ? (

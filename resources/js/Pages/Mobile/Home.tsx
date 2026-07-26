@@ -34,9 +34,7 @@ import WeeklyProgramHomeCarousel from '@/Components/Mobile/WeeklyProgramHomeCaro
 import type { WeeklyProgramHomeCardData } from '@/Components/Mobile/WeeklyProgramHomeCard';
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
 import HomeFeaturedWeek, { type HomeFeaturedWeekPayload } from '@/Components/Mobile/HomeFeaturedWeek';
-import HomeModuleSpotlightBanner, {
-    type HomeModuleSpotlightPayload,
-} from '@/Components/Mobile/HomeModuleSpotlightBanner';
+import { type HomeModuleSpotlightPayload } from '@/Components/Mobile/HomeModuleSpotlightBanner';
 import HomeCardBookmarkButton from '@/Components/Mobile/HomeCardBookmarkButton';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
@@ -516,10 +514,6 @@ export default function MobileHome({
                     <WeeklyProgramHomeCarousel cards={weeklyProgramCards} appUrl={appUrl} />
                 ) : sabbathBanner ? (
                     <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} />
-                ) : null}
-
-                {moduleSpotlight ? (
-                    <HomeModuleSpotlightBanner spotlight={moduleSpotlight} isFeatureEnabled={isEnabled} />
                 ) : null}
 
                 <HomeFeaturedWeek items={featuredItems} />
