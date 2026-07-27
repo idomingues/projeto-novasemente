@@ -111,7 +111,7 @@ class NotificationFeed
     }
 
     /**
-     * Total de entradas que entram no feed (igreja + globais + caixa pessoal), para badges no perfil móvel.
+     * Total de entradas que entram no feed (igreja + globais + caixa pessoal).
      */
     public static function mergedTotalCountForUser(Request $request, ?int $churchId): int
     {

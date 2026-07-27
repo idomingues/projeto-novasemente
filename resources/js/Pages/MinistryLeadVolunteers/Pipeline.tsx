@@ -22,6 +22,7 @@ import {
     ArrowRightCircleIcon,
     ChevronDownIcon,
     ChevronUpIcon,
+    EnvelopeIcon,
     MagnifyingGlassIcon,
     PlusIcon,
     TrashIcon,
@@ -31,8 +32,12 @@ import VolunteerRequestsStaffSection, {
 } from '@/Components/Volunteers/VolunteerRequestsStaffSection';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
 import VolunteerInviteShareModal from '@/Components/Volunteers/VolunteerInviteShareModal';
+import VolunteerMinistryInviteSendModal, {
+    type VolunteerMinistryInviteSendPayload,
+} from '@/Components/Volunteers/VolunteerMinistryInviteSendModal';
 import VolunteerAppInviteButton, {
     volunteerEncaminharButtonClass,
+    volunteerModalActionPillBaseClass,
     volunteerSalvarFaseButtonClass,
 } from '@/Components/Volunteers/VolunteerAppInviteButton';
 import VolunteerDeleteConfirmBlock from '@/Components/Volunteers/VolunteerDeleteConfirmBlock';
@@ -219,6 +224,11 @@ type MinistryStatusHistorySection = MinistryLeaderStatusSectionData;
 
 type DetailTab = VolunteerModalUrlTab;
 
+type PendingMinistryInvite = VolunteerMinistryInviteSendPayload & {
+    invitationId: number;
+    ministryId: number;
+};
+
 type DetailJson = {
     volunteer: DetailVolunteer;
     pipeline: { stageId?: number; stageName?: string; adminWorkflowStageId?: number };
@@ -227,6 +237,7 @@ type DetailJson = {
     notes: DetailNote[];
     ministryOptions?: MinistryOption[];
     forwardedMinistryIds?: number[];
+    pendingMinistryInvites?: PendingMinistryInvite[];
     updateStageUrl: string;
     storeNoteUrl: string;
     syncMinistriesUrl?: string | null;
@@ -460,6 +471,8 @@ export default function Pipeline({
     const [inviteOpen, setInviteOpen] = useRemember(false, 'pipeline.inviteOpen');
     const [inviteVolunteer, setInviteVolunteer] = useRemember<VolunteerListRow | null>(null, 'pipeline.inviteVolunteer');
     const [inviteMinistryIds, setInviteMinistryIds] = useRemember<number[]>([], 'pipeline.inviteMinistryIds');
+    const [ministryInviteSend, setMinistryInviteSend] = useState<VolunteerMinistryInviteSendPayload | null>(null);
+    const [ministryInvitePickOpen, setMinistryInvitePickOpen] = useState(false);
     const stageMoveForm = useForm({ stage_id: '' as string | number });
     const ministriesForm = useForm<{ ministry_ids: number[]; leader_ministry_ids: number[] }>({
         ministry_ids: [],
@@ -485,6 +498,19 @@ export default function Pipeline({
         setInviteMinistryIds((prev) => prev.filter((id) => !blocked.has(id)));
         setInviteOpen(true);
     };
+
+    const pendingMinistryInvites = detail?.pendingMinistryInvites ?? [];
+
+    const openMinistryInviteSend = () => {
+        if (pendingMinistryInvites.length === 0) return;
+        if (pendingMinistryInvites.length === 1) {
+            setMinistryInviteSend(pendingMinistryInvites[0]);
+            return;
+        }
+        setMinistryInvitePickOpen(true);
+    };
+
+    const ministryInviteSendButtonClass = `${volunteerModalActionPillBaseClass} border-teal-600/80 bg-teal-50 text-teal-900 hover:bg-teal-100 dark:border-teal-500/70 dark:bg-teal-950/40 dark:text-teal-100 dark:hover:bg-teal-900/50`;
 
     const attendanceOptions: { value: string; label: string }[] = [
         { value: 'less_than_3_months', label: 'Menos de 3 meses' },
@@ -1962,6 +1988,17 @@ export default function Pipeline({
                                                     <ArrowRightCircleIcon className="h-4 w-4 shrink-0" aria-hidden />
                                                     Encaminhar
                                                 </button>
+                                                {pendingMinistryInvites.length > 0 ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={openMinistryInviteSend}
+                                                        className={ministryInviteSendButtonClass}
+                                                        title="Enviar convite oficial por e-mail ou WhatsApp (texto Nova Semente)"
+                                                    >
+                                                        <EnvelopeIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                                        Enviar convite
+                                                    </button>
+                                                ) : null}
                                                 {canVolunteerManage &&
                                                 !(String((detail.volunteer as VolunteerDetailData).email ?? '').trim()) ? (
                                                     <VolunteerAppInviteButton
@@ -2204,6 +2241,47 @@ export default function Pipeline({
                 }}
             />
 
+            <VolunteerMinistryInviteSendModal
+                show={!!ministryInviteSend}
+                payload={ministryInviteSend}
+                onClose={() => setMinistryInviteSend(null)}
+            />
+
+            <Modal
+                show={ministryInvitePickOpen}
+                onClose={() => setMinistryInvitePickOpen(false)}
+                maxWidth="md"
+            >
+                <div className="space-y-4 p-6">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Enviar convite</h2>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                        Este voluntário tem convite pendente em mais de um departamento. Escolha qual mensagem enviar.
+                    </p>
+                    <ul className="space-y-2">
+                        {pendingMinistryInvites.map((invite) => (
+                            <li key={invite.invitationId}>
+                                <button
+                                    type="button"
+                                    className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-medium text-zinc-800 transition hover:border-teal-300 hover:bg-teal-50/60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-teal-700 dark:hover:bg-teal-950/30"
+                                    onClick={() => {
+                                        setMinistryInvitePickOpen(false);
+                                        setMinistryInviteSend(invite);
+                                    }}
+                                >
+                                    <span>{invite.ministryName ?? 'Departamento'}</span>
+                                    <EnvelopeIcon className="h-4 w-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden />
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="flex justify-end">
+                        <SecondaryButton type="button" onClick={() => setMinistryInvitePickOpen(false)}>
+                            Cancelar
+                        </SecondaryButton>
+                    </div>
+                </div>
+            </Modal>
+
             {publicVolunteerSignupUrl && canPipelineMutate ? (
                 <PublicVolunteerSignupShareModal
                     show={publicInviteOpen}
@@ -2229,7 +2307,8 @@ export default function Pipeline({
                     <p className="text-sm text-zinc-600 dark:text-zinc-300">
                         {inviteVolunteer?.name ?? 'Voluntário'} — escolha um ou mais departamentos. O voluntário{' '}
                         <strong className="font-semibold text-zinc-800 dark:text-zinc-100">não</strong> é notificado
-                        agora; cada líder envia o convite em <strong className="font-semibold">Meus voluntários</strong>.
+                        agora; depois use <strong className="font-semibold">Enviar convite</strong> na ficha (e-mail ou
+                        WhatsApp com o texto oficial da Nova Semente).
                     </p>
                     <form onSubmit={submitEncaminhar} className="space-y-4">
                         <div>

@@ -26,6 +26,7 @@ type SharedPageProps = {
     appName?: string;
     appVersion?: string | null;
     iosAppStoreUrl?: string | null;
+    androidPlayStoreUrl?: string | null;
     nativeIosMinimumVersion?: string | null;
     auth?: { user?: { id?: number } | null };
 };

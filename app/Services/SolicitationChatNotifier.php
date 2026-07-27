@@ -239,7 +239,7 @@ class SolicitationChatNotifier
         }
 
         $member = User::query()->find($solicitation->user_id);
-        $memberName = $member?->name ?? 'Um líder';
+        $memberName = $member?->name ?? 'Alguém';
         $demandLabel = CommunicationRequestOptions::demandTypeLabel(
             (string) (($solicitation->meta ?? [])['communication_demand_type'] ?? ''),
         );

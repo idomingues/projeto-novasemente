@@ -15,11 +15,12 @@ import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
 import UserListAvatar from '@/Components/UserListAvatar';
 import PublicVolunteerSignupShareModal from '@/Components/Volunteers/PublicVolunteerSignupShareModal';
+import VolunteerMinistryInviteSendModal, {
+    type VolunteerMinistryInviteSendPayload,
+} from '@/Components/Volunteers/VolunteerMinistryInviteSendModal';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import {
-    ChatBubbleLeftEllipsisIcon,
     ChevronDownIcon,
-    ClipboardDocumentIcon,
     EllipsisVerticalIcon,
     LinkIcon,
     MagnifyingGlassIcon,
@@ -272,7 +273,6 @@ export default function MyVolunteers() {
     const [requestModalOpen, setRequestModalOpen] = useState(false);
     const [publicInviteOpen, setPublicInviteOpen] = useState(false);
     const [inviteHelpRow, setInviteHelpRow] = useState<VolunteerRow | null>(null);
-    const [inviteModalCopyFeedback, setInviteModalCopyFeedback] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortValue, setSortValue] = useState('name:asc');
 
@@ -286,7 +286,6 @@ export default function MyVolunteers() {
         message: '',
         quantity: 1,
     });
-    const resendInviteForm = useForm({});
 
     const newRows = useMemo(
         () =>
@@ -386,11 +385,6 @@ export default function MyVolunteers() {
         [newRows.length, reviewingRows.length, trainingRows.length, activeRows.length, requestRows.length],
     );
 
-    /** Texto plano do servidor (e-mail / WhatsApp) — BuildVolunteerMinistryInvitePlainCopy. */
-    const invitePlainFullMessage = useMemo(() => {
-        return (inviteHelpRow?.invitePlainMessage ?? '').trim();
-    }, [inviteHelpRow?.invitePlainMessage]);
-
     const selectedMinistry = useMemo(
         () => requestMinistries.find((m) => m.id === Number(requestForm.data.ministry_id)),
         [requestMinistries, requestForm.data.ministry_id],
@@ -400,58 +394,25 @@ export default function MyVolunteers() {
         [selectedMinistry],
     );
 
+    const inviteSendPayload = useMemo((): VolunteerMinistryInviteSendPayload | null => {
+        if (!inviteHelpRow) return null;
+        return {
+            ministryName: inviteHelpRow.ministryName,
+            invitePlainMessage: inviteHelpRow.invitePlainMessage,
+            inviteRegisterUrl: inviteHelpRow.inviteRegisterUrl,
+            inviteResendEmailUrl: inviteHelpRow.inviteResendEmailUrl,
+            volunteerHasLinkedUser: inviteHelpRow.volunteerHasLinkedUser,
+            volunteer: {
+                name: inviteHelpRow.volunteer.name,
+                email: inviteHelpRow.volunteer.email,
+                phone: inviteHelpRow.volunteer.phone,
+                photoUrl: inviteHelpRow.volunteer.photoUrl,
+            },
+        };
+    }, [inviteHelpRow]);
+
     const closeInviteHelp = () => {
         setInviteHelpRow(null);
-        setInviteModalCopyFeedback(null);
-    };
-
-    const flashInviteModalCopyNotice = (message: string) => {
-        setInviteModalCopyFeedback(message);
-        window.setTimeout(() => setInviteModalCopyFeedback(null), 2800);
-    };
-
-    const copyInviteRegisterLink = async () => {
-        const url = inviteHelpRow?.inviteRegisterUrl?.trim();
-        if (!url) return;
-        try {
-            await navigator.clipboard.writeText(url);
-            flashInviteModalCopyNotice('Link de cadastro copiado.');
-        } catch {
-            window.prompt('Copie o link de cadastro:', url);
-        }
-    };
-
-    const copyInvitePlainFullMessage = async () => {
-        if (!invitePlainFullMessage) return;
-        try {
-            await navigator.clipboard.writeText(invitePlainFullMessage);
-            flashInviteModalCopyNotice('Texto completo copiado (igual ao e-mail e ao WhatsApp).');
-        } catch {
-            window.prompt('Copie a mensagem (e-mail / WhatsApp):', invitePlainFullMessage);
-        }
-    };
-
-    const whatsAppSendPhoneDigits = (raw: string | null | undefined): string | null => {
-        const d = (raw ?? '').replace(/\D/g, '');
-        if (d.length < 10) return null;
-        if (!d.startsWith('55') && d.length <= 11) {
-            return `55${d}`;
-        }
-        return d;
-    };
-
-    const openWhatsAppWithInvite = () => {
-        const phone = whatsAppSendPhoneDigits(inviteHelpRow?.volunteer.phone);
-        if (!phone || !invitePlainFullMessage) return;
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(invitePlainFullMessage)}`, '_blank', 'noopener,noreferrer');
-    };
-
-    const submitResendInviteEmail = () => {
-        const url = inviteHelpRow?.inviteResendEmailUrl;
-        if (!url) return;
-        resendInviteForm.post(url, {
-            ...inertiaListModalSave,
-        });
     };
 
     const openEdit = (r: VolunteerRow) => {
@@ -1253,103 +1214,11 @@ export default function MyVolunteers() {
                 ) : null}
             </Modal>
 
-            <Modal
+            <VolunteerMinistryInviteSendModal
                 show={!!inviteHelpRow}
+                payload={inviteSendPayload}
                 onClose={closeInviteHelp}
-                maxWidth="lg"
-                footer={
-                    inviteHelpRow ? (
-                        <div className="flex w-full flex-col gap-3">
-                            {invitePlainFullMessage ? (
-                                <>
-                                    <PrimaryButton
-                                        type="button"
-                                        onClick={() => void copyInvitePlainFullMessage()}
-                                        className="!h-11 w-full !rounded-xl !normal-case !tracking-normal"
-                                    >
-                                        <ClipboardDocumentIcon className="mr-2 h-5 w-5 shrink-0" aria-hidden />
-                                        Copiar mensagem
-                                    </PrimaryButton>
-                                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                        {inviteHelpRow.inviteRegisterUrl ? (
-                                            <SecondaryButton
-                                                type="button"
-                                                onClick={() => void copyInviteRegisterLink()}
-                                                className="!h-11 w-full !rounded-xl !normal-case !tracking-normal"
-                                            >
-                                                <LinkIcon className="mr-2 h-5 w-5 shrink-0" aria-hidden />
-                                                Copiar link de cadastro
-                                            </SecondaryButton>
-                                        ) : null}
-                                        {whatsAppSendPhoneDigits(inviteHelpRow.volunteer.phone) ? (
-                                            <SecondaryButton
-                                                type="button"
-                                                onClick={openWhatsAppWithInvite}
-                                                className="!h-11 w-full !rounded-xl !normal-case !tracking-normal"
-                                            >
-                                                <ChatBubbleLeftEllipsisIcon className="mr-2 h-5 w-5 shrink-0" aria-hidden />
-                                                WhatsApp
-                                            </SecondaryButton>
-                                        ) : null}
-                                    </div>
-                                    {inviteModalCopyFeedback ? (
-                                        <p className="text-center text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                                            {inviteModalCopyFeedback}
-                                        </p>
-                                    ) : null}
-                                </>
-                            ) : null}
-                            <div className="flex flex-col-reverse gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700 sm:flex-row sm:justify-end">
-                                <SecondaryButton
-                                    type="button"
-                                    onClick={closeInviteHelp}
-                                    disabled={resendInviteForm.processing}
-                                    className="!h-11 w-full !rounded-xl !normal-case !tracking-normal sm:w-auto"
-                                >
-                                    Cancelar
-                                </SecondaryButton>
-                                {inviteHelpRow.inviteResendEmailUrl ? (
-                                    <PrimaryButton
-                                        type="button"
-                                        onClick={submitResendInviteEmail}
-                                        disabled={resendInviteForm.processing}
-                                        className="!h-11 w-full !rounded-xl !normal-case !tracking-normal sm:w-auto"
-                                    >
-                                        {resendInviteForm.processing ? 'Enviando…' : 'Enviar convite'}
-                                    </PrimaryButton>
-                                ) : null}
-                            </div>
-                        </div>
-                    ) : undefined
-                }
-            >
-                {inviteHelpRow ? (
-                    <div className="space-y-4 px-4 pb-2 pt-2 sm:px-6 sm:pb-4 sm:pt-4">
-                        <VolunteerModalHeader
-                            volunteer={inviteHelpRow.volunteer}
-                            ministryName={inviteHelpRow.ministryName}
-                            badge="Convite ao voluntário"
-                        />
-                        {inviteHelpRow.volunteerHasLinkedUser ? (
-                            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
-                                Esta pessoa já tem conta no app. O convite pede aceitar ou recusar no aplicativo; após aceitar, você entra em contato pelo app.
-                            </p>
-                        ) : null}
-                        {invitePlainFullMessage ? (
-                            <div className="rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800/50">
-                                <p className="border-b border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                                    Mensagem (igual ao e-mail e ao WhatsApp)
-                                </p>
-                                <div className="max-h-[min(40vh,20rem)] overflow-y-auto overscroll-y-contain whitespace-pre-wrap px-3 py-3 text-sm leading-relaxed text-zinc-800 dark:text-zinc-100">
-                                    {invitePlainFullMessage}
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400">Mensagem do convite indisponível.</p>
-                        )}
-                    </div>
-                ) : null}
-            </Modal>
+            />
 
             <Modal show={!!profileRow} onClose={closeProfile} maxWidth="lg">
                 {profileRow ? (

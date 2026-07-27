@@ -285,6 +285,148 @@ class LeaderVolunteerBirthdaysTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_admin_can_open_birthdays_and_see_all_volunteers_alphabetically(): void
+    {
+        $this->seed();
+
+        \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::parse('2026-07-15 12:00:00', 'America/Sao_Paulo'));
+
+        $church = Church::query()->firstOrFail();
+        $ministryA = Ministry::query()->create([
+            'church_id' => $church->id,
+            'name' => 'Área A Admin Aniversários',
+        ]);
+        $ministryB = Ministry::query()->create([
+            'church_id' => $church->id,
+            'name' => 'Área B Admin Aniversários',
+        ]);
+
+        $admin = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => false,
+            'is_volunteer' => false,
+        ]);
+        Role::findOrCreate('admin', 'web');
+        $admin->assignRole('admin');
+
+        foreach ([
+            ['name' => 'Zuleica Área B', 'date' => '1990-07-20', 'ministry' => $ministryB],
+            ['name' => 'Ana Área A', 'date' => '1991-07-15', 'ministry' => $ministryA],
+            ['name' => 'Bruno Área B', 'date' => '1992-07-03', 'ministry' => $ministryB],
+        ] as $row) {
+            $volunteer = Volunteer::query()->create([
+                'user_id' => null,
+                'name' => $row['name'],
+                'email' => strtolower(str_replace(' ', '.', $row['name'])).'@example.com',
+                'active' => true,
+                'birth_date' => $row['date'],
+            ]);
+            $volunteer->ministries()->attach($row['ministry']->id);
+        }
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.leader.birthdays', [
+                'month' => 7,
+                'year' => 2026,
+                'scope' => 'all',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/LeaderBirthdays')
+                ->where('canViewAllVolunteers', true)
+                ->where('scope', 'all')
+                ->has('birthdays', 3)
+                ->where('birthdays.0.name', 'Ana Área A')
+                ->where('birthdays.1.name', 'Bruno Área B')
+                ->where('birthdays.2.name', 'Zuleica Área B')
+            );
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
+    public function test_admin_without_area_defaults_to_all_scope(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $admin = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => false,
+            'is_volunteer' => false,
+        ]);
+        Role::findOrCreate('admin', 'web');
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.leader.birthdays'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/LeaderBirthdays')
+                ->where('canViewAllVolunteers', true)
+                ->where('scope', 'all')
+                ->where('hasAreaScope', false)
+            );
+    }
+
+    public function test_non_admin_cannot_force_all_scope_via_query(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $ministryA = Ministry::query()->create([
+            'church_id' => $church->id,
+            'name' => 'Área Líder Scope',
+        ]);
+        $ministryB = Ministry::query()->create([
+            'church_id' => $church->id,
+            'name' => 'Área Outra Scope',
+        ]);
+
+        $leader = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => true,
+        ]);
+        $leader->forceFill(['is_ministry_leader' => true])->save();
+        $leader->ministries()->sync([$ministryA->id]);
+
+        $today = now();
+        $own = Volunteer::query()->create([
+            'user_id' => null,
+            'name' => 'Da Minha Área',
+            'email' => 'da.minha.area.scope@example.com',
+            'active' => true,
+            'birth_date' => $today->copy()->subYears(25)->toDateString(),
+        ]);
+        $own->ministries()->attach($ministryA->id);
+
+        $other = Volunteer::query()->create([
+            'user_id' => null,
+            'name' => 'De Outra Área',
+            'email' => 'de.outra.area.scope@example.com',
+            'active' => true,
+            'birth_date' => $today->copy()->subYears(26)->toDateString(),
+        ]);
+        $other->ministries()->attach($ministryB->id);
+
+        $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.leader.birthdays', [
+                'month' => (int) $today->month,
+                'year' => (int) $today->year,
+                'scope' => 'all',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/LeaderBirthdays')
+                ->where('canViewAllVolunteers', false)
+                ->where('scope', 'area')
+                ->has('birthdays', 1)
+                ->where('birthdays.0.name', 'Da Minha Área')
+            );
+    }
+
     public function test_falls_back_to_user_birth_date_when_volunteer_birth_date_missing(): void
     {
         $this->seed();

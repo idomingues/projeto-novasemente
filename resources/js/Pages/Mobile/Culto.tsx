@@ -1,7 +1,8 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import { Head, Link } from '@inertiajs/react';
-import { FilmIcon } from '@heroicons/react/24/outline';
+import { ChevronRightIcon, FilmIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import { useAppFeatures } from '@/hooks/useAppFeatures';
 import { useEffect } from 'react';
 import type React from 'react';
 
@@ -106,6 +107,9 @@ function CultoVideoCard({
 }
 
 export default function MobileCulto({ cultos, liveCulto = null, showPostRegistrationBanner = false }: Props) {
+    const { isEnabled } = useAppFeatures();
+    const showSeriesLinks = isEnabled('acervo');
+
     useEffect(() => {
         if (!showPostRegistrationBanner || typeof window === 'undefined') {
             return;
@@ -122,9 +126,20 @@ export default function MobileCulto({ cultos, liveCulto = null, showPostRegistra
         <MobileLayout>
             <Head title="Culto" />
             <div className="space-y-6">
-                <Link href={route('mobile.home')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
-                    ← Início
-                </Link>
+                <div className="flex items-center justify-between gap-3">
+                    <Link href={route('mobile.home')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
+                        ← Início
+                    </Link>
+                    {showSeriesLinks ? (
+                        <Link
+                            href={route('mobile.acervo')}
+                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/80"
+                        >
+                            <PlayCircleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                            Todas as nossas Séries
+                        </Link>
+                    ) : null}
+                </div>
                 {showPostRegistrationBanner ? (
                     <div
                         className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-50"
@@ -169,6 +184,18 @@ export default function MobileCulto({ cultos, liveCulto = null, showPostRegistra
                         ))}
                     </ul>
                 )}
+                {showSeriesLinks ? (
+                    <div className="pb-2 pt-2">
+                        <Link
+                            href={route('mobile.acervo')}
+                            className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.99] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+                        >
+                            <PlayCircleIcon className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                            Ver todas as séries
+                            <ChevronRightIcon className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />
+                        </Link>
+                    </div>
+                ) : null}
             </div>
         </MobileLayout>
     );

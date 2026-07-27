@@ -1,11 +1,17 @@
 import { Link } from '@inertiajs/react';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
 import {
-    HomeIcon,
-    HandRaisedIcon,
-    PlayCircleIcon,
-    BookOpenIcon,
+    HomeIcon as HomeOutlineIcon,
+    HandRaisedIcon as HandRaisedOutlineIcon,
+    PlayCircleIcon as PlayCircleOutlineIcon,
+    BookOpenIcon as BookOpenOutlineIcon,
 } from '@heroicons/react/24/outline';
+import {
+    HomeIcon as HomeSolidIcon,
+    HandRaisedIcon as HandRaisedSolidIcon,
+    PlayCircleIcon as PlayCircleSolidIcon,
+    BookOpenIcon as BookOpenSolidIcon,
+} from '@heroicons/react/24/solid';
 import type { ComponentType, SVGProps } from 'react';
 
 type NavIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -103,16 +109,16 @@ const navItems: NavItem[] = [
             'mobile.campaigns.index',
             'mobile.donations.index',
         ],
-        icon: HomeIcon,
-        iconActive: HomeIcon,
+        icon: HomeOutlineIcon,
+        iconActive: HomeSolidIcon,
     },
     {
         name: 'Culto',
         route: 'mobile.culto',
         featureKey: 'culto',
         activeRoutes: ['mobile.culto', 'mobile.culto.show'],
-        icon: PlayCircleIcon,
-        iconActive: PlayCircleIcon,
+        icon: PlayCircleOutlineIcon,
+        iconActive: PlayCircleSolidIcon,
     },
     {
         name: 'Publicações',
@@ -125,16 +131,16 @@ const navItems: NavItem[] = [
         route: 'mobile.prayer',
         featureKey: 'prayer',
         activeRoutes: ['mobile.prayer', 'prayer.index'],
-        icon: HandRaisedIcon,
-        iconActive: HandRaisedIcon,
+        icon: HandRaisedOutlineIcon,
+        iconActive: HandRaisedSolidIcon,
     },
     {
         name: 'Bíblia',
         route: 'mobile.bible',
         featureKey: 'bible',
         activeRoutes: ['mobile.bible', 'mobile.bible.chapter', 'mobile.bible.search', 'mobile.bible.reference'],
-        icon: BookOpenIcon,
-        iconActive: BookOpenIcon,
+        icon: BookOpenOutlineIcon,
+        iconActive: BookOpenSolidIcon,
     },
 ];
 
@@ -168,11 +174,7 @@ export default function MobileBottomNav({ borderless = false }: { borderless?: b
                             key={routeName}
                             href={href}
                             aria-label={name}
-                            className={`relative flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl mx-0.5 py-2 transition-colors ${
-                                isActive
-                                    ? 'text-brand-600 dark:text-brand-400'
-                                    : 'text-zinc-900 dark:text-zinc-100 active:bg-zinc-100/80 dark:active:bg-zinc-800/50'
-                            }`}
+                            className="relative mx-0.5 flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl py-2 text-zinc-900 transition-colors active:bg-zinc-100/80 dark:text-zinc-100 dark:active:bg-zinc-800/50"
                         >
                             {imageSrc ? (
                                 <span className="relative -mt-5 inline-flex h-14 w-14 items-center justify-center md:-mt-1 md:h-11 md:w-11">
@@ -203,17 +205,17 @@ export default function MobileBottomNav({ borderless = false }: { borderless?: b
                                         <IconComponent
                                             className={`flex-shrink-0 transition-all ${
                                                 isActive
-                                                    ? 'h-7 w-7 text-brand-600 dark:text-brand-400'
+                                                    ? 'h-7 w-7 text-zinc-900 dark:text-zinc-100'
                                                     : 'h-6 w-6 text-zinc-900 dark:text-zinc-100'
                                             }`}
                                             aria-hidden
-                                            strokeWidth={1.75}
+                                            {...(isActive ? {} : { strokeWidth: 1.75 })}
                                         />
                                     ) : null}
                                     <span
                                         className={`max-w-full truncate px-0.5 text-[10px] ${
                                             isActive
-                                                ? 'font-semibold text-brand-600 dark:text-brand-400'
+                                                ? 'font-semibold text-zinc-900 dark:text-zinc-100'
                                                 : 'font-medium text-zinc-900 dark:text-zinc-100'
                                         }`}
                                     >

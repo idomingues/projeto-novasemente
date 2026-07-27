@@ -7,7 +7,6 @@ use App\Models\Church;
 use App\Models\Culto;
 use App\Models\User;
 use App\Services\PublicationBroadcastNotifier;
-use App\Support\CultoEpisodeCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
@@ -43,15 +42,13 @@ class CultoController extends Controller
         $this->assertCanManageCulto($request->user());
 
         $churchId = $this->currentChurchId();
-        $cultos = CultoEpisodeCatalog::dedupeByYoutubeVideo(
-            Culto::query()
-                ->with('author')
-                ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-                ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-                ->orderByDesc('published_at')
-                ->orderByDesc('created_at')
-                ->get(),
-        )
+        $cultos = Culto::query()
+            ->with('author')
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->orderByDesc('published_at')
+            ->orderByDesc('created_at')
+            ->get()
             ->map(fn (Culto $c) => [
                 'id' => $c->id,
                 'title' => $c->title,

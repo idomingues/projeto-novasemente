@@ -297,4 +297,46 @@ class MyMinistryVolunteersTest extends TestCase
         $this->assertSame('reviewing', $row['leaderStatus']);
         $this->assertGreaterThanOrEqual(27, count($rows));
     }
+
+    public function test_leader_can_resend_pending_invitation_email(): void
+    {
+        $this->seed();
+        \Illuminate\Support\Facades\Mail::fake();
+
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $leader = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => true,
+        ]);
+        $leader->forceFill(['is_ministry_leader' => true])->save();
+        $leader->ministries()->sync([$ministry->id]);
+
+        $volunteer = Volunteer::query()->create([
+            'name' => 'Convite E-mail',
+            'email' => 'convite.email@example.com',
+            'phone' => '11999998888',
+            'active' => true,
+        ]);
+
+        $invitation = VolunteerMinistryInvitation::query()->create([
+            'church_id' => $church->id,
+            'volunteer_id' => $volunteer->id,
+            'ministry_id' => $ministry->id,
+            'invited_by_user_id' => $leader->id,
+            'token' => VolunteerMinistryInvitation::createToken(),
+            'status' => 'pending',
+        ]);
+
+        $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('ministry-lead.my-volunteers.invitation.resend-email', $invitation))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\VolunteerMinistryInvitationMail::class);
+        $invitation->refresh();
+        $this->assertNotNull($invitation->sent_at);
+    }
 }

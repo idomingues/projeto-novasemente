@@ -500,9 +500,7 @@ class MyMinistryVolunteersController extends Controller
         abort_unless($churchId, 404);
         abort_unless((int) $invitation->church_id === (int) $churchId, 404);
 
-        $user = $request->user();
-        $ministryIds = $user?->ministries()->where('church_id', $churchId)->pluck('ministries.id')->values()->all() ?? [];
-        abort_unless(in_array((int) $invitation->ministry_id, array_map('intval', $ministryIds), true), 403);
+        $this->assertLeaderMayManageMinistry($request, (int) $churchId, (int) $invitation->ministry_id);
 
         if ($invitation->status !== 'pending') {
             return back()->with('error', 'Só é possível enviar o convite enquanto o cadastro do voluntário estiver pendente.');
@@ -533,9 +531,7 @@ class MyMinistryVolunteersController extends Controller
         abort_unless($churchId, 404);
         abort_unless((int) $invitation->church_id === (int) $churchId, 404);
 
-        $user = $request->user();
-        $ministryIds = $user?->ministries()->where('church_id', $churchId)->pluck('ministries.id')->values()->all() ?? [];
-        abort_unless(in_array((int) $invitation->ministry_id, array_map('intval', $ministryIds), true), 403);
+        $this->assertLeaderMayManageMinistry($request, (int) $churchId, (int) $invitation->ministry_id);
 
         $valid = $request->validate([
             'intro_message' => ['nullable', 'string', 'max:5000'],

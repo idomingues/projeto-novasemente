@@ -36,7 +36,6 @@ use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
 use App\Services\YoutubePlaylistImportService;
 use App\Support\ChurchAppFeatures;
-use App\Support\CultoEpisodeCatalog;
 use App\Support\HomeCardKeys;
 use App\Support\HomeFeaturedWeek;
 use App\Support\HomeModuleSpotlight;
@@ -345,17 +344,13 @@ class MobileController extends Controller
     {
         $church = $this->currentChurch();
         $churchId = $church?->id;
-        $cultos = CultoEpisodeCatalog::dedupeByYoutubeVideo(
-            CultoEpisodeCatalog::filterToCurrentSeries(
-                Culto::query()
-                    ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-                    ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-                    ->whereNotNull('published_at')
-                    ->where('published_at', '<=', now())
-                    ->orderByDesc('published_at')
-                    ->get(),
-            ),
-        )
+        $cultos = Culto::query()
+            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->orderByDesc('published_at')
+            ->get()
             ->map(fn (Culto $c) => [
                 'id' => $c->id,
                 'title' => $c->title,
@@ -2071,7 +2066,7 @@ class MobileController extends Controller
             }
         }
 
-        $notificationsTotal = NotificationFeed::mergedTotalCountForUser($request, $churchId);
+        $notificationsUnread = NotificationFeed::unreadInboxCount($request);
 
         $volunteerSignupCompletion = VolunteerSignupCompletion::profileAlertForUser($user);
 
@@ -2092,7 +2087,7 @@ class MobileController extends Controller
             'profileCounts' => [
                 'atendimento_open' => $atendimentoOpen,
                 'pastoral_agenda' => $pastoralAgendaItems,
-                'notifications' => $notificationsTotal,
+                'notifications' => $notificationsUnread,
                 'ns_whats_pending' => $churchId !== null
                     ? NsWhatsAccess::pendingReplyCount($user, (int) $churchId)
                     : 0,

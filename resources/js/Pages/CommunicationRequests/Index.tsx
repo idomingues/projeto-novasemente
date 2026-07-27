@@ -159,11 +159,11 @@ export default function CommunicationRequestsIndex({
     const form = useForm<CommunicationRequestFormData>(emptyForm);
 
     const canManage = mode === 'staff';
-    const pageTitle = 'Solicitações de Comunicação';
+    const pageTitle = canManage ? 'Solicitações de Comunicação' : 'Solicite a Comunicação';
     const subtitle =
         mode === 'staff'
             ? 'Fila central da Comunicação: organize demandas por tipo, prioridade e status.'
-            : 'Abra e acompanhe seus pedidos para a equipe de Comunicação.';
+            : 'Envie pedidos para a equipe de Comunicação e acompanhe o andamento.';
 
     const effectiveViewMode: ListKanbanViewMode = canManage && filters.arquivados ? 'list' : (viewMode as ListKanbanViewMode);
 
@@ -460,7 +460,7 @@ export default function CommunicationRequestsIndex({
                             <ListViewModeToggle value={viewMode as ListKanbanViewMode} onChange={setViewMode} />
                         ) : null}
                         <AddButton variant="icon" onClick={openRequestModal}>
-                            Nova solicitação
+                            Solicitar a Comunicação
                         </AddButton>
                     </div>
                 }
@@ -516,7 +516,9 @@ export default function CommunicationRequestsIndex({
                         <Card className="p-10 text-center text-sm text-zinc-600 dark:text-zinc-400">
                             {activeFilterCount > 0
                                 ? 'Nenhuma solicitação encontrada com estes filtros.'
-                                : 'Ainda não há solicitações de comunicação.'}
+                                : canManage
+                                  ? 'Ainda não há solicitações de comunicação.'
+                                  : 'Você ainda não solicitou a Comunicação. Toque em + para fazer um pedido.'}
                         </Card>
                     ) : (
                         rows.map((row) => (
@@ -592,7 +594,7 @@ export default function CommunicationRequestsIndex({
             >
                 <form id="communication-request-form" onSubmit={submitRequest} className="space-y-5 p-6">
                     <div>
-                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Nova solicitação de comunicação</h2>
+                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Solicitar a Comunicação</h2>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                             Descreva a demanda com contexto, data do evento e materiais para facilitar a priorização da equipe.
                         </p>

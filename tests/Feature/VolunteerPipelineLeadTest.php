@@ -137,6 +137,54 @@ class VolunteerPipelineLeadTest extends TestCase
         $response->assertJsonPath('passwordFormMode', 'update');
         $response->assertJsonPath('updateVolunteerUrl', route('volunteers.update', $volunteer));
         $this->assertNotEmpty($response->json('appRoles'));
+        $response->assertJsonPath('pendingMinistryInvites', []);
+    }
+
+    public function test_pipeline_detail_includes_pending_ministry_invites_for_leader(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->where('church_id', $church->id)->firstOrFail();
+
+        $leader = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => true,
+        ]);
+        $leader->forceFill(['is_ministry_leader' => true])->save();
+        $leader->ministries()->sync([$ministry->id]);
+        $leader->givePermissionTo(['volunteers.view', 'volunteers.ministry_operate']);
+
+        $volunteer = Volunteer::query()->create([
+            'name' => 'Pendente Convite Ficha',
+            'email' => 'pendente.convite.ficha@example.com',
+            'phone' => '11977776666',
+            'active' => true,
+        ]);
+
+        $invitation = VolunteerMinistryInvitation::query()->create([
+            'church_id' => $church->id,
+            'volunteer_id' => $volunteer->id,
+            'ministry_id' => $ministry->id,
+            'invited_by_user_id' => $leader->id,
+            'token' => VolunteerMinistryInvitation::createToken(),
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->getJson(route('ministry-lead.volunteers.pipeline.detail', $volunteer));
+
+        $response->assertOk();
+        $invites = $response->json('pendingMinistryInvites');
+        $this->assertIsArray($invites);
+        $this->assertCount(1, $invites);
+        $this->assertSame((int) $invitation->id, (int) $invites[0]['invitationId']);
+        $this->assertSame((int) $ministry->id, (int) $invites[0]['ministryId']);
+        $this->assertNotEmpty($invites[0]['invitePlainMessage']);
+        $this->assertStringContainsString('Olá', (string) $invites[0]['invitePlainMessage']);
+        $this->assertNotEmpty($invites[0]['inviteResendEmailUrl']);
+        $this->assertSame('11977776666', $invites[0]['volunteer']['phone']);
     }
 
     public function test_pipeline_sync_ministries_can_set_ministry_leadership(): void

@@ -1,0 +1,34 @@
+---
+description: Minimalismo e sutileza no design — superfícies leves, sem blocos escuros chamativos
+alwaysApply: true
+---
+
+# Minimalismo e sutileza no design
+
+No projeto Nova Semente, a UI deve ser **minimalista** e **sutil**: hierarquia clara, poucos contrastes agressivos, sem “caixas pretas” ou blocos que gritem na tela.
+
+## Princípios
+
+1. **Superfícies leves** — Preferir `bg-white` / `bg-zinc-50` + `ring-1 ring-zinc-200/90` (e equivalentes `dark:`) em vez de fundos pretos, charcoal ou gradientes escuros decorativos.
+2. **Uma hierarquia calma** — Título, texto secundário e ação; evitar vários níveis de destaque (badge + glow + gradiente + sombra forte) no mesmo bloco.
+3. **Sombra e anel discretos** — `shadow-sm`, rings suaves; não empilhar glow, blur e sombra pesada só para “parecer premium”.
+4. **Cor de marca com parcimônia** — Verde/teal para ícones, links e CTAs pontuais — não para pintar seções inteiras de fundo.
+5. **Consistência entre cards** — Na mesma tela, seções irmãs (ex.: Versões, Baixe o app, Links) devem partilhar o mesmo “peso” visual, salvo motivo forte (ex.: CTA único da home).
+
+## Evitar
+
+- Cards/seções com `from-zinc-900`, `bg-zinc-900`/`bg-black` só para diferenciar um bloco informativo.
+- Texto branco sobre fundo escuro inventado quando o restante da tela é claro.
+- Gradientes escuros + glow verde como padrão de seção.
+- Contraste artificial (ilha escura no meio de cards claros).
+
+## O que fazer
+
+- Alinhar novos cards ao padrão já usado em listas/hubs: fundo claro, borda/anel fino, tipografia `text-zinc-900` / `text-zinc-500`.
+- No dark mode, escurecer o card de forma coerente (`dark:bg-zinc-900`), não copiar o “modo teatro” do claro.
+- Antes de concluir UI: se um bloco destaca-se só pela cor escura e não pela informação, **suavizar**.
+
+## Referência
+
+- Sobre o APP (após ajuste): `resources/js/Components/Mobile/SobreOAppPanel.tsx` — seções claras e alinhadas.
+- Contraste legível: regra `contraste-dark-mode-cards.mdc` (sutileza ≠ texto ilegível).

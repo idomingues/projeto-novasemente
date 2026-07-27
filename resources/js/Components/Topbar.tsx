@@ -303,12 +303,14 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
 
                             <Link
                                 href={profileHref}
-                                className="flex items-center gap-3 pl-4 border-l border-zinc-200 dark:border-zinc-800 focus:outline-none group"
+                                className="group flex cursor-pointer items-center gap-3 border-l border-zinc-200 pl-4 focus:outline-none dark:border-zinc-800"
                                 aria-label="Abrir meu perfil"
                                 title="Meu perfil"
                             >
-                                <div className="text-right hidden sm:block">
-                                    <p className="text-sm font-medium text-zinc-900 dark:text-white group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">{user.name}</p>
+                                <div className="hidden text-right sm:block">
+                                    <p className="text-sm font-medium text-zinc-900 transition-colors group-hover:text-zinc-600 dark:text-white dark:group-hover:text-zinc-300">
+                                        {user.name}
+                                    </p>
                                     <div className="mt-0.5 flex items-center justify-end gap-1.5">
                                         <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-800">
                                             {roleLabel}

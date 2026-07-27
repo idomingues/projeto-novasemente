@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Volunteers\ApplyVolunteerMinistryLeaderStatusUpdate;
+use App\Actions\Volunteers\BuildVolunteerMinistryInvitePlainCopy;
 use App\Actions\Volunteers\CreateAndNotifyVolunteerMinistryInvitation;
 use App\Actions\Volunteers\ProvisionVolunteerAppPasswordFromStaff;
 use App\Domain\Volunteers\Actions\DeleteVolunteer;
@@ -229,6 +230,12 @@ class VolunteerPipelineLeadController extends Controller
                     [(int) $volunteer->id],
                 )[(int) $volunteer->id] ?? [])
                 : [],
+            'pendingMinistryInvites' => $this->pendingMinistryInvitesForDetail(
+                $request,
+                $volunteer,
+                $churchId,
+                $leaderSet,
+            ),
             'updateStageUrl' => route('ministry-lead.volunteers.pipeline.stage', $volunteer),
             'storeNoteUrl' => route('ministry-lead.volunteers.pipeline.notes.store', $volunteer),
             'syncMinistriesUrl' => $canMutate
@@ -881,6 +888,64 @@ class VolunteerPipelineLeadController extends Controller
         }
 
         return $sections;
+    }
+
+    /**
+     * Convites pendentes que o usuário atual pode enviar (e-mail / WhatsApp) — mesmo texto de Meus voluntários.
+     *
+     * @param  array<int, true>  $leaderSet
+     * @return list<array<string, mixed>>
+     */
+    private function pendingMinistryInvitesForDetail(
+        Request $request,
+        Volunteer $volunteer,
+        int $churchId,
+        array $leaderSet,
+    ): array {
+        if (! Schema::hasTable('volunteer_ministry_invitations')) {
+            return [];
+        }
+
+        $canManageAll = $request->user()?->can('volunteers.manage') === true
+            || $request->user()?->hasRole(['admin', 'super_admin']) === true;
+
+        $invitations = VolunteerMinistryInvitation::query()
+            ->where('church_id', $churchId)
+            ->where('volunteer_id', $volunteer->id)
+            ->where('status', 'pending')
+            ->with(['ministry:id,name', 'church:id,ministry_invitation_intro'])
+            ->orderByDesc('id')
+            ->get();
+
+        $rows = [];
+        foreach ($invitations as $invitation) {
+            if ($invitation->isExpired()) {
+                continue;
+            }
+            $ministryId = (int) $invitation->ministry_id;
+            if (! $canManageAll && ! isset($leaderSet[$ministryId])) {
+                continue;
+            }
+
+            $rows[] = [
+                'invitationId' => (int) $invitation->id,
+                'ministryId' => $ministryId,
+                'ministryName' => $invitation->ministry?->name,
+                'invitePlainMessage' => BuildVolunteerMinistryInvitePlainCopy::for($invitation),
+                'inviteRegisterUrl' => BuildVolunteerMinistryInvitePlainCopy::registerUrlFor($invitation),
+                'inviteResendEmailUrl' => route('ministry-lead.my-volunteers.invitation.resend-email', $invitation),
+                'volunteerHasLinkedUser' => $volunteer->user_id !== null,
+                'inviteSentAt' => $invitation->sent_at?->toIso8601String(),
+                'volunteer' => [
+                    'name' => $volunteer->name,
+                    'email' => $volunteer->email,
+                    'phone' => $volunteer->phone,
+                    'photoUrl' => $volunteer->user?->photo_url,
+                ],
+            ];
+        }
+
+        return $rows;
     }
 
     private function invitationForVolunteerMinistry(int $churchId, int $volunteerId, int $ministryId): ?VolunteerMinistryInvitation

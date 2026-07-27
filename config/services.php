@@ -51,7 +51,10 @@ return [
         'drive_api_key' => env('GOOGLE_DRIVE_API_KEY'),
     ],
 
-    'ios_app_store_url' => env('IOS_APP_STORE_URL'),
+    'ios_app_store_url' => env('IOS_APP_STORE_URL')
+        ?: 'https://apps.apple.com/br/app/nova-semente/id734369457',
+    'android_play_store_url' => env('ANDROID_PLAY_STORE_URL')
+        ?: 'https://play.google.com/store/apps/details?id=br.org.novasemente.app',
     'native_ios_minimum_version' => env('NATIVE_IOS_MINIMUM_VERSION', '15.0'),
 
     /**

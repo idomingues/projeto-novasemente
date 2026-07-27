@@ -50,8 +50,8 @@ export default function VolunteerEncaminharModal({
                             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
                                 {volunteerName} — escolha um ou mais departamentos. O voluntário{' '}
                                 <strong className="font-semibold text-zinc-800 dark:text-zinc-100">não</strong> é
-                                notificado agora; cada líder envia o convite em{' '}
-                                <strong className="font-semibold">Meus voluntários</strong>.
+                                notificado agora; depois use <strong className="font-semibold">Enviar convite</strong>{' '}
+                                na ficha (e-mail ou WhatsApp com o texto oficial da Nova Semente).
                             </p>
                         </div>
                         <div>

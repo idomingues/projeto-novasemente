@@ -36,8 +36,17 @@ class LeaderVolunteerBirthdays
         return array_values(array_unique(array_merge($asLeader, $asVolunteer)));
     }
 
+    public static function isChurchAdmin(User $user): bool
+    {
+        return $user->hasAnyRole(['admin', 'super_admin']);
+    }
+
     public static function canAccess(User $user, int $churchId): bool
     {
+        if (self::isChurchAdmin($user)) {
+            return true;
+        }
+
         if (NsWhatsAccess::isMinistryLeaderAccount($user)) {
             return true;
         }
@@ -50,11 +59,12 @@ class LeaderVolunteerBirthdays
     }
 
     /**
-     * Voluntários ativos da área com aniversário no mês.
+     * Voluntários ativos da área (ou de toda a igreja, se `$allChurch`) com aniversário no mês.
      * Usa `volunteers.birth_date`, com fallback para `users.birth_date`.
      * O visualizador permanece na lista; `$viewerUserId` só impede "Dar parabéns" a si mesmo.
      *
      * @param  list<int>  $ministryIds
+     * @param  'day'|'name'  $sortBy
      * @return list<array{
      *     id: int,
      *     name: string,
@@ -75,8 +85,10 @@ class LeaderVolunteerBirthdays
         array $ministryIds,
         ?Carbon $reference = null,
         ?int $viewerUserId = null,
+        bool $allChurch = false,
+        string $sortBy = 'day',
     ): array {
-        if ($ministryIds === []) {
+        if (! $allChurch && $ministryIds === []) {
             return [];
         }
 
@@ -85,13 +97,19 @@ class LeaderVolunteerBirthdays
         $todayMonth = (int) now()->month;
         $todayDay = (int) now()->day;
         $isCurrentMonth = $month === $todayMonth && (int) $reference->year === (int) now()->year;
+        $sortBy = $sortBy === 'name' ? 'name' : 'day';
 
         /** @var Collection<int, Volunteer> $volunteers */
         $volunteers = Volunteer::query()
             ->where('active', true)
             ->whereHas(
                 'ministries',
-                fn ($q) => $q->where('ministries.church_id', $churchId)->whereIn('ministries.id', $ministryIds),
+                function ($q) use ($churchId, $ministryIds, $allChurch) {
+                    $q->where('ministries.church_id', $churchId);
+                    if (! $allChurch) {
+                        $q->whereIn('ministries.id', $ministryIds);
+                    }
+                },
             )
             ->where(function ($q) use ($month) {
                 $q->where(function ($inner) use ($month) {
@@ -104,15 +122,18 @@ class LeaderVolunteerBirthdays
             })
             ->with([
                 'user:id,photo_url,birth_date,name',
-                'ministries' => fn ($q) => $q
-                    ->where('ministries.church_id', $churchId)
-                    ->whereIn('ministries.id', $ministryIds)
-                    ->select('ministries.id', 'ministries.name'),
+                'ministries' => function ($q) use ($churchId, $ministryIds, $allChurch) {
+                    $q->where('ministries.church_id', $churchId)
+                        ->select('ministries.id', 'ministries.name');
+                    if (! $allChurch) {
+                        $q->whereIn('ministries.id', $ministryIds);
+                    }
+                },
             ])
             ->orderBy('name')
             ->get(['id', 'user_id', 'name', 'birth_date']);
 
-        return $volunteers
+        $rows = $volunteers
             ->map(function (Volunteer $v) use ($isCurrentMonth, $todayDay, $viewerUserId) {
                 $parts = self::calendarDateParts(
                     $v->birth_date ?? $v->user?->birth_date,
@@ -159,7 +180,16 @@ class LeaderVolunteerBirthdays
                         : null,
                 ];
             })
-            ->filter()
+            ->filter();
+
+        if ($sortBy === 'name') {
+            return $rows
+                ->sortBy(fn (array $row) => mb_strtolower($row['name']), SORT_NATURAL)
+                ->values()
+                ->all();
+        }
+
+        return $rows
             ->sortBy(fn (array $row) => [
                 $row['isToday'] ? 0 : 1,
                 $row['day'],

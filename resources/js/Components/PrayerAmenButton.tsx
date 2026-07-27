@@ -25,12 +25,12 @@ export default function PrayerAmenButton({ prayerId, count }: Props) {
                     },
                 );
             }}
-            className="inline-flex items-center gap-2 rounded-xl border border-brand-600/90 bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-60 dark:border-brand-500 dark:bg-brand-600 dark:hover:bg-brand-500"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-brand-200/90 bg-brand-50/80 px-3.5 py-1.5 text-sm font-medium text-brand-800 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-900 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-800/70 dark:bg-brand-950/40 dark:text-brand-200 dark:hover:border-brand-700 dark:hover:bg-brand-950/60 dark:hover:text-brand-100"
         >
-            <PrayingHandsIcon className="h-5 w-5 shrink-0 text-white opacity-95" />
+            <PrayingHandsIcon className="h-4 w-4 shrink-0 text-brand-600 opacity-90 dark:text-brand-400" />
             <span>Orar</span>
             {count > 0 && (
-                <span className="rounded-full bg-white/25 px-2 py-0.5 text-xs font-semibold tabular-nums text-white dark:bg-white/20">
+                <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-brand-700 dark:bg-brand-900/60 dark:text-brand-200">
                     {count}
                 </span>
             )}

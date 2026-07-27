@@ -25,6 +25,8 @@ type BirthdayRow = {
     congratulateUrl?: string | null;
 };
 
+type BirthdayScope = 'area' | 'all';
+
 interface Props {
     month: number;
     year: number;
@@ -34,6 +36,9 @@ interface Props {
     todayCount: number;
     isCurrentMonth: boolean;
     nsWhatsEnabled?: boolean;
+    canViewAllVolunteers?: boolean;
+    scope?: BirthdayScope;
+    hasAreaScope?: boolean;
 }
 
 function capitalizeMonthLabel(label: string): string {
@@ -63,7 +68,23 @@ export default function LeaderBirthdays({
     todayCount,
     isCurrentMonth,
     nsWhatsEnabled = true,
+    canViewAllVolunteers = false,
+    scope = 'area',
+    hasAreaScope = true,
 }: Props) {
+    const isAllScope = scope === 'all';
+
+    const navigate = (next: { month?: number; year?: number; scope?: BirthdayScope }) => {
+        const m = next.month ?? month;
+        const y = next.year ?? year;
+        const nextScope = next.scope ?? scope;
+        const query: Record<string, number | string> = { month: m, year: y };
+        if (canViewAllVolunteers && nextScope === 'all') {
+            query.scope = 'all';
+        }
+        router.get(route('mobile.leader.birthdays'), query, { preserveScroll: true });
+    };
+
     const goMonth = (delta: number) => {
         let m = month + delta;
         let y = year;
@@ -74,7 +95,7 @@ export default function LeaderBirthdays({
             m = 1;
             y += 1;
         }
-        router.get(route('mobile.leader.birthdays'), { month: m, year: y }, { preserveScroll: true });
+        navigate({ month: m, year: y });
     };
 
     const todayRows = birthdays.filter((b) => b.isToday);
@@ -114,13 +135,51 @@ export default function LeaderBirthdays({
                                 {capitalizeMonthLabel(monthLabel)}
                             </h1>
                             <p className="mt-1.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-                                Pessoas da sua área em {churchName}. Envie parabéns pelo NS Conecta.
+                                {isAllScope
+                                    ? `Todos os voluntários de ${churchName}, em ordem alfabética.`
+                                    : `Pessoas da sua área em ${churchName}. Envie parabéns pelo NS Conecta.`}
                             </p>
                         </div>
                         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/80 shadow-sm ring-1 ring-rose-100 dark:bg-zinc-900/70 dark:ring-rose-900/50">
                             <GiftIcon className="h-7 w-7 text-rose-600 dark:text-rose-300" aria-hidden />
                         </div>
                     </div>
+
+                    {canViewAllVolunteers ? (
+                        <div
+                            className="relative mt-4 grid grid-cols-2 gap-1 rounded-2xl bg-white/70 p-1 ring-1 ring-rose-200/70 dark:bg-zinc-950/40 dark:ring-rose-900/50"
+                            role="tablist"
+                            aria-label="Escopo dos aniversariantes"
+                        >
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={!isAllScope}
+                                disabled={!hasAreaScope}
+                                onClick={() => navigate({ scope: 'area' })}
+                                className={`cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                                    !isAllScope
+                                        ? 'bg-rose-600 text-white shadow-sm dark:bg-rose-500'
+                                        : 'text-zinc-600 hover:bg-white/80 dark:text-zinc-300 dark:hover:bg-zinc-800/70'
+                                }`}
+                            >
+                                Minha área
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={isAllScope}
+                                onClick={() => navigate({ scope: 'all' })}
+                                className={`cursor-pointer rounded-xl px-3 py-2 text-center text-xs font-semibold transition ${
+                                    isAllScope
+                                        ? 'bg-rose-600 text-white shadow-sm dark:bg-rose-500'
+                                        : 'text-zinc-600 hover:bg-white/80 dark:text-zinc-300 dark:hover:bg-zinc-800/70'
+                                }`}
+                            >
+                                Todos A–Z
+                            </button>
+                        </div>
+                    ) : null}
 
                     <div className="relative mt-5 flex items-center justify-between gap-3">
                         <button
@@ -141,7 +200,9 @@ export default function LeaderBirthdays({
                                     {todayCount === 1 ? '1 aniversário hoje' : `${todayCount} aniversários hoje`}
                                 </p>
                             ) : (
-                                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Ordenados por dia do mês</p>
+                                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                    {isAllScope ? 'Ordenados por nome' : 'Ordenados por dia do mês'}
+                                </p>
                             )}
                         </div>
                         <button
@@ -162,9 +223,28 @@ export default function LeaderBirthdays({
                             Nenhum aniversariante neste mês
                         </p>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                            Só aparecem voluntários ativos da sua área com data de nascimento cadastrada.
+                            {isAllScope
+                                ? 'Só aparecem voluntários ativos da igreja com data de nascimento cadastrada.'
+                                : 'Só aparecem voluntários ativos da sua área com data de nascimento cadastrada.'}
                         </p>
                     </div>
+                ) : isAllScope ? (
+                    <section className="space-y-3">
+                        <h2 className="px-1 text-xs font-bold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
+                            Todos os voluntários
+                        </h2>
+                        <ul className="space-y-2">
+                            {birthdays.map((row) => (
+                                <li key={row.id}>
+                                    <BirthdayCard
+                                        row={row}
+                                        highlight={row.isToday}
+                                        nsWhatsEnabled={nsWhatsEnabled}
+                                    />
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
                 ) : (
                     <div className="space-y-6">
                         {todayRows.length > 0 ? (

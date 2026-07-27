@@ -177,7 +177,7 @@ class ChurchSolicitationPolicy
         return $this->updateVolunteerRequestAsSubmitter($user, $solicitation);
     }
 
-    /** O requerente (líder) envia mensagens no chat de comunicação enquanto o pedido estiver aberto. */
+    /** O requerente (líder ou voluntário) envia mensagens no chat de comunicação enquanto o pedido estiver aberto. */
     public function chatCommunicationRequestAsSubmitter(User $user, ChurchSolicitation $solicitation): bool
     {
         if ($solicitation->type !== MobileChurchSolicitationController::TYPE_COMMUNICATION_REQUEST) {

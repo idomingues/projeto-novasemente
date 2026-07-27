@@ -33,9 +33,14 @@ class CommunicationRequestController extends Controller
         return Church::resolveWorkingId($request);
     }
 
-    private function isLeaderAccount(User $user): bool
+    /** Líder de ministério ou voluntário — abre e acompanha os próprios pedidos. */
+    private function isSubmitterAccount(User $user): bool
     {
-        return $user->isMinistryLeaderAccount();
+        if ($user->isMinistryLeaderAccount()) {
+            return true;
+        }
+
+        return (bool) ($user->is_volunteer ?? false);
     }
 
     private function isStaff(User $user): bool
@@ -53,7 +58,7 @@ class CommunicationRequestController extends Controller
             return 'staff';
         }
 
-        if ($this->isLeaderAccount($user)) {
+        if ($this->isSubmitterAccount($user)) {
             return 'leader';
         }
 
@@ -67,16 +72,25 @@ class CommunicationRequestController extends Controller
     }
 
     /**
+     * Ministérios que o usuário lidera (`ministry_user`) ou em que serve como voluntário.
+     *
      * @return list<int>
      */
     private function linkedMinistryIdsForUser(User $user, int $churchId): array
     {
-        return $user->ministries()
+        $led = $user->ministries()
             ->where('ministries.church_id', $churchId)
             ->pluck('ministries.id')
             ->map(fn ($id) => (int) $id)
-            ->values()
             ->all();
+
+        $served = $user->volunteerProfile?->ministries()
+            ->where('ministries.church_id', $churchId)
+            ->pluck('ministries.id')
+            ->map(fn ($id) => (int) $id)
+            ->all() ?? [];
+
+        return array_values(array_unique(array_merge($led, $served)));
     }
 
     /**
@@ -84,10 +98,16 @@ class CommunicationRequestController extends Controller
      */
     private function linkedMinistryOptionsForUser(User $user, int $churchId): array
     {
-        return $user->ministries()
-            ->where('ministries.church_id', $churchId)
-            ->orderBy('ministries.name')
-            ->get(['ministries.id', 'ministries.name'])
+        $ids = $this->linkedMinistryIdsForUser($user, $churchId);
+        if ($ids === []) {
+            return [];
+        }
+
+        return Ministry::query()
+            ->where('church_id', $churchId)
+            ->whereIn('id', $ids)
+            ->orderBy('name')
+            ->get(['id', 'name'])
             ->map(fn (Ministry $m) => [
                 'value' => (int) $m->id,
                 'label' => (string) $m->name,

@@ -22,12 +22,24 @@ class CommunicationRequestTest extends TestCase
 
     private function leaderUser(Church $church): User
     {
-        $guard = config('auth.defaults.guard', 'web');
         $user = User::factory()->create([
             'church_id' => $church->id,
             'is_ministry_leader' => true,
         ]);
         $user->forceFill(['is_ministry_leader' => true])->save();
+
+        return $user;
+    }
+
+    private function volunteerUser(Church $church): User
+    {
+        $user = User::factory()->create([
+            'church_id' => $church->id,
+            'is_volunteer' => true,
+            'is_ministry_leader' => false,
+        ]);
+        $user->forceFill(['is_volunteer' => true, 'is_ministry_leader' => false])->save();
+        $user->ensureVolunteerProfile();
 
         return $user;
     }
@@ -117,5 +129,59 @@ class CommunicationRequestTest extends TestCase
                 'ministry_id' => $otherMinistry->id,
             ])
             ->assertSessionHasErrors('ministry_id');
+    }
+
+    public function test_volunteer_can_submit_with_served_ministry(): void
+    {
+        Mail::fake();
+        $this->seed([ChurchSeeder::class, MinistrySeeder::class]);
+        $church = Church::query()->firstOrFail();
+        $user = $this->volunteerUser($church);
+        $ministry = Ministry::query()->where('church_id', $church->id)->where('name', 'Louvor')->firstOrFail();
+        $user->volunteerProfile()->firstOrFail()->ministries()->sync([$ministry->id]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('communication-requests.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('CommunicationRequests/Index')
+                ->where('mode', 'leader')
+                ->where('ministryOptions.0.value', $ministry->id)
+                ->where('ministryOptions.0.label', 'Louvor'));
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('communication-requests.store'), [
+                'demand_type' => 'promotion_post',
+                'priority' => 'medium',
+                'ministry_id' => $ministry->id,
+                'message' => 'Postagem do evento do Louvor.',
+            ])
+            ->assertRedirect(route('communication-requests.index'))
+            ->assertSessionHas('success');
+
+        $meta = ChurchSolicitation::query()->latest('id')->first()?->meta ?? [];
+        $this->assertSame('Louvor', $meta['communication_ministry_name'] ?? null);
+
+        Mail::assertQueued(SolicitationNewRequestMail::class, function (SolicitationNewRequestMail $mail) {
+            return $mail->hasTo(config('communication.notify_email'));
+        });
+    }
+
+    public function test_member_without_volunteer_flag_cannot_access_communication_requests(): void
+    {
+        $this->seed([ChurchSeeder::class, MinistrySeeder::class]);
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create([
+            'church_id' => $church->id,
+            'is_volunteer' => false,
+            'is_ministry_leader' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('communication-requests.index'))
+            ->assertForbidden();
     }
 }

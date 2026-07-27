@@ -24,8 +24,12 @@ import VolunteerPipelineDetailTabBar from '@/Components/Volunteers/VolunteerPipe
 import VolunteerPipelineNotesPanel from '@/Components/Volunteers/VolunteerPipelineNotesPanel';
 import VolunteerEncaminharModal from '@/Components/Volunteers/VolunteerEncaminharModal';
 import VolunteerInviteShareModal from '@/Components/Volunteers/VolunteerInviteShareModal';
+import VolunteerMinistryInviteSendModal, {
+    type VolunteerMinistryInviteSendPayload,
+} from '@/Components/Volunteers/VolunteerMinistryInviteSendModal';
 import VolunteerAppInviteButton, {
     volunteerEncaminharButtonClass,
+    volunteerModalActionPillBaseClass,
     volunteerSalvarFaseButtonClass,
 } from '@/Components/Volunteers/VolunteerAppInviteButton';
 import { leaderMinistryIdsFromVolunteer } from '@/utils/volunteerMinistryLeadership';
@@ -44,7 +48,7 @@ import { volunteerDetailSections, volunteerRecordHeaderSubtitle, type VolunteerD
 import { centerVolunteersQuery, type CenterGroupBy, type CenterVinculo } from '@/utils/centerVolunteersQuery';
 import type { VolunteerRosterBoardFilters, VolunteerRosterListRow } from '@/utils/volunteerRosterList';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { PencilSquareIcon, PlusIcon, ArrowRightCircleIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, PlusIcon, ArrowRightCircleIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEventHandler } from 'react';
 import { useResizablePaneWidth } from '@/hooks/useResizablePaneWidth';
 
@@ -116,6 +120,11 @@ type Props = {
 
 type DetailTab = VolunteerModalUrlTab;
 
+type PendingMinistryInvite = VolunteerMinistryInviteSendPayload & {
+    invitationId: number;
+    ministryId: number;
+};
+
 type DetailJson = {
     volunteer: VolunteerDetailData;
     pipeline?: { stageId: number | null; stageName: string | null; adminWorkflowStageId: number | null };
@@ -124,6 +133,7 @@ type DetailJson = {
     notes: Array<{ id: number; body: string; authorName: string; createdAt: string; destroyUrl?: string | null }>;
     ministryOptions?: Array<{ id: number; name: string; attached: boolean; canEdit: boolean }>;
     forwardedMinistryIds?: number[];
+    pendingMinistryInvites?: PendingMinistryInvite[];
     updateStageUrl: string;
     storeNoteUrl: string;
     syncMinistriesUrl: string | null;
@@ -181,6 +191,8 @@ export default function ManagementCenter({
     const [inviteShare, setInviteShare] = useState<{ link: string; name: string } | null>(null);
     const [encaminharOpen, setEncaminharOpen] = useState(false);
     const [encaminharSelectedIds, setEncaminharSelectedIds] = useState<number[]>([]);
+    const [ministryInviteSend, setMinistryInviteSend] = useState<VolunteerMinistryInviteSendPayload | null>(null);
+    const [ministryInvitePickOpen, setMinistryInvitePickOpen] = useState(false);
     const isPhaseGroup = groupBy === 'fase';
     const boardFiltersRef = useRef(boardFilters);
     boardFiltersRef.current = boardFilters;
@@ -355,7 +367,7 @@ export default function ManagementCenter({
     );
 
     const refreshVolunteerDetail = useCallback(
-        async (id: number) => {
+        async (id: number): Promise<DetailJson | null> => {
             try {
                 const url = route('ministry-lead.volunteers.pipeline.detail', id);
                 const r = await fetch(url, {
@@ -364,12 +376,14 @@ export default function ManagementCenter({
                     cache: 'no-store',
                 });
                 if (!r.ok) {
-                    return;
+                    return null;
                 }
                 const j = (await r.json()) as DetailJson;
                 applyDetailJson(j);
+                return j;
             } catch {
                 // Mantém o conteúdo atual do modal em caso de falha na atualização.
+                return null;
             }
         },
         [applyDetailJson, csrf],
@@ -485,9 +499,21 @@ export default function ManagementCenter({
                 return;
             }
             showModalSaveMessage(
-                encaminhar ? 'Departamentos atualizados e encaminhamento registrado.' : 'Departamentos atualizados.',
+                encaminhar
+                    ? 'Departamentos atualizados e encaminhamento registrado. Envie o convite por e-mail ou WhatsApp.'
+                    : 'Departamentos atualizados.',
             );
-            if (selectedId) await refreshVolunteerDetail(selectedId);
+            if (selectedId) {
+                const j = await refreshVolunteerDetail(selectedId);
+                if (encaminhar) {
+                    const invites = j?.pendingMinistryInvites ?? [];
+                    if (invites.length === 1) {
+                        setMinistryInviteSend(invites[0]);
+                    } else if (invites.length > 1) {
+                        setMinistryInvitePickOpen(true);
+                    }
+                }
+            }
         } finally {
             setMinistriesSaving(false);
         }
@@ -543,19 +569,44 @@ export default function ManagementCenter({
         setEncaminharOpen(true);
     };
 
+    const pendingMinistryInvites = detail?.pendingMinistryInvites ?? [];
+
+    const openMinistryInviteSend = () => {
+        if (pendingMinistryInvites.length === 0) return;
+        if (pendingMinistryInvites.length === 1) {
+            setMinistryInviteSend(pendingMinistryInvites[0]);
+            return;
+        }
+        setMinistryInvitePickOpen(true);
+    };
+
+    const ministryInviteSendButtonClass = `${volunteerModalActionPillBaseClass} border-teal-600/80 bg-teal-50 text-teal-900 hover:bg-teal-100 dark:border-teal-500/70 dark:bg-teal-950/40 dark:text-teal-100 dark:hover:bg-teal-900/50`;
+
     const submitEncaminharFromDetail: FormEventHandler = (e) => {
         e.preventDefault();
         if (!selectedId || encaminharSelectedIds.length === 0) return;
+        const ministryIdsJustForwarded = [...encaminharSelectedIds];
+        const volunteerId = selectedId;
         router.post(
-            route('ministry-lead.volunteers.ministry-invite.store', selectedId),
-            { ministry_ids: encaminharSelectedIds, channels: [] },
+            route('ministry-lead.volunteers.ministry-invite.store', volunteerId),
+            { ministry_ids: ministryIdsJustForwarded, channels: [] },
             {
                 ...inertiaListModalSave,
                 onSuccess: () => {
                     setEncaminharSelectedIds([]);
                     setEncaminharOpen(false);
-                    showModalSaveMessage('Voluntário encaminhado.');
-                    void refreshVolunteerDetail(selectedId);
+                    showModalSaveMessage('Voluntário encaminhado. Envie o convite por e-mail ou WhatsApp.');
+                    void (async () => {
+                        const j = await refreshVolunteerDetail(volunteerId);
+                        const invites = (j?.pendingMinistryInvites ?? []).filter((invite) =>
+                            ministryIdsJustForwarded.includes(invite.ministryId),
+                        );
+                        if (invites.length === 1) {
+                            setMinistryInviteSend(invites[0]);
+                        } else if (invites.length > 1) {
+                            setMinistryInvitePickOpen(true);
+                        }
+                    })();
                 },
             },
         );
@@ -869,6 +920,17 @@ export default function ManagementCenter({
                                                     <ArrowRightCircleIcon className="h-4 w-4 shrink-0" aria-hidden />
                                                     Encaminhar
                                                 </button>
+                                                {pendingMinistryInvites.length > 0 ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={openMinistryInviteSend}
+                                                        className={ministryInviteSendButtonClass}
+                                                        title="Enviar convite oficial por e-mail ou WhatsApp (texto Nova Semente)"
+                                                    >
+                                                        <EnvelopeIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                                        Enviar convite
+                                                    </button>
+                                                ) : null}
                                                 {canInviteAppFromDetail ? (
                                                     <VolunteerAppInviteButton
                                                         disabled={invitingVolunteerId === selectedId}
@@ -892,6 +954,17 @@ export default function ManagementCenter({
                                                         : '—'}
                                                 </div>
                                             </div>
+                                            {pendingMinistryInvites.length > 0 ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={openMinistryInviteSend}
+                                                    className={ministryInviteSendButtonClass}
+                                                    title="Enviar convite oficial por e-mail ou WhatsApp (texto Nova Semente)"
+                                                >
+                                                    <EnvelopeIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                                    Enviar convite
+                                                </button>
+                                            ) : null}
                                         </div>
                                     )}
                                 </div>
@@ -1121,6 +1194,43 @@ export default function ManagementCenter({
                     setInviteShare(null);
                 }}
             />
+
+            <VolunteerMinistryInviteSendModal
+                show={!!ministryInviteSend}
+                payload={ministryInviteSend}
+                onClose={() => setMinistryInviteSend(null)}
+            />
+
+            <Modal show={ministryInvitePickOpen} onClose={() => setMinistryInvitePickOpen(false)} maxWidth="md">
+                <div className="space-y-4 p-6">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Enviar convite</h2>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                        Este voluntário tem convite pendente em mais de um departamento. Escolha qual mensagem enviar.
+                    </p>
+                    <ul className="space-y-2">
+                        {pendingMinistryInvites.map((invite) => (
+                            <li key={invite.invitationId}>
+                                <button
+                                    type="button"
+                                    className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-medium text-zinc-800 transition hover:border-teal-300 hover:bg-teal-50/60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-teal-700 dark:hover:bg-teal-950/30"
+                                    onClick={() => {
+                                        setMinistryInvitePickOpen(false);
+                                        setMinistryInviteSend(invite);
+                                    }}
+                                >
+                                    <span>{invite.ministryName ?? 'Departamento'}</span>
+                                    <EnvelopeIcon className="h-4 w-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden />
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="flex justify-end">
+                        <SecondaryButton type="button" onClick={() => setMinistryInvitePickOpen(false)}>
+                            Cancelar
+                        </SecondaryButton>
+                    </div>
+                </div>
+            </Modal>
         </AdminLayout>
     );
 }

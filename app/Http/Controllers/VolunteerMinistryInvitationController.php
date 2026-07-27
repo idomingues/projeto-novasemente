@@ -103,8 +103,8 @@ class VolunteerMinistryInvitationController extends Controller
                 : "{$created} convites enviados ao voluntário.";
         } else {
             $msg = $created === 1
-                ? 'Voluntário encaminhado ao departamento. Envie o convite em Meus voluntários quando quiser.'
-                : "Voluntário encaminhado a {$created} departamentos. Envie o convite em Meus voluntários quando quiser.";
+                ? 'Voluntário encaminhado ao departamento. Use «Enviar convite» na ficha para e-mail ou WhatsApp.'
+                : "Voluntário encaminhado a {$created} departamentos. Use «Enviar convite» na ficha para e-mail ou WhatsApp.";
         }
 
         return back()->with('success', $msg);
