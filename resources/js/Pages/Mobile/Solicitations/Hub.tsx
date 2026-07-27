@@ -309,7 +309,7 @@ export default function Hub({
             <Modal show={createOpen} onClose={closeCreate} maxWidth={step === 'form' ? '2xl' : 'md'} disableBodyScroll>
                 {step === 'pick' ? (
                     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-6">
-                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Nova solicitação</h2>
+                        <h2 className="mb-1 pr-10 text-lg font-semibold text-zinc-900 dark:text-white">Nova solicitação</h2>
                         <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-5">Escolha o tipo do seu pedido.</p>
 
                         <div className="grid grid-cols-1 gap-2">
@@ -332,12 +332,6 @@ export default function Hub({
                                     </button>
                                 );
                             })}
-                        </div>
-
-                        <div className="mt-6 flex justify-end">
-                            <SecondaryButton type="button" onClick={closeCreate}>
-                                Fechar
-                            </SecondaryButton>
                         </div>
                     </div>
                 ) : (
@@ -458,16 +452,6 @@ export default function Hub({
                                 leaderHideConversationUrl={detailRow.leaderHideConversationUrl ?? null}
                                 hideConversationReturnTo={hideConversationReturnTo}
                             />
-                        </div>
-
-                        <div className="mt-6 flex justify-end">
-                            <button
-                                type="button"
-                                className="text-sm font-medium text-zinc-600 underline dark:text-zinc-400"
-                                onClick={closeDetail}
-                            >
-                                Fechar
-                            </button>
                         </div>
                     </div>
                 ) : null}

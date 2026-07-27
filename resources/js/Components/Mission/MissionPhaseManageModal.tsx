@@ -241,12 +241,6 @@ export default function MissionPhaseManageModal({
                             </PrimaryButton>
                         </form>
                     </div>
-
-                    <div className="mt-4 flex justify-end">
-                        <SecondaryButton type="button" onClick={onClose} className="!h-10 !px-5 !text-xs !normal-case !tracking-normal">
-                            Fechar
-                        </SecondaryButton>
-                    </div>
                 </div>
             </div>
         </Modal>

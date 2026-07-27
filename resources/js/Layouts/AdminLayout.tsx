@@ -43,7 +43,7 @@ export default function AdminLayout({
           : 'pt-6';
 
     return (
-        <div className="min-h-screen w-full max-w-full min-w-0 overflow-x-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
+        <div className="ns-app-shell fixed inset-0 z-0 h-[100dvh] max-h-[100dvh] w-full max-w-full min-w-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
             {showAdminSidebar ? (
                 <Sidebar
                     mobileOpen={menuOpen}
@@ -52,12 +52,12 @@ export default function AdminLayout({
                 />
             ) : null}
 
-            <div className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full min-w-0 flex-col overflow-hidden">
+            <div className="flex h-full max-h-full w-full max-w-full min-w-0 flex-col overflow-hidden">
                 {!modalOverlayOpen ? (
                     <Topbar onMenuClick={showAdminSidebar ? () => setMenuOpen(true) : undefined} />
                 ) : null}
 
-                <main className={`min-h-0 flex-1 overflow-x-hidden overscroll-y-contain overscroll-x-none md:[scrollbar-gutter:stable] ${mainClassName}`}>
+                <main className={`min-h-0 flex-1 overflow-x-hidden overscroll-y-none overscroll-x-none md:[scrollbar-gutter:stable] ${mainClassName}`}>
                     <div
                         className={`mx-auto w-full min-w-0 ${innerClassName} ${wideLayout ? 'max-w-none' : 'max-w-7xl xl:max-w-[90rem]'}`}
                     >

@@ -18,6 +18,7 @@ import {
     BoltIcon,
     DocumentDuplicateIcon,
     PlayCircleIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { FormEventHandler, useState } from 'react';
 
@@ -604,10 +605,11 @@ export default function MobileDonationCampaignShow({ campaign, recentDonations, 
                 >
                     <button
                         type="button"
-                        className="absolute right-4 top-4 rounded-full bg-white/10 px-3 py-1 text-sm text-white"
+                        className="absolute right-4 top-4 cursor-pointer rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
                         onClick={() => setLightboxUrl(null)}
+                        aria-label="Fechar"
                     >
-                        Fechar
+                        <XMarkIcon className="h-6 w-6" aria-hidden />
                     </button>
                     <img
                         src={lightboxUrl}

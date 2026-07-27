@@ -125,10 +125,12 @@ class SupportTicketAdminPresenter
                 'priority' => $ticket->priority ?? AppSupportTicket::PRIORITY_MEDIUM,
                 'priorityLabel' => AppSupportTicketOptions::priorityLabel($ticket->priority),
                 'isGuest' => ! (bool) $ticket->user_id,
-                'allowStaffInternalChat' => $ticket->type === 'pastoral'
-                    && ! $ticket->user_id
-                    && $ticket->pastoral_appointment_id
-                    && $ticket->status === 'open',
+                'guestEmail' => is_string($ticket->guest_email) && trim($ticket->guest_email) !== ''
+                    ? trim($ticket->guest_email)
+                    : null,
+                /** Equipe pode conversar em chamado de visitante (histórico + e-mail, se houver). */
+                'allowStaffInternalChat' => ! (bool) $ticket->user_id
+                    && AppSupportTicket::isActiveStatus((string) $ticket->status),
                 'status' => $ticket->status,
                 'statusLabel' => self::statusLabel((string) $ticket->status),
                 'message' => $ticket->message,

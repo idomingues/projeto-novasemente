@@ -14,6 +14,8 @@ class ProfileTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const SAMPLE_BIRTH_DATE = '1990-01-15';
+
     public function test_profile_page_is_displayed(): void
     {
         $user = User::factory()->create();
@@ -34,6 +36,7 @@ class ProfileTest extends TestCase
             ->patch('/profile', [
                 'name' => 'Test User',
                 'email' => 'test@example.com',
+                'birth_date' => self::SAMPLE_BIRTH_DATE,
             ]);
 
         $response
@@ -44,6 +47,7 @@ class ProfileTest extends TestCase
 
         $this->assertSame('Test User', $user->name);
         $this->assertSame('test@example.com', $user->email);
+        $this->assertSame(self::SAMPLE_BIRTH_DATE, $user->birth_date?->format('Y-m-d'));
         $this->assertNull($user->email_verified_at);
     }
 
@@ -65,6 +69,7 @@ class ProfileTest extends TestCase
             ->patch('/profile', [
                 'name' => $user->name,
                 'email' => $user->email,
+                'birth_date' => self::SAMPLE_BIRTH_DATE,
                 'notify_via_app' => true,
                 'notify_via_email' => true,
                 'notify_via_whatsapp' => false,
@@ -88,6 +93,7 @@ class ProfileTest extends TestCase
             ->patch('/profile', [
                 'name' => 'Admin',
                 'email' => 'novo.admin@example.com',
+                'birth_date' => self::SAMPLE_BIRTH_DATE,
                 'notify_via_app' => true,
                 'notify_via_email' => true,
                 'notify_via_whatsapp' => false,
@@ -114,6 +120,7 @@ class ProfileTest extends TestCase
             ->patch('/profile', [
                 'name' => $user->name,
                 'email' => 'ocupado@example.com',
+                'birth_date' => self::SAMPLE_BIRTH_DATE,
                 'redirect_to' => 'mobile.profile.edit',
             ]);
 
@@ -133,6 +140,7 @@ class ProfileTest extends TestCase
             ->patch('/profile', [
                 'name' => 'Nome Atualizado',
                 'email' => 'depois@example.com',
+                'birth_date' => self::SAMPLE_BIRTH_DATE,
                 'notify_via_app' => '1',
                 'notify_via_email' => '1',
                 'notify_via_whatsapp' => '0',
@@ -156,6 +164,7 @@ class ProfileTest extends TestCase
             ->patch('/profile', [
                 'name' => 'Test User',
                 'email' => $user->email,
+                'birth_date' => self::SAMPLE_BIRTH_DATE,
             ]);
 
         $response
@@ -199,5 +208,37 @@ class ProfileTest extends TestCase
             ->assertRedirect('/profile');
 
         $this->assertNotNull($user->fresh());
+    }
+
+    public function test_profile_update_syncs_birth_date_to_volunteer_record(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'birth_date' => null,
+        ]);
+        $user->ensureVolunteerProfile();
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+        $volunteer->forceFill(['birth_date' => null])->save();
+
+        $this->actingAs($user)
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => $user->email,
+                'birth_date' => '1988-05-20',
+                'notify_via_app' => true,
+                'notify_via_email' => true,
+                'notify_via_whatsapp' => false,
+                'redirect_to' => 'mobile.profile.edit',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('1988-05-20', $user->fresh()->birth_date?->format('Y-m-d'));
+        $this->assertSame('1988-05-20', $volunteer->fresh()->birth_date?->format('Y-m-d'));
     }
 }

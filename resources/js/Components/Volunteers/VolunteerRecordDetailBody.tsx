@@ -7,13 +7,11 @@ export default function VolunteerRecordDetailBody({
     volunteer,
     badge,
     subtitle,
-    onClose,
     footer,
 }: {
     volunteer: VolunteerDetailData;
     badge?: string | null;
     subtitle?: string | null;
-    onClose: () => void;
     footer?: ReactNode;
 }) {
     const title = volunteer.name?.trim() || volunteer.user?.name?.trim() || 'Voluntário';
@@ -29,7 +27,6 @@ export default function VolunteerRecordDetailBody({
                 subtitle={resolvedSubtitle}
                 photoUrl={photoUrl}
                 badge={badge}
-                onClose={onClose}
             />
             <RecordDetailSections sections={sections} />
             {footer}

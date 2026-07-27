@@ -123,11 +123,13 @@ export default function MobileSupport({
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+        if (processing) return;
         post(route('mobile.support.store'), {
             ...inertiaListModalSave,
             forceFormData: true,
             onSuccess: () => {
                 reset();
+                setIsCreateModalOpen(false);
             },
         });
     };
@@ -386,13 +388,10 @@ export default function MobileSupport({
 
             <Modal show={showTicketModal} onClose={closeTicketModal} maxWidth="2xl">
                 <div className="flex max-h-[85vh] flex-col">
-                    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
+                    <div className="shrink-0 border-b border-zinc-200 px-4 py-3 pr-10 dark:border-zinc-700">
                         <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
                             {modalDetail?.ticket.typeLabel ?? 'Chamado'}
                         </h2>
-                        <SecondaryButton type="button" onClick={closeTicketModal}>
-                            Fechar
-                        </SecondaryButton>
                     </div>
                     <div className="min-h-0 flex-1 overflow-y-auto p-4">
                         {modalDetail ? <MobileSupportTicketPanel {...modalDetail} /> : null}

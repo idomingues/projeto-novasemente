@@ -203,7 +203,7 @@ export default function MobileLibraryShow({ book }: Props) {
                     </div>
                 </div>
 
-                <Modal show={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="lg">
+                <Modal show={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="lg" showCloseButton={false}>
                     <div className="relative">
                         {cover ? (
                             <img src={cover} alt="" className="max-h-52 w-full object-cover sm:max-h-64" />
@@ -231,13 +231,6 @@ export default function MobileLibraryShow({ book }: Props) {
                                 {description}
                             </p>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setDetailsOpen(false)}
-                            className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:w-auto sm:px-8"
-                        >
-                            Fechar
-                        </button>
                     </div>
                 </Modal>
             </MobileLayout>
@@ -290,7 +283,7 @@ export default function MobileLibraryShow({ book }: Props) {
                     ) : null}
                 </div>
 
-                <Modal show={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="lg">
+                <Modal show={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="lg" showCloseButton={false}>
                     <div className="relative">
                         {cover ? (
                             <img src={cover} alt="" className="max-h-52 w-full object-cover sm:max-h-64" />
@@ -318,13 +311,6 @@ export default function MobileLibraryShow({ book }: Props) {
                                 {description}
                             </p>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setDetailsOpen(false)}
-                            className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:w-auto sm:px-8"
-                        >
-                            Fechar
-                        </button>
                     </div>
                 </Modal>
             </MobileLayout>
@@ -433,7 +419,7 @@ export default function MobileLibraryShow({ book }: Props) {
                 </article>
             </div>
 
-            <Modal show={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="lg">
+            <Modal show={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="lg" showCloseButton={false}>
                 <div className="relative">
                     {cover ? (
                         <img src={cover} alt="" className="max-h-52 w-full object-cover sm:max-h-64" />
@@ -461,13 +447,6 @@ export default function MobileLibraryShow({ book }: Props) {
                             {description}
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => setDetailsOpen(false)}
-                        className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:w-auto sm:px-8"
-                    >
-                        Fechar
-                    </button>
                 </div>
             </Modal>
         </MobileLayout>

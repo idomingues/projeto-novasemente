@@ -500,9 +500,6 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                     Abrir no app
                                 </Link>
                             ) : null}
-                            <SecondaryButton type="button" onClick={() => setPreviewCampaign(null)}>
-                                Fechar
-                            </SecondaryButton>
                         </div>
                     </div>
                     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">

@@ -114,11 +114,6 @@ export default function MissionInviteShareModal({ show, link, inviteeName = '', 
                             Abrir WhatsApp
                         </button>
                     </div>
-                    <div className="flex justify-end pt-1">
-                        <PrimaryButton type="button" onClick={onClose} className="w-full rounded-full sm:w-auto">
-                            Fechar
-                        </PrimaryButton>
-                    </div>
                 </div>
             </div>
         </Modal>

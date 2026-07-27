@@ -413,12 +413,6 @@ export default function RoleUsersModal({
                         </ul>
                     )}
                 </div>
-
-                <div className="flex justify-end border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
-                    <SecondaryButton type="button" disabled={busy} onClick={requestClose}>
-                        Fechar
-                    </SecondaryButton>
-                </div>
             </div>
         </Modal>
     );

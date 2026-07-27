@@ -735,9 +735,6 @@ export default function Index({ items, filters }: Props) {
                             </div>
                         ))}
                     </div>
-                    <div className="mt-4 flex justify-end">
-                        <SecondaryButton type="button" onClick={() => setHistoryModalOpen(false)}>Fechar</SecondaryButton>
-                    </div>
                 </div>
             </Modal>
 

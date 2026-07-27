@@ -628,9 +628,6 @@ export default function CommunicationRequestsIndex({
                             Limpar filtros
                         </button>
                         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                            <SecondaryButton type="button" className="justify-center sm:w-auto" onClick={() => setFilterSheetOpen(false)}>
-                                Fechar
-                            </SecondaryButton>
                             <PrimaryButton
                                 type="submit"
                                 form="communication-requests-filter-form"
@@ -731,7 +728,6 @@ export default function CommunicationRequestsIndex({
                                 }}
                                 subtitle={panelPayload.solicitation.typeLabel ?? 'Solicitação de comunicação'}
                                 badge={`#${panelPayload.solicitation.id}`}
-                                onClose={closePanel}
                             />
                         ) : (
                             <h2 className="pr-10 text-lg font-semibold text-zinc-900 dark:text-white">Solicitação de comunicação</h2>

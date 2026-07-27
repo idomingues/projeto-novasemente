@@ -131,9 +131,6 @@ export default function PublicVolunteerSignupShareModal({
                                 Gerar novo link (invalida o anterior)
                             </button>
                         ) : null}
-                        <PrimaryButton type="button" onClick={onClose} className="w-full rounded-full sm:w-auto">
-                            Fechar
-                        </PrimaryButton>
                     </div>
                 </div>
             </div>

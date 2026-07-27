@@ -1878,7 +1878,6 @@ export default function Pipeline({
                                         }
                                         return parts.length > 0 ? parts.join(' · ') : null;
                                     })()}
-                                    onClose={closeVolunteerModal}
                                 />
                                 <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">
                                     {canPipelineMutate ? (
@@ -2393,12 +2392,6 @@ export default function Pipeline({
                                 Adicionar fase
                             </PrimaryButton>
                         </form>
-                    </div>
-
-                    <div className="flex justify-end border-t border-zinc-200 pt-4 dark:border-zinc-700">
-                        <SecondaryButton type="button" onClick={() => setStageManageOpen(false)}>
-                            Fechar
-                        </SecondaryButton>
                     </div>
                 </div>
             </Modal>

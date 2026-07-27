@@ -131,6 +131,7 @@ class VolunteerSignupCompletionTest extends TestCase
         $this->assertFalse($completion['is_complete']);
         $this->assertSame(1, $completion['missing_count']);
         $this->assertSame(['birth_date'], $completion['missing_fields']);
+        $this->assertTrue(VolunteerSignupCompletion::onlyBirthDateMissing($completion));
     }
 
     public function test_complete_volunteer_profile_reports_one_hundred_percent(): void

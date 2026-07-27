@@ -408,13 +408,6 @@ export default function TalentConnectionIndex({
                             Limpar filtros
                         </button>
                         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                            <SecondaryButton
-                                type="button"
-                                className="justify-center sm:w-auto"
-                                onClick={() => setFilterSheetOpen(false)}
-                            >
-                                Fechar
-                            </SecondaryButton>
                             <PrimaryButton type="submit" form="talents-filter-form" className="justify-center sm:w-auto">
                                 Aplicar
                             </PrimaryButton>

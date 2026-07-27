@@ -145,11 +145,12 @@ export default function MobileMore(_: Props) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
                     {visibleItems.map((item) => {
                         const { name, description, icon: Icon } = item;
-                        const className = 'flex cursor-pointer items-center gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 active:bg-zinc-50 dark:active:bg-zinc-800 transition-colors';
+                        const className =
+                            'group flex cursor-pointer items-center gap-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-200/80 transition duration-200 hover:bg-zinc-50 hover:shadow-md hover:ring-zinc-300/90 active:bg-zinc-100/80 dark:bg-zinc-900 dark:ring-zinc-700/70 dark:hover:bg-zinc-800/60 dark:hover:ring-zinc-600/70';
                         const content = (
                             <>
-                                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-zinc-100 dark:bg-zinc-800">
-                                    <Icon className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
+                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600 ring-1 ring-inset ring-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700/60">
+                                    <Icon className="h-6 w-6" />
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <span className="font-semibold text-zinc-900 dark:text-white block">{name}</span>

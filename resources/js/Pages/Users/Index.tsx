@@ -1047,7 +1047,6 @@ export default function Index({
                                 title={(data.name ?? '').trim() || memberForLgpd?.name || 'Usuário'}
                                 subtitle={memberForLgpd?.role_label ?? 'Conta no app'}
                                 badge={data.status === 'active' ? 'Ativo' : 'Inativo'}
-                                onClose={closeModal}
                             />
                             <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
                                 Ficha da pessoa e conta no app na mesma tela.

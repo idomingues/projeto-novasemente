@@ -102,6 +102,10 @@ class VolunteerSelfSignupEditController extends Controller
 
         $focusMissingOnly = $request->boolean('missing') && ! $completion['is_complete'];
 
+        if ($focusMissingOnly && VolunteerSignupCompletion::onlyBirthDateMissing($completion)) {
+            return redirect()->route('volunteers.self-signup.birth-date');
+        }
+
         return Inertia::render('Volunteers/PublicSignup', [
             'mode' => 'edit',
             'churchName' => $church?->name ?? 'Nova Semente',
@@ -115,6 +119,94 @@ class VolunteerSelfSignupEditController extends Controller
             'resumePage' => $this->resolveResumePageFromQuery($request),
             'existingRegistrationNotice' => true,
         ]);
+    }
+
+    public function editBirthDate(Request $request): RedirectResponse|Response
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return redirect()->route('login');
+        }
+
+        if (! (bool) ($user->is_volunteer ?? false)) {
+            return redirect()->route('mobile.profile');
+        }
+
+        $user->ensureVolunteerProfile();
+        $completion = VolunteerSignupCompletion::forUser($user);
+
+        if ($completion['is_complete']) {
+            return redirect()->route('mobile.home')->with(
+                'status',
+                'Seu cadastro de voluntário já está completo.'
+            );
+        }
+
+        if (! VolunteerSignupCompletion::onlyBirthDateMissing($completion)) {
+            return redirect()->route('volunteers.self-signup.edit', ['missing' => 1]);
+        }
+
+        $volunteer = $user->volunteerProfile;
+
+        return Inertia::render('Volunteers/BirthDatePrompt', [
+            'cancelHref' => route('mobile.home'),
+            'birthDate' => $volunteer?->birth_date?->format('Y-m-d')
+                ?? $user->birth_date?->format('Y-m-d')
+                ?? '',
+            'maxBirthDate' => now()->subYears(10)->toDateString(),
+        ]);
+    }
+
+    public function updateBirthDate(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return redirect()->route('login');
+        }
+
+        if (! (bool) ($user->is_volunteer ?? false)) {
+            return redirect()->route('mobile.profile');
+        }
+
+        $user->ensureVolunteerProfile();
+        $user->load('volunteerProfile');
+        $volunteer = $user->volunteerProfile;
+
+        if ($volunteer === null) {
+            return redirect()->route('mobile.profile')->with(
+                'error',
+                'Cadastro de voluntário não encontrado. Entre em contato com a secretaria.'
+            );
+        }
+
+        $completion = VolunteerSignupCompletion::forUser($user);
+        if (! VolunteerSignupCompletion::onlyBirthDateMissing($completion) && ! $completion['is_complete']) {
+            return redirect()->route('volunteers.self-signup.edit', ['missing' => 1]);
+        }
+
+        $minBirthDate = now()->subYears(10)->toDateString();
+        $validated = $request->validate([
+            'birth_date' => ['required', 'date', 'before:today', 'before_or_equal:'.$minBirthDate],
+        ], [
+            'birth_date.required' => 'Informe a data de nascimento.',
+            'birth_date.before' => 'Informe uma data de nascimento válida.',
+            'birth_date.before_or_equal' => 'O voluntário deve ter pelo menos 10 anos de idade.',
+        ]);
+
+        $birthDate = (string) $validated['birth_date'];
+        $volunteer->forceFill(['birth_date' => $birthDate])->save();
+        $user->forceFill(['birth_date' => $birthDate])->save();
+
+        $freshCompletion = VolunteerSignupCompletion::forUser($user->fresh() ?? $user);
+        if (! $freshCompletion['is_complete']) {
+            return redirect()
+                ->route('volunteers.self-signup.edit', ['missing' => 1])
+                ->with('status', 'Data de nascimento salva. Continue as perguntas pendentes.');
+        }
+
+        return redirect()
+            ->route('mobile.home')
+            ->with('status', 'Data de nascimento salva. Obrigado!');
     }
 
     public function update(Request $request): RedirectResponse

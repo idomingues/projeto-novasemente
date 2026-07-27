@@ -85,7 +85,7 @@ export default function MobileBeliefs() {
                 </p>
             </div>
 
-            <Modal show={open !== null} onClose={close} maxWidth="lg">
+            <Modal show={open !== null} onClose={close} maxWidth="lg" showCloseButton={false}>
                 {open && (
                     <div className="relative">
                         <div className="relative max-h-48 overflow-hidden sm:max-h-56">
@@ -128,13 +128,6 @@ export default function MobileBeliefs() {
                                 Abrir no site oficial
                                 <ArrowTopRightOnSquareIcon className="h-5 w-5" />
                             </a>
-                            <button
-                                type="button"
-                                onClick={close}
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:w-auto sm:px-8"
-                            >
-                                Fechar
-                            </button>
                         </div>
                     </div>
                 )}

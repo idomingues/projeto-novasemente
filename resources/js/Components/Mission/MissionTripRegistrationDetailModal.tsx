@@ -62,12 +62,6 @@ export default function MissionTripRegistrationDetailModal({ registration, onClo
                     <DetailRow label="Profissão / área" value={registration.professionLabel} />
                 </dl>
             </div>
-
-            <div className="border-t border-zinc-200 px-5 py-4 dark:border-zinc-800 sm:px-6">
-                <SecondaryButton type="button" onClick={onClose} className="w-full sm:w-auto">
-                    Fechar
-                </SecondaryButton>
-            </div>
         </Modal>
     );
 }

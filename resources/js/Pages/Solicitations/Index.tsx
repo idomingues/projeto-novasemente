@@ -531,9 +531,6 @@ export default function SolicitationsIndex({
                             Limpar filtros
                         </button>
                         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                            <SecondaryButton type="button" className="justify-center sm:w-auto" onClick={() => setFilterSheetOpen(false)}>
-                                Fechar
-                            </SecondaryButton>
                             <PrimaryButton type="submit" form="solicitations-filter-form" className="justify-center sm:w-auto">
                                 Aplicar
                             </PrimaryButton>
@@ -714,7 +711,6 @@ export default function SolicitationsIndex({
                                 }}
                                 subtitle={modalDetail.payload.solicitation.typeLabel ?? 'Pedido'}
                                 badge={modalDetail.payload.solicitation.statusLabel}
-                                onClose={closeModal}
                             />
                         ) : modalDetail?.kind === 'pastoral' ? (
                             <PersonModalHeader
@@ -724,7 +720,6 @@ export default function SolicitationsIndex({
                                 }}
                                 subtitle={modalDetail.payload.ticket.typeLabel}
                                 badge={modalDetail.payload.ticket.statusLabel ?? modalDetail.payload.ticket.status}
-                                onClose={closeModal}
                             />
                         ) : (
                             <h2 className="pr-10 text-lg font-semibold text-zinc-900 dark:text-white">Pedido</h2>

@@ -59,6 +59,7 @@ class ProfileController extends Controller
             'status' => session('status'),
             'volunteerMinistries' => $volunteerMinistries,
             'profileRedirectTo' => 'profile.edit',
+            'profileMaxBirthDate' => now()->subYears(10)->toDateString(),
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
             'volunteerSignupProgress' => $volunteerSignupProgress,
         ]);
@@ -85,6 +86,14 @@ class ProfileController extends Controller
 
         $user->save();
         $user->syncVolunteerRecord();
+
+        $birthDate = $validated['birth_date'] ?? null;
+        if ($birthDate) {
+            $volunteer = $user->fresh()->volunteerProfile;
+            if ($volunteer !== null) {
+                $volunteer->forceFill(['birth_date' => $birthDate])->save();
+            }
+        }
 
         return Redirect::route($redirectTo)->with('success', 'Perfil atualizado com sucesso.');
     }

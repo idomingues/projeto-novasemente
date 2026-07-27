@@ -10,9 +10,12 @@ use App\Models\ChurchSolicitation;
 use App\Models\Event;
 use App\Models\MissionTripRegistration;
 use App\Models\Pastor;
+use App\Models\PastoralAppointment;
+use App\Support\BaptismSolicitationStatus;
 use App\Support\ChurchAppFeatures;
 use App\Support\MobileProjectVersionHint;
 use App\Support\NotificationFeed;
+use App\Support\PastoralSolicitationStatus;
 use App\Support\PublicationsFeedAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -193,6 +196,7 @@ class HandleInertiaRequests extends Middleware
         }
 
         $openSolicitationsCount = 0;
+        $openBaptismRequestsCount = 0;
         if ($request->user()) {
             $u = $request->user();
             $atendimentoStaff = $u->hasAnyRole(['super_admin', 'admin', 'pastor', 'secretaria']);
@@ -203,14 +207,32 @@ class HandleInertiaRequests extends Middleware
             $cid = Church::resolveWorkingId($request);
             if ($canViewSolicitations && $cid !== null) {
                 try {
+                    // Alinha à aba «Pendente» de Atendimento (exclui batismo — menu próprio).
                     $openSolicitationsCount = (int) ChurchSolicitation::query()
                         ->where('church_id', (int) $cid)
                         ->whereNotIn('type', MobileChurchSolicitationController::TYPES_OUTSIDE_PASTORAL_INDEX)
-                        ->whereIn('status', ['pending', 'in_progress'])
+                        ->where('type', '!=', 'baptism')
+                        ->whereIn('status', PastoralSolicitationStatus::statusesForTab('pendente'))
                         ->whereNull('staff_archived_at')
+                        ->count();
+
+                    if ($u->hasAnyRole(['super_admin', 'admin']) || $u->can('pastoral_appointments.manage')) {
+                        $aptStatuses = PastoralSolicitationStatus::pastoralAppointmentStatusesForTab('pendente') ?? ['pending'];
+                        $openSolicitationsCount += (int) PastoralAppointment::query()
+                            ->where('church_id', (int) $cid)
+                            ->whereIn('status', $aptStatuses)
+                            ->count();
+                    }
+
+                    // Badge de Batismo: só pedidos na aba «Pendente» (não aguardando/batizados/arquivados).
+                    $openBaptismRequestsCount = (int) ChurchSolicitation::query()
+                        ->where('church_id', (int) $cid)
+                        ->where('type', 'baptism')
+                        ->where('status', BaptismSolicitationStatus::PENDING)
                         ->count();
                 } catch (\Throwable) {
                     $openSolicitationsCount = 0;
+                    $openBaptismRequestsCount = 0;
                 }
             }
         }
@@ -305,8 +327,10 @@ class HandleInertiaRequests extends Middleware
                 'linkedPastor' => $linkedPastor,
                 /** Mostrar «Agenda Pastoral» no menu (pastor ligado, papel pastor, ou quem gere pastores). */
                 'pastoralAgendaMenuVisible' => $pastoralAgendaMenuVisible,
-                /** Badge no menu lateral para alertas (Atendimento Pastoral). */
+                /** Badge no menu lateral — Atendimento Pastoral (aba Pendente). */
                 'openSolicitationsCount' => $openSolicitationsCount,
+                /** Badge no menu lateral — pedidos de batismo na aba Pendente. */
+                'openBaptismRequestsCount' => $openBaptismRequestsCount,
                 /** Badge no menu lateral — pedidos de voluntário em aberto (secretaria / quem gere `solicitations.manage`). */
                 'openVolunteerRequestsCount' => $openVolunteerRequestsCount,
                 /** Badge no menu lateral — chamados de suporte não atendidos. */

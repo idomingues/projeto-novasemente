@@ -446,6 +446,25 @@ export function volunteerSignupMissingOnlyHref(): string {
     return `${route('volunteers.self-signup.edit')}?missing=1`;
 }
 
+/** Pendência obrigatória é exclusivamente a data de nascimento. */
+export function volunteerSignupOnlyBirthDateMissing(
+    completion: Pick<VolunteerSignupCompletion, 'missing_fields'> | null | undefined,
+): boolean {
+    const missing = (completion?.missing_fields ?? []).filter((field) => field.trim() !== '');
+    return missing.length === 1 && missing[0] === 'birth_date';
+}
+
+/** Link do CTA: formulário curto de data, ou questionário só com pendências. */
+export function volunteerSignupPendingHref(
+    completion: Pick<VolunteerSignupCompletion, 'missing_fields' | 'is_complete'> | null | undefined,
+): string {
+    if (volunteerSignupOnlyBirthDateMissing(completion) && route().has('volunteers.self-signup.birth-date')) {
+        return route('volunteers.self-signup.birth-date');
+    }
+
+    return volunteerSignupMissingOnlyHref();
+}
+
 const VOLUNTEER_SIGNUP_INITIAL_FORM_KEYS = [
     'full_name',
     'first_name',

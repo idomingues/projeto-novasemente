@@ -9,7 +9,7 @@ const settingsRowClass =
     'block w-full px-4 py-3 text-left text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/50 dark:active:bg-zinc-800';
 
 const moreCardClass =
-    'flex w-full items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 text-left transition-colors hover:border-zinc-300 active:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:active:bg-zinc-800';
+    'group flex w-full cursor-pointer items-center gap-4 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-zinc-200/80 transition duration-200 hover:bg-zinc-50 hover:shadow-md hover:ring-zinc-300/90 active:bg-zinc-100/80 dark:bg-zinc-900 dark:ring-zinc-700/70 dark:hover:bg-zinc-800/60 dark:hover:ring-zinc-600/70';
 
 const homeCardClass =
     'group relative flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 pr-9 text-left shadow-sm ring-1 ring-zinc-200 transition duration-200 hover:bg-zinc-50 hover:shadow-md dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60';
@@ -91,8 +91,8 @@ export default function SobreOAppNavItem({
         return (
             <>
                 <button type="button" className={moreCardClass} onClick={() => setOpen(true)}>
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800">
-                        <BookOpenIcon className="h-6 w-6 text-zinc-600 dark:text-zinc-400" />
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600 ring-1 ring-inset ring-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700/60">
+                        <BookOpenIcon className="h-6 w-6" />
                     </div>
                     <div className="min-w-0 flex-1">
                         <span className="block font-semibold text-zinc-900 dark:text-white">Sobre o APP</span>
@@ -105,8 +105,8 @@ export default function SobreOAppNavItem({
 
     return (
         <Link href={href} className={moreCardClass}>
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800">
-                <BookOpenIcon className="h-6 w-6 text-zinc-600 dark:text-zinc-400" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600 ring-1 ring-inset ring-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700/60">
+                <BookOpenIcon className="h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1">
                 <span className="block font-semibold text-zinc-900 dark:text-white">Sobre o APP</span>

@@ -1,3 +1,4 @@
+import BrDateInput from '@/Components/BrDateInput';
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
@@ -10,25 +11,48 @@ import { Transition } from '@headlessui/react';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useMemo, useState } from 'react';
 
+function userBirthDateIso(raw: string | null | undefined): string {
+    if (raw == null || raw === '') {
+        return '';
+    }
+    return raw.length >= 10 ? raw.slice(0, 10) : raw;
+}
+
+function defaultProfileMaxBirthDate(): string {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 10);
+    return d.toISOString().slice(0, 10);
+}
+
 export default function UpdateProfileInformation({
     mustVerifyEmail,
     status,
     className = '',
+    maxBirthDate,
 }: {
     mustVerifyEmail: boolean;
     status?: string;
     className?: string;
+    maxBirthDate?: string;
 }) {
     const page = usePage();
     const user = page.props.auth.user as {
         name: string;
         email: string;
+        birth_date?: string | null;
         email_verified_at?: string | null;
         photo_url?: string | null;
         notify_via_app?: boolean;
         notify_via_email?: boolean;
         notify_via_whatsapp?: boolean;
     };
+
+    const profileMaxBirthDate =
+        typeof maxBirthDate === 'string' && maxBirthDate !== ''
+            ? maxBirthDate
+            : typeof (page.props as { profileMaxBirthDate?: string }).profileMaxBirthDate === 'string'
+              ? (page.props as { profileMaxBirthDate?: string }).profileMaxBirthDate!
+              : defaultProfileMaxBirthDate();
 
     const profileRedirectTo =
         typeof (page.props as { profileRedirectTo?: string }).profileRedirectTo === 'string'
@@ -39,6 +63,7 @@ export default function UpdateProfileInformation({
         () => ({
             name: user.name,
             email: user.email,
+            birth_date: userBirthDateIso(user.birth_date),
             photo_file: null as File | null,
             notify_via_app: user.notify_via_app !== false,
             notify_via_email: user.notify_via_email !== false,
@@ -48,6 +73,7 @@ export default function UpdateProfileInformation({
         [
             user.name,
             user.email,
+            user.birth_date,
             user.notify_via_app,
             user.notify_via_email,
             user.notify_via_whatsapp,
@@ -129,7 +155,7 @@ export default function UpdateProfileInformation({
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Atualize os dados do seu perfil e o e-mail da conta.
+                    Atualize os dados do seu perfil, a data de nascimento e o e-mail da conta.
                 </p>
             </header>
 
@@ -189,6 +215,21 @@ export default function UpdateProfileInformation({
                     />
 
                     <InputError className="mt-2" message={errors.name} />
+                </div>
+
+                <div>
+                    <InputLabel htmlFor="birth_date" value="Data de nascimento" />
+
+                    <BrDateInput
+                        id="birth_date"
+                        value={data.birth_date}
+                        max={profileMaxBirthDate}
+                        onChange={(iso) => setData('birth_date', iso)}
+                        className="mt-1 block w-full"
+                        required
+                    />
+
+                    <InputError className="mt-2" message={errors.birth_date} />
                 </div>
 
                 <div>

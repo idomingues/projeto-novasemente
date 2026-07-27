@@ -157,13 +157,6 @@ export default function MobileEventDetailModal({
                                 </div>
                             </div>
                         )}
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 sm:w-auto sm:px-8"
-                        >
-                            Fechar
-                        </button>
                     </div>
                 </>
             )}

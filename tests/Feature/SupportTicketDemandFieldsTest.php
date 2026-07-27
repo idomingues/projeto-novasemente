@@ -70,4 +70,30 @@ class SupportTicketDemandFieldsTest extends TestCase
                 ->has('priorityOptions')
                 ->where('statusOptions.1.label', 'Pendente'));
     }
+
+    public function test_super_admin_can_destroy_support_ticket(): void
+    {
+        $admin = $this->superAdmin();
+        $token = (string) Str::uuid();
+
+        AppSupportTicket::create([
+            'public_token' => $token,
+            'user_id' => null,
+            'type' => 'problem',
+            'demand_category' => AppSupportTicketOptions::DEMAND_CATEGORY_CLIENT,
+            'priority' => AppSupportTicket::PRIORITY_MEDIUM,
+            'message' => 'Chamado duplicado para excluir',
+            'guest_name' => 'Eduardo',
+            'guest_email' => 'eduardo@example.com',
+            'status' => AppSupportTicket::STATUS_OPEN,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('support.index', ['status' => 'open', 'modal' => $token]))
+            ->delete(route('support.destroy', ['token' => $token]))
+            ->assertRedirect(route('support.index', ['status' => 'open']))
+            ->assertSessionHas('success', 'Chamado excluído.');
+
+        $this->assertDatabaseMissing('app_support_tickets', ['public_token' => $token]);
+    }
 }

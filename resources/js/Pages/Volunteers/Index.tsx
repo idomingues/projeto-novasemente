@@ -1122,7 +1122,6 @@ export default function Index({
                         <VolunteerRecordDetailBody
                             volunteer={detailVolunteer}
                             badge={detailBadge(detailVolunteer)}
-                            onClose={closeDetail}
                             footer={
                                 <div className="flex flex-wrap gap-2 rounded-2xl border border-zinc-200/90 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/50">
                                     <PrimaryButton type="button" onClick={openEditFromDetail}>

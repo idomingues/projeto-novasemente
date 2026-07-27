@@ -181,14 +181,6 @@ export default function VolunteerDeleteConfirmBlock({
                         {resultModal?.kind === 'success' ? 'Exclusão concluída' : 'Não foi possível excluir'}
                     </h3>
                     <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">{resultModal?.message}</p>
-                    <PrimaryButton
-                        type="button"
-                        title="Fechar mensagem de resultado"
-                        className="mt-6 w-full justify-center sm:w-auto"
-                        onClick={closeResultModal}
-                    >
-                        {resultModal?.kind === 'success' ? 'OK' : 'Fechar'}
-                    </PrimaryButton>
                 </div>
             </Modal>
         </>

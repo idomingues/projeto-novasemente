@@ -75,6 +75,25 @@ final class VolunteerSignupCompletion
     }
 
     /**
+     * Cadastro incompleto em que a única pendência obrigatória é a data de nascimento.
+     *
+     * @param  array{missing_fields?: list<string>}|null  $completion
+     */
+    public static function onlyBirthDateMissing(?array $completion): bool
+    {
+        if ($completion === null) {
+            return false;
+        }
+
+        $missing = array_values(array_filter(
+            $completion['missing_fields'] ?? [],
+            fn ($field) => is_string($field) && $field !== '',
+        ));
+
+        return $missing === ['birth_date'];
+    }
+
+    /**
      * @param  list<string>  $missingFields
      */
     public static function describeMissingFields(array $missingFields): string

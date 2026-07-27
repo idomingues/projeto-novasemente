@@ -1,7 +1,11 @@
 import { Link } from '@inertiajs/react';
-import { UserGroupIcon } from '@heroicons/react/24/outline';
+import { CakeIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
-import { formatVolunteerSignupProgressLabel, volunteerSignupMissingOnlyHref } from '@/utils/volunteerSignupCompletion';
+import {
+    formatVolunteerSignupProgressLabel,
+    volunteerSignupOnlyBirthDateMissing,
+    volunteerSignupPendingHref,
+} from '@/utils/volunteerSignupCompletion';
 
 interface Props {
     completion: VolunteerSignupCompletion;
@@ -13,14 +17,19 @@ export default function VolunteerSignupStatusCard({ completion, variant = 'mobil
         return null;
     }
 
-    const missingHref = volunteerSignupMissingOnlyHref();
+    const onlyBirthDate = volunteerSignupOnlyBirthDateMissing(completion);
+    const missingHref = volunteerSignupPendingHref(completion);
+    const Icon = onlyBirthDate ? CakeIcon : UserGroupIcon;
 
-    const missingLabel =
-        completion.missing_count === 1
-            ? 'Falta 1 pergunta obrigatória para concluir o cadastro.'
-            : `Faltam ${completion.missing_count} perguntas obrigatórias para concluir o cadastro.`;
+    const missingLabel = onlyBirthDate
+        ? 'Só falta informar a data de nascimento.'
+        : completion.missing_count === 1
+          ? 'Falta 1 pergunta obrigatória para concluir o cadastro.'
+          : `Faltam ${completion.missing_count} perguntas obrigatórias para concluir o cadastro.`;
 
     const progressLabel = formatVolunteerSignupProgressLabel(completion);
+    const title = onlyBirthDate ? 'Data de nascimento' : 'Cadastro de voluntário';
+    const cta = onlyBirthDate ? 'Informar data de nascimento' : 'Continuar cadastro';
 
     const titleClass =
         variant === 'desktop'
@@ -30,10 +39,12 @@ export default function VolunteerSignupStatusCard({ completion, variant = 'mobil
     const body = (
         <>
             <div className="flex flex-wrap items-center gap-2">
-                <div className={titleClass}>Cadastro de voluntário</div>
-                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
-                    {progressLabel}
-                </span>
+                <div className={titleClass}>{title}</div>
+                {!onlyBirthDate ? (
+                    <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
+                        {progressLabel}
+                    </span>
+                ) : null}
             </div>
             <p
                 className={
@@ -44,16 +55,18 @@ export default function VolunteerSignupStatusCard({ completion, variant = 'mobil
             >
                 {missingLabel}
             </p>
-            <p
-                className={
-                    variant === 'desktop'
-                        ? 'mt-1 text-xs text-gray-500 dark:text-gray-400'
-                        : 'mt-1 text-xs text-zinc-500 dark:text-zinc-400'
-                }
-            >
-                Suas respostas são salvas automaticamente enquanto você preenche.
-            </p>
-            <CardActions missingHref={missingHref} desktop={variant === 'desktop'} />
+            {!onlyBirthDate ? (
+                <p
+                    className={
+                        variant === 'desktop'
+                            ? 'mt-1 text-xs text-gray-500 dark:text-gray-400'
+                            : 'mt-1 text-xs text-zinc-500 dark:text-zinc-400'
+                    }
+                >
+                    Suas respostas são salvas automaticamente enquanto você preenche.
+                </p>
+            ) : null}
+            <CardActions missingHref={missingHref} cta={cta} desktop={variant === 'desktop'} />
         </>
     );
 
@@ -69,7 +82,7 @@ export default function VolunteerSignupStatusCard({ completion, variant = 'mobil
         <div className="rounded-2xl border border-primary-200 bg-primary-50/90 p-4 shadow-sm dark:border-primary-900 dark:bg-primary-950/35">
             <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-100 dark:bg-primary-900/40">
-                    <UserGroupIcon className="h-6 w-6 text-primary-700 dark:text-primary-200" aria-hidden />
+                    <Icon className="h-6 w-6 text-primary-700 dark:text-primary-200" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1">{body}</div>
             </div>
@@ -77,15 +90,23 @@ export default function VolunteerSignupStatusCard({ completion, variant = 'mobil
     );
 }
 
-function CardActions({ missingHref, desktop = false }: { missingHref: string; desktop?: boolean }) {
+function CardActions({
+    missingHref,
+    cta,
+    desktop = false,
+}: {
+    missingHref: string;
+    cta: string;
+    desktop?: boolean;
+}) {
     const topMargin = desktop ? 'mt-4' : 'mt-3';
 
     return (
         <Link
             href={missingHref}
-            className={`${topMargin} inline-flex items-center justify-center rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-400`}
+            className={`${topMargin} inline-flex cursor-pointer items-center justify-center rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-400`}
         >
-            Continuar cadastro
+            {cta}
         </Link>
     );
 }

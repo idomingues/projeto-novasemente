@@ -20,6 +20,7 @@ import {
     AdjustmentsHorizontalIcon,
     ArrowsUpDownIcon,
     BuildingOffice2Icon,
+    CakeIcon,
     ChatBubbleLeftEllipsisIcon,
 } from '@heroicons/react/24/outline';
 import { Link, router, useForm } from '@inertiajs/react';
@@ -162,6 +163,7 @@ export default function VolunteerCenterRosterPanel({
     const currentSortLabel =
         sortOptions.find((o) => o.value === currentSortValue)?.label ?? 'Nome (A–Z)';
     const leaderNotesFilterActive = boardFilters.has_leader_notes === '1';
+    const missingBirthDateFilterActive = boardFilters.has_birth_date === '0';
 
     const activeFiltersCount = useMemo(() => {
         const entries = Object.entries(boardFilters) as [string, unknown][];
@@ -172,7 +174,8 @@ export default function VolunteerCenterRosterPanel({
                 k === 'arquivados' ||
                 k === 'sort' ||
                 k === 'sort_dir' ||
-                k === 'has_leader_notes'
+                k === 'has_leader_notes' ||
+                k === 'has_birth_date'
             ) {
                 return false;
             }
@@ -222,6 +225,18 @@ export default function VolunteerCenterRosterPanel({
         };
         lastAppliedSearchRef.current = resolvedSearch;
         filterForm.setData('has_leader_notes', nextValue);
+        reload(nextFilters, resolvedSearch);
+    };
+
+    const toggleMissingBirthDateFilter = () => {
+        const resolvedSearch = serverSearchTerm(searchQuery) ?? '';
+        const nextValue = missingBirthDateFilterActive ? '' : '0';
+        const nextFilters = {
+            ...filterForm.data,
+            has_birth_date: nextValue,
+        };
+        lastAppliedSearchRef.current = resolvedSearch;
+        filterForm.setData('has_birth_date', nextValue);
         reload(nextFilters, resolvedSearch);
     };
 
@@ -321,6 +336,24 @@ export default function VolunteerCenterRosterPanel({
                             className={`${headerIconBtnClass} ${leaderNotesFilterActive ? headerIconBtnActiveClass : ''}`}
                         >
                             <ChatBubbleLeftEllipsisIcon className="h-4 w-4" aria-hidden />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={toggleMissingBirthDateFilter}
+                            title={
+                                missingBirthDateFilterActive
+                                    ? 'Sem data de nascimento: filtro ativo'
+                                    : 'Mostrar só voluntários sem data de nascimento'
+                            }
+                            aria-pressed={missingBirthDateFilterActive}
+                            aria-label={
+                                missingBirthDateFilterActive
+                                    ? 'Filtro rápido sem data de nascimento ativo'
+                                    : 'Filtrar voluntários sem data de nascimento'
+                            }
+                            className={`${headerIconBtnClass} ${missingBirthDateFilterActive ? headerIconBtnActiveClass : ''}`}
+                        >
+                            <CakeIcon className="h-4 w-4" aria-hidden />
                         </button>
                         <button
                             type="button"

@@ -315,6 +315,12 @@ Route::get('/mobile/perfil/editar', [MobileController::class, 'profileEdit'])
 Route::get('/mobile/voluntario/cadastro', [VolunteerSelfSignupEditController::class, 'edit'])
     ->middleware('auth')
     ->name('volunteers.self-signup.edit');
+Route::get('/mobile/voluntario/data-nascimento', [VolunteerSelfSignupEditController::class, 'editBirthDate'])
+    ->middleware('auth')
+    ->name('volunteers.self-signup.birth-date');
+Route::match(['put', 'patch'], '/mobile/voluntario/data-nascimento', [VolunteerSelfSignupEditController::class, 'updateBirthDate'])
+    ->middleware(['auth', 'throttle:20,1'])
+    ->name('volunteers.self-signup.birth-date.update');
 Route::match(['put', 'patch'], '/mobile/voluntario/cadastro', [VolunteerSelfSignupEditController::class, 'update'])
     ->middleware(['auth', 'throttle:20,1'])
     ->name('volunteers.self-signup.edit.update');
@@ -327,7 +333,9 @@ Route::get('/mobile/escala/checkin', [MobileController::class, 'scheduleCheckin'
 
 // Suporte (app)
 Route::get('/mobile/suporte', [MobileSupportController::class, 'index'])->name('mobile.support.index');
-Route::post('/mobile/suporte', [MobileSupportController::class, 'store'])->name('mobile.support.store');
+Route::post('/mobile/suporte', [MobileSupportController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('mobile.support.store');
 Route::get('/mobile/suporte/ticket/{token}/mensagens', [MobileSupportController::class, 'ticketMessages'])
     ->middleware('auth')
     ->name('mobile.support.ticket.messages');

@@ -185,6 +185,42 @@ class SupportTicketForecastTest extends TestCase
         });
     }
 
+    public function test_staff_can_chat_on_guest_ticket_and_email_guest(): void
+    {
+        Mail::fake();
+
+        $admin = $this->superAdmin();
+        $token = (string) Str::uuid();
+
+        AppSupportTicket::create([
+            'public_token' => $token,
+            'user_id' => null,
+            'type' => 'problem',
+            'message' => 'Esqueci a senha e não consigo redefinir',
+            'guest_name' => 'Eduardo Naziazeno Rosa',
+            'guest_email' => 'eduardo@example.com',
+            'status' => AppSupportTicket::STATUS_OPEN,
+        ]);
+
+        $chatBody = 'Olá Eduardo, segue o passo a passo para redefinir a senha.';
+
+        $this->actingAs($admin)
+            ->post(route('support.messages.store', ['token' => $token]), [
+                'content' => $chatBody,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('app_support_messages', [
+            'content' => $chatBody,
+            'sender_type' => 'admin',
+            'sender_user_id' => $admin->id,
+        ]);
+
+        Mail::assertQueued(SupportTicketStaffMessageMail::class, function (SupportTicketStaffMessageMail $mail) use ($chatBody) {
+            return $mail->hasTo('eduardo@example.com') && str_contains($mail->messageContent, $chatBody);
+        });
+    }
+
     public function test_clearing_forecast_does_not_notify(): void
     {
         $admin = $this->superAdmin();

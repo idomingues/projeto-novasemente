@@ -86,8 +86,8 @@ export default function VolunteerQuestionnaireProfileModal({ show, onClose, prof
     return (
         <Modal show={show && profile !== null} onClose={onClose} maxWidth="lg">
             {profile ? (
-                <div className="space-y-4 p-6">
-                    <div className="flex items-start justify-between gap-3">
+                <div className="space-y-4 p-6 pt-10 sm:pt-11">
+                    <div className="flex items-start gap-3 pr-10">
                         <div>
                             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Dados do voluntário</h2>
                             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
@@ -100,9 +100,6 @@ export default function VolunteerQuestionnaireProfileModal({ show, onClose, prof
                                 ) : null}
                             </p>
                         </div>
-                        <SecondaryButton type="button" onClick={onClose}>
-                            Fechar
-                        </SecondaryButton>
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">

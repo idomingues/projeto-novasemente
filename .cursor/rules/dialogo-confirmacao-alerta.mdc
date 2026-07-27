@@ -1,0 +1,59 @@
+---
+description: Diálogos de pergunta e alerta informativo — padrão visual único (SweetAlert2)
+globs: resources/js/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Diálogos de pergunta e informação
+
+No projeto Nova Semente, **perguntas de confirmação** e **alertas informativos** usam o visual único do SweetAlert2 (compacto, premium, mobile-first). Não inventar outro modal só para “sim/não” ou “entendi”.
+
+## APIs obrigatórias
+
+| Caso | Função | Onde |
+|------|--------|------|
+| Pergunta (cancelar / confirmar) | `confirmAction` | `@/utils/confirmDialog` |
+| Alerta informativo (1 botão) | `showAppAlert` | `@/utils/confirmDialog` |
+| Toast curto (sucesso/erro) | `appToast` | `@/utils/appToast` |
+| Encaminhar ao vincular dept. | `confirmEncaminharOnDepartmentLink` | `@/utils/confirmDialog` |
+
+## O que fazer
+
+```ts
+import { confirmAction, showAppAlert } from '@/utils/confirmDialog';
+
+const ok = await confirmAction({
+    title: 'Adicionar departamento?',
+    text: 'A alteração só será aplicada ao salvar.',
+    confirmButtonText: 'Adicionar',
+    cancelButtonText: 'Cancelar',
+    icon: 'question', // question | warning | info | error | success
+    danger: false,    // true → botão principal vermelho (excluir/remover)
+});
+
+await showAppAlert({
+    title: 'Inscrições em breve',
+    text: 'Liberamos o cadastro em algumas horas.',
+    icon: 'info',
+    confirmButtonText: 'Entendi',
+});
+```
+
+## Visual (já no CSS)
+
+- Largura máxima `min(92vw, 22rem)` — caixa **compacta** no mobile (não o popup largo padrão do Swal).
+- Ícone menor, título ~1.05rem, texto secundário zinc.
+- Botões em sentence case (não UPPERCASE), `rounded` ~0.85rem, `cursor-pointer`.
+- Tema claro/escuro via `appSwalBaseOptions` + classes `swal-app-*` em `resources/css/app.css`.
+
+## Evitar
+
+- `window.confirm()` / `alert()` / `window.prompt()`
+- `Swal.fire({...})` solto com cores/classes próprias
+- Novo `Modal` Headless só para uma pergunta sim/não
+- `swalConfirm` de `@/lib/swalConfirm` em código novo (alias legado — preferir `confirmAction`)
+
+## Exceções
+
+- **Toast** de feedback breve → `appToast` (não `showAppAlert`).
+- **Formulários** longos / CRUD → `Modal` Inertia (`modal-padrao-ui.mdc`), não SweetAlert.

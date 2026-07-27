@@ -25,9 +25,12 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
+        $minBirthDate = now()->subYears(10)->toDateString();
+
         return array_merge([
             'redirect_to' => ['nullable', 'string', 'max:120'],
             'name' => ['required', 'string', 'max:255'],
+            'birth_date' => ['required', 'date', 'before:today', 'before_or_equal:'.$minBirthDate],
             'email' => [
                 'required',
                 'string',
@@ -52,6 +55,9 @@ class ProfileUpdateRequest extends FormRequest
             'email.email' => 'Informe um endereço de e-mail válido.',
             'photo_file.image' => 'A foto deve ser uma imagem (JPG, PNG ou similar).',
             'photo_file.max' => 'A foto deve ter no máximo 4 MB.',
+            'birth_date.required' => 'Informe a data de nascimento.',
+            'birth_date.before' => 'Informe uma data de nascimento válida.',
+            'birth_date.before_or_equal' => 'O cadastro exige pelo menos 10 anos de idade.',
         ];
     }
 }

@@ -2,8 +2,7 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import ScheduleLoginGate from '@/Components/ScheduleLoginGate';
 import { Head, Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { confirmAction } from '@/utils/confirmDialog';
-import Swal from 'sweetalert2';
+import { confirmAction, showAppAlert } from '@/utils/confirmDialog';
 
 type Teammate = {
     assignmentId: number;
@@ -76,27 +75,6 @@ export default function VolunteerScheduleHome({ canViewSchedule, needsMember, me
     const [pendingAssignmentIds, setPendingAssignmentIds] = useState<Set<number>>(new Set());
     const [localCheckedInOverride, setLocalCheckedInOverride] = useState<Record<number, boolean>>({});
 
-    const isDarkMode = () =>
-        typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
-
-    const showAlert = (opts: { title: string; text?: string; icon: 'success' | 'error' | 'info' | 'warning' }) => {
-        const dark = isDarkMode();
-        return Swal.fire({
-            title: opts.title,
-            text: opts.text,
-            icon: opts.icon,
-            confirmButtonText: 'OK',
-            background: dark ? '#18181b' : '#ffffff',
-            color: dark ? '#fafafa' : '#18181b',
-            confirmButtonColor: '#18181b',
-            heightAuto: false,
-            customClass: {
-                popup: 'swal-app-popup',
-                confirmButton: 'swal-app-btn',
-            },
-        });
-    };
-
     const doToggleCheckin = async (assignmentId: number, dateYmd: string, checkedIn: boolean) => {
         if (pendingAssignmentIds.has(assignmentId)) return;
 
@@ -119,10 +97,11 @@ export default function VolunteerScheduleHome({ canViewSchedule, needsMember, me
                 onSuccess: () => {
                     // Atualiza UI imediatamente (mesmo se a navegação preservar estado)
                     setLocalCheckedInOverride((prev) => ({ ...prev, [assignmentId]: !checkedIn }));
-                    void showAlert({
+                    void showAppAlert({
                         title: checkedIn ? 'Check-in desfeito' : 'Check-in realizado',
                         text: checkedIn ? 'Sua presença foi desmarcada.' : 'Sua presença foi confirmada.',
                         icon: 'success',
+                        confirmButtonText: 'OK',
                     });
                 },
                 onError: (errors) => {
@@ -130,7 +109,7 @@ export default function VolunteerScheduleHome({ canViewSchedule, needsMember, me
                         (errors as Record<string, string>)?.assignment_id ||
                         Object.values(errors as Record<string, string>)[0] ||
                         'Não foi possível concluir a ação.';
-                    void showAlert({ title: 'Não foi possível', text: msg, icon: 'error' });
+                    void showAppAlert({ title: 'Não foi possível', text: msg, icon: 'error', confirmButtonText: 'OK' });
                 },
                 onFinish: () => {
                     setPendingAssignmentIds((prev) => {

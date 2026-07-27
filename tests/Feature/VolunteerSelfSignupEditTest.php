@@ -8,6 +8,7 @@ use Database\Seeders\ChurchSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Tests\Support\CompleteVolunteerSignup;
 use Tests\TestCase;
 
 class VolunteerSelfSignupEditTest extends TestCase
@@ -197,5 +198,67 @@ class VolunteerSelfSignupEditTest extends TestCase
             ->get(route('volunteers.self-signup.edit', ['etapa' => 4]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('resumePage', null));
+    }
+
+    public function test_missing_only_birth_date_opens_short_prompt_and_saves(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'name' => 'Paula Mendes',
+            'email' => 'paula.birth@example.com',
+            'photo_url' => 'https://example.com/photos/paula.jpg',
+            'birth_date' => null,
+        ]);
+
+        $volunteer = $user->fresh()->volunteerProfile;
+        $this->assertNotNull($volunteer);
+
+        CompleteVolunteerSignup::apply($user, $volunteer);
+        $volunteer->forceFill(['birth_date' => null])->save();
+        $user->forceFill(['birth_date' => null])->save();
+
+        $this->actingAs($user->fresh())
+            ->get(route('volunteers.self-signup.edit', ['missing' => 1]))
+            ->assertRedirect(route('volunteers.self-signup.birth-date'));
+
+        $this->actingAs($user->fresh())
+            ->get(route('volunteers.self-signup.birth-date'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Volunteers/BirthDatePrompt')
+                ->where('birthDate', ''));
+
+        $this->actingAs($user->fresh())
+            ->put(route('volunteers.self-signup.birth-date.update'), [
+                'birth_date' => '1990-04-12',
+            ])
+            ->assertRedirect(route('mobile.home'))
+            ->assertSessionHas('status');
+
+        $this->assertSame('1990-04-12', $volunteer->fresh()->birth_date?->format('Y-m-d'));
+        $this->assertSame('1990-04-12', $user->fresh()->birth_date?->format('Y-m-d'));
+    }
+
+    public function test_birth_date_prompt_redirects_to_missing_flow_when_other_fields_pending(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+
+        $user = User::factory()->create([
+            'church_id' => $churchId,
+            'is_volunteer' => true,
+            'name' => 'Só Nome',
+            'email' => 'so.nome@example.com',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('volunteers.self-signup.birth-date'))
+            ->assertRedirect(route('volunteers.self-signup.edit', ['missing' => 1]));
     }
 }

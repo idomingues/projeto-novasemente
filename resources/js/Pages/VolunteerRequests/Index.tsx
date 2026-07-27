@@ -1161,14 +1161,11 @@ export default function VolunteerRequestsIndex({
             <Modal show={!!profileVolunteer} onClose={() => setProfileVolunteer(null)} maxWidth="lg">
                 {profileVolunteer ? (
                     <div className="space-y-4 p-6">
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 pr-10">
                             <div>
                                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Dados do voluntário</h2>
                                 <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{profileVolunteer.name ?? 'Voluntário'}</p>
                             </div>
-                            <SecondaryButton type="button" onClick={() => setProfileVolunteer(null)}>
-                                Fechar
-                            </SecondaryButton>
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-2">

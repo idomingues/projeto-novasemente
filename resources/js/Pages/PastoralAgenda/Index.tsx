@@ -221,8 +221,8 @@ export default function PastoralAgendaIndex({
                     onClose={() => setOpenedDetail(null)}
                     maxWidth="lg"
                     footer={
-                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
-                            {openedDetail?.source === 'church_solicitation' ? (
+                        openedDetail?.source === 'church_solicitation' ? (
+                            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
                                 <Link
                                     href={route('solicitations.index', {
                                         modal_kind: 'solicitation',
@@ -232,11 +232,8 @@ export default function PastoralAgendaIndex({
                                 >
                                     Abrir em Atendimento Pastoral (chat e estado)
                                 </Link>
-                            ) : null}
-                            <SecondaryButton type="button" className="w-full sm:w-auto" onClick={() => setOpenedDetail(null)}>
-                                Fechar
-                            </SecondaryButton>
-                        </div>
+                            </div>
+                        ) : undefined
                     }
                 >
                     <div className="p-6 pt-12 sm:p-8 sm:pt-10">

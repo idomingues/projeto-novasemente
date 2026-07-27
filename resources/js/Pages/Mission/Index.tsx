@@ -1186,7 +1186,6 @@ function DetailPanel({
                     subtitle={contactSubtitle}
                     photoUrl={v.photoUrl}
                     badge={v.phaseName?.trim() ? v.phaseName : null}
-                    onClose={onClose}
                 />
 
                 <div className="flex gap-1 overflow-x-auto overscroll-x-contain rounded-xl bg-zinc-100 p-1 [-webkit-overflow-scrolling:touch] dark:bg-zinc-800">

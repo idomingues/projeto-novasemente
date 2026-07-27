@@ -504,11 +504,8 @@ export default function Index({
                 onClose={closeModal}
                 maxWidth="lg"
                 footer={
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                        <SecondaryButton type="button" className="cursor-pointer" onClick={closeModal}>
-                            Fechar
-                        </SecondaryButton>
-                        {canManage && (modalTab === 'enquete' || modalTab === 'exibicao') && (
+                    canManage && (modalTab === 'enquete' || modalTab === 'exibicao') ? (
+                        <div className="flex flex-wrap items-center justify-end gap-2">
                             <PrimaryButton
                                 type="submit"
                                 form="poll-form"
@@ -517,8 +514,8 @@ export default function Index({
                             >
                                 {saving ? 'Salvando…' : 'Salvar'}
                             </PrimaryButton>
-                        )}
-                    </div>
+                        </div>
+                    ) : undefined
                 }
             >
                 <div className="space-y-5 bg-gradient-to-b from-zinc-50/80 to-white p-4 dark:from-zinc-950/40 dark:to-zinc-900 sm:p-6">

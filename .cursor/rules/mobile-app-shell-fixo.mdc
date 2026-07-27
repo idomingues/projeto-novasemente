@@ -1,0 +1,33 @@
+---
+description: Shell mobile fixo estilo app — sem rubber-band / “sambar”
+alwaysApply: true
+---
+
+# Shell mobile fixo (estilo app nativo)
+
+A app móvel (e o painel com a mesma chrome) **não deve “sambar”**: Topbar e bottom nav ficam fixos; **só o conteúdo do meio** rola. Sensação de app, não de página web.
+
+## Princípio
+
+1. **Documento travado:** `html` / `body` / `#app` com `height: 100dvh` + `overflow: hidden` + `overscroll-behavior: none` (ver `resources/css/app.css`).
+2. **Shell `ns-app-shell`:** layout raiz `fixed inset-0` (ou equivalente `h-[100dvh] overflow-hidden`) — `MobileLayout`, `AdminLayout`, `GuestLayout`.
+3. **Scroll só no `main`** (ou painel interno): `flex-1 min-h-0 overflow-y-auto overscroll-y-none`.
+4. **Chrome fixa:** `Topbar` (`fixed top-0`) e `MobileBottomNav` (`fixed bottom-0`) com `safe-area` — nunca rolam com o conteúdo.
+
+## O que fazer
+
+- Novas telas mobile: usar `MobileLayout` (não inventar outro wrapper com `min-h-screen` no `body`).
+- Listas longas: scroll no `main` do layout ou num filho `min-h-0 flex-1 overflow-y-auto`, não no documento.
+- Páginas full-bleed (chat): prop `flush` do `MobileLayout`.
+
+## Evitar
+
+- `min-h-screen` / conteúdo que estica o `body` e habilita rubber-band no Safari/Capacitor.
+- Scroll no `window`/`document` / `body` com Topbar/nav `fixed` (eles “dançam” no overscroll do iOS).
+- Nested scroll desnecessário: um único eixo vertical no shell.
+
+## Referência
+
+- Layout: `resources/js/Layouts/MobileLayout.tsx`
+- CSS base: `resources/css/app.css` (`html`/`body`/`#app`)
+- Exemplo de tela: `resources/js/Pages/Mobile/Profile.tsx`

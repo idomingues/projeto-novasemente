@@ -232,8 +232,16 @@ export default function MobileSupportTicketPanel({
                             </Link>{' '}
                             e abra um novo chamado ou aguarde contato por e-mail, se informou seus dados.
                         </>
+                    ) : isAuthenticated ? (
+                        <>Este chamado está em andamento. Aguarde a resposta da equipe de suporte.</>
                     ) : (
-                        <>Este chamado está em andamento. Para enviar respostas, faça login na sua conta.</>
+                        <>
+                            Este chamado está em andamento. Para enviar respostas,{' '}
+                            <Link href={route('login')} className="font-semibold underline">
+                                faça login
+                            </Link>{' '}
+                            na sua conta.
+                        </>
                     )}
                 </div>
             )}

@@ -1,4 +1,4 @@
-import Swal from 'sweetalert2';
+import Swal, { type SweetAlertIcon, type SweetAlertOptions, type SweetAlertResult } from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
 export type ConfirmDialogOptions = {
@@ -12,8 +12,81 @@ export type ConfirmDialogOptions = {
     danger?: boolean;
 };
 
+export type AppAlertOptions = {
+    title: string;
+    text?: string;
+    html?: string;
+    confirmButtonText?: string;
+    icon?: 'warning' | 'question' | 'info' | 'error' | 'success';
+};
+
+export type EncaminharOnLinkChoice = 'encaminhar' | 'vincular' | 'cancel';
+
 function isDarkMode(): boolean {
     return typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+}
+
+const ICON_COLORS: Record<SweetAlertIcon, { border: string; color: string }> = {
+    question: { border: '#41b144', color: '#008d36' },
+    info: { border: '#2dd4bf', color: '#0f766e' },
+    success: { border: '#41b144', color: '#008d36' },
+    warning: { border: '#f59e0b', color: '#b45309' },
+    error: { border: '#f87171', color: '#dc2626' },
+};
+
+/**
+ * Opções visuais compartilhadas: popup compacto, premium, claro/escuro.
+ * Use via `confirmAction` / `showAppAlert` — não chamar `Swal.fire` solto.
+ */
+export function appSwalBaseOptions(icon: SweetAlertIcon = 'question'): Pick<
+    SweetAlertOptions,
+    | 'background'
+    | 'color'
+    | 'iconColor'
+    | 'buttonsStyling'
+    | 'heightAuto'
+    | 'width'
+    | 'padding'
+    | 'customClass'
+> {
+    const dark = isDarkMode();
+    const iconTone = ICON_COLORS[icon] ?? ICON_COLORS.question;
+
+    return {
+        background: dark ? '#18181b' : '#ffffff',
+        color: dark ? '#fafafa' : '#18181b',
+        iconColor: dark && (icon === 'question' || icon === 'success') ? '#41b144' : iconTone.color,
+        buttonsStyling: true,
+        heightAuto: false,
+        width: 'min(92vw, 22rem)',
+        padding: '1.15rem 1.15rem 1rem',
+        customClass: {
+            popup: 'swal-app-popup',
+            icon: 'swal-app-icon',
+            title: 'swal-app-title',
+            htmlContainer: 'swal-app-html',
+            actions: 'swal-app-actions',
+            confirmButton: 'swal-app-btn swal-app-btn-confirm',
+            cancelButton: 'swal-app-btn swal-app-btn-cancel',
+            denyButton: 'swal-app-btn swal-app-btn-deny',
+        },
+    };
+}
+
+function confirmButtonColor(danger: boolean): string {
+    if (danger) {
+        return '#dc2626';
+    }
+
+    return isDarkMode() ? '#008d36' : '#18181b';
+}
+
+function cancelButtonColor(): string {
+    return isDarkMode() ? '#3f3f46' : '#e4e4e7';
+}
+
+function denyButtonColor(): string {
+    return isDarkMode() ? '#52525b' : '#a1a1aa';
 }
 
 /**
@@ -31,9 +104,8 @@ export async function confirmAction(options: ConfirmDialogOptions): Promise<bool
         danger = false,
     } = options;
 
-    const dark = isDarkMode();
-
     const result = await Swal.fire({
+        ...appSwalBaseOptions(icon),
         title,
         text,
         html,
@@ -43,23 +115,31 @@ export async function confirmAction(options: ConfirmDialogOptions): Promise<bool
         reverseButtons: true,
         confirmButtonText,
         cancelButtonText,
-        buttonsStyling: true,
-        background: dark ? '#18181b' : '#ffffff',
-        color: dark ? '#fafafa' : '#18181b',
-        confirmButtonColor: danger ? '#dc2626' : '#18181b',
-        cancelButtonColor: dark ? '#52525b' : '#d4d4d8',
-        heightAuto: false,
-        customClass: {
-            popup: 'swal-app-popup',
-            confirmButton: 'swal-app-btn',
-            cancelButton: 'swal-app-btn',
-        },
+        confirmButtonColor: confirmButtonColor(danger),
+        cancelButtonColor: cancelButtonColor(),
     });
 
     return result.isConfirmed;
 }
 
-export type EncaminharOnLinkChoice = 'encaminhar' | 'vincular' | 'cancel';
+/**
+ * Alerta informativo (um botão) — sucesso, erro, aviso ou info.
+ * Use em vez de `Swal.fire` / `alert()` soltos.
+ */
+export async function showAppAlert(options: AppAlertOptions): Promise<SweetAlertResult> {
+    const { title, text, html, confirmButtonText = 'Entendi', icon = 'info' } = options;
+
+    return Swal.fire({
+        ...appSwalBaseOptions(icon),
+        title,
+        text,
+        html,
+        icon,
+        showCancelButton: false,
+        confirmButtonText,
+        confirmButtonColor: confirmButtonColor(icon === 'error'),
+    });
+}
 
 function escapeHtml(text: string): string {
     return text
@@ -75,9 +155,9 @@ function escapeHtml(text: string): string {
  */
 export async function confirmEncaminharOnDepartmentLink(ministryNames: string[]): Promise<EncaminharOnLinkChoice> {
     const names = ministryNames.map((n) => escapeHtml(n)).join(', ');
-    const dark = isDarkMode();
 
     const result = await Swal.fire({
+        ...appSwalBaseOptions('question'),
         title: 'Encaminhar ao departamento?',
         html:
             `Você vinculou: <strong>${names}</strong>.<br><br>` +
@@ -91,19 +171,9 @@ export async function confirmEncaminharOnDepartmentLink(ministryNames: string[])
         confirmButtonText: 'Sim, encaminhar',
         denyButtonText: 'Não, só vincular',
         cancelButtonText: 'Cancelar',
-        buttonsStyling: true,
-        background: dark ? '#18181b' : '#ffffff',
-        color: dark ? '#fafafa' : '#18181b',
-        confirmButtonColor: '#18181b',
-        denyButtonColor: dark ? '#3f3f46' : '#a1a1aa',
-        cancelButtonColor: dark ? '#52525b' : '#d4d4d8',
-        heightAuto: false,
-        customClass: {
-            popup: 'swal-app-popup',
-            confirmButton: 'swal-app-btn',
-            denyButton: 'swal-app-btn',
-            cancelButton: 'swal-app-btn',
-        },
+        confirmButtonColor: confirmButtonColor(false),
+        denyButtonColor: denyButtonColor(),
+        cancelButtonColor: cancelButtonColor(),
     });
 
     if (result.isConfirmed) {

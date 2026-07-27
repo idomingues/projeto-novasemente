@@ -18,16 +18,18 @@ class SupportTicketChatNotifier
     public function notifyOwnerOfStaffMessage(AppSupportTicket $ticket, User $staff, string $messageContent): void
     {
         $owner = $this->findTicketOwner($ticket);
-        if (! $owner) {
-            return;
-        }
-
         $typeLabel = SupportTicketAdminPresenter::typeLabel((string) $ticket->type);
         $title = $ticket->type === 'pastoral' ? 'Nova mensagem sobre o seu agendamento' : 'Nova mensagem no suporte';
         $body = 'A equipe respondeu sobre: '.$typeLabel.'.';
 
-        $this->pushOwnerInbox($owner, $ticket, $title, $body);
-        $this->sendOwnerInformativeEmail($owner, $staff, $ticket, $title, $typeLabel, $messageContent);
+        if ($owner) {
+            $this->pushOwnerInbox($owner, $ticket, $title, $body);
+            $this->sendOwnerInformativeEmail($owner, $staff, $ticket, $title, $typeLabel, $messageContent);
+
+            return;
+        }
+
+        $this->sendGuestInformativeEmail($ticket, $staff, $title, $typeLabel, $messageContent);
     }
 
     /** Prazo/previsão definido pela equipe → notifica o usuário dono do ticket. */
@@ -255,10 +257,43 @@ class SupportTicketChatNotifier
         ));
     }
 
+    /** Visitante sem conta: envia a resposta ao e-mail informado no chamado, se válido. */
+    private function sendGuestInformativeEmail(
+        AppSupportTicket $ticket,
+        User $staff,
+        string $title,
+        string $typeLabel,
+        string $messageContent,
+    ): void {
+        $email = $this->resolveGuestEmail($ticket);
+        if ($email === null) {
+            return;
+        }
+
+        Mail::to($email)->send(new SupportTicketStaffMessageMail(
+            $title,
+            $typeLabel,
+            $messageContent,
+            route('mobile.support.ticket', ['token' => $ticket->public_token], absolute: true),
+            $staff->name,
+            null,
+        ));
+    }
+
     private function resolveOwnerEmail(User $owner): ?string
     {
         if (is_string($owner->email) && $owner->email !== '' && filter_var($owner->email, FILTER_VALIDATE_EMAIL)) {
             return $owner->email;
+        }
+
+        return null;
+    }
+
+    private function resolveGuestEmail(AppSupportTicket $ticket): ?string
+    {
+        $email = trim((string) ($ticket->guest_email ?? ''));
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $email;
         }
 
         return null;

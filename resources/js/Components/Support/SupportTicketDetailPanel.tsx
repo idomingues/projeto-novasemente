@@ -41,7 +41,8 @@ export type SupportTicketShape = {
     ownerLabel: string;
     ownerPhotoUrl?: string | null;
     isGuest: boolean;
-    /** Agendamento pastoral sem conta na app: equipe pode usar o chat no backoffice. */
+    guestEmail?: string | null;
+    /** Chamado sem conta na app: equipe pode usar o chat (histórico + e-mail do visitante, se houver). */
     allowStaffInternalChat?: boolean;
 };
 
@@ -252,14 +253,43 @@ export default function SupportTicketDetailPanel({
     const deleteTicket = async () => {
         const ok = await confirmAction({
             title: 'Excluir chamado?',
-            text: 'Esta ação não pode ser desfeita.',
+            text: 'Esta ação não pode ser desfeita. O chamado e o histórico de conversa serão removidos.',
             confirmButtonText: 'Excluir',
             danger: true,
             icon: 'warning',
         });
         if (!ok) return;
-        router.delete(supportDestroyUrl);
+        router.delete(supportDestroyUrl, { preserveScroll: true });
     };
+
+    const managementActions = canManageTickets ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <SecondaryButton
+                type="button"
+                className="inline-flex cursor-pointer items-center gap-1.5"
+                onClick={() => {
+                    setEditMessage(ticket.message);
+                    setShowEditModal(true);
+                }}
+            >
+                <PencilIcon className="h-4 w-4" />
+                Editar
+            </SecondaryButton>
+            {!isOpen ? (
+                <SecondaryButton type="button" className="cursor-pointer" onClick={() => void reopenTicket()}>
+                    Reabrir
+                </SecondaryButton>
+            ) : null}
+            <SecondaryButton
+                type="button"
+                className="inline-flex cursor-pointer items-center gap-1.5 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
+                onClick={() => void deleteTicket()}
+            >
+                <TrashIcon className="h-4 w-4" />
+                Excluir
+            </SecondaryButton>
+        </div>
+    ) : null;
 
     const overlayZ = isModal ? 'z-[200]' : 'z-[100]';
 
@@ -283,35 +313,12 @@ export default function SupportTicketDetailPanel({
                             <span>{ticket.typeLabel}</span>
                         </div>
                     </div>
-                    {canManageTickets ? (
-                        <div className="flex shrink-0 flex-wrap items-center gap-2">
-                            <SecondaryButton
-                                type="button"
-                                className="inline-flex items-center gap-1.5"
-                                onClick={() => {
-                                    setEditMessage(ticket.message);
-                                    setShowEditModal(true);
-                                }}
-                            >
-                                <PencilIcon className="w-4 h-4" />
-                                Editar
-                            </SecondaryButton>
-                            {!isOpen ? (
-                                <SecondaryButton type="button" onClick={() => void reopenTicket()}>
-                                    Reabrir
-                                </SecondaryButton>
-                            ) : null}
-                            <SecondaryButton
-                                type="button"
-                                className="inline-flex items-center gap-1.5 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40"
-                                onClick={() => void deleteTicket()}
-                            >
-                                <TrashIcon className="w-4 h-4" />
-                                Excluir
-                            </SecondaryButton>
-                        </div>
-                    ) : null}
+                    {managementActions}
                 </div>
+            ) : null}
+
+            {showDetails && isModal && managementActions ? (
+                <div className="flex flex-wrap items-center justify-end gap-2">{managementActions}</div>
             ) : null}
 
             {showDetails && (
@@ -559,11 +566,13 @@ export default function SupportTicketDetailPanel({
                         <ChatBubbleLeftRightIcon className="w-6 h-6 shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden />
                         <div className="min-w-0">
                             <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
-                                {internalCoordination ? 'Coordenação interna' : 'Conversa com o usuário'}
+                                {ticket.isGuest ? 'Responder ao visitante' : 'Conversa com o usuário'}
                             </h2>
                             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                                {internalCoordination
-                                    ? 'O pedido não tem conta na app; use este espaço para alinhar entre a equipe pastoral e secretaria.'
+                                {ticket.isGuest
+                                    ? ticket.guestEmail
+                                        ? `As respostas ficam neste chamado e também são enviadas por e-mail para ${ticket.guestEmail}.`
+                                        : 'As respostas ficam no histórico deste chamado. Não há e-mail de visitante cadastrado para notificar.'
                                     : `Respostas enviadas aqui aparecem no histórico deste chamado na app (usuário com sessão iniciada). ${CHAT_MESSAGE_SENDS_EMAIL_SUBTITLE}`}
                             </p>
                         </div>
@@ -612,8 +621,8 @@ export default function SupportTicketDetailPanel({
                                         onChange={(e) => setData('content', e.target.value)}
                                         rows={isModal ? 3 : 4}
                                         placeholder={
-                                            internalCoordination
-                                                ? 'Escreva uma nota à equipe…'
+                                            ticket.isGuest
+                                                ? 'Escreva a resposta ao visitante…'
                                                 : 'Escreva a sua mensagem ao usuário…'
                                         }
                                         className="w-full"

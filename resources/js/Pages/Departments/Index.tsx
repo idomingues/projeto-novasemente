@@ -1293,12 +1293,6 @@ export default function Index({
                                 Adicionar
                             </PrimaryButton>
                         </form>
-
-                        <div className="mt-6 flex justify-end">
-                            <SecondaryButton type="button" onClick={closeRolesModal}>
-                                Fechar
-                            </SecondaryButton>
-                        </div>
                     </div>
                 )}
             </Modal>
@@ -1325,7 +1319,6 @@ export default function Index({
                                         null
                                     }
                                     badge={volunteerDetailBadge(detailPayload.volunteer)}
-                                    onClose={closeVolunteerDetail}
                                 />
 
                                 <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">

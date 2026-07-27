@@ -3,7 +3,8 @@ import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletio
 import {
     formatVolunteerSignupProgressLabel,
     volunteerSignupFullEditHref,
-    volunteerSignupMissingOnlyHref,
+    volunteerSignupOnlyBirthDateMissing,
+    volunteerSignupPendingHref,
 } from '@/utils/volunteerSignupCompletion';
 import { Link, usePage } from '@inertiajs/react';
 import { ExclamationTriangleIcon, PencilSquareIcon, UserGroupIcon } from '@heroicons/react/24/outline';
@@ -52,7 +53,14 @@ export default function ProfileVolunteerSection({
     const progressLabel = pendingVolunteerSignup
         ? formatVolunteerSignupProgressLabel(volunteerSignupCompletion)
         : null;
-    const signupHref = pendingVolunteerSignup ? volunteerSignupMissingOnlyHref() : volunteerSignupFullEditHref();
+    const signupHref = pendingVolunteerSignup
+        ? volunteerSignupPendingHref(volunteerSignupCompletion)
+        : volunteerSignupFullEditHref();
+    const signupCta = volunteerSignupOnlyBirthDateMissing(volunteerSignupCompletion)
+        ? 'Informar data de nascimento'
+        : pendingVolunteerSignup
+          ? 'Continuar cadastro'
+          : 'Editar questionário';
 
     const outerClass = embedded
         ? `mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-700 ${className}`.trim()
@@ -106,19 +114,27 @@ export default function ProfileVolunteerSection({
                     >
                         <div className="flex flex-wrap items-center gap-2">
                             <ExclamationTriangleIcon className="h-4 w-4 text-amber-800 dark:text-amber-200" aria-hidden />
-                            <span className="text-sm font-semibold text-amber-950 dark:text-amber-50">Cadastro incompleto</span>
-                            <span className="inline-flex rounded-full bg-amber-200/80 px-2 py-0.5 text-xs font-bold tabular-nums text-amber-950 dark:bg-amber-900/60 dark:text-amber-100">
-                                {progressLabel}
+                            <span className="text-sm font-semibold text-amber-950 dark:text-amber-50">
+                                {volunteerSignupOnlyBirthDateMissing(volunteerSignupCompletion)
+                                    ? 'Data de nascimento'
+                                    : 'Cadastro incompleto'}
                             </span>
+                            {!volunteerSignupOnlyBirthDateMissing(volunteerSignupCompletion) ? (
+                                <span className="inline-flex rounded-full bg-amber-200/80 px-2 py-0.5 text-xs font-bold tabular-nums text-amber-950 dark:bg-amber-900/60 dark:text-amber-100">
+                                    {progressLabel}
+                                </span>
+                            ) : null}
                         </div>
                         <p className="mt-1 text-sm text-amber-900/90 dark:text-amber-100/90">
-                            {volunteerSignupCompletion.missing_count === 1
-                                ? 'Falta 1 pergunta obrigatória.'
-                                : `Faltam ${volunteerSignupCompletion.missing_count} perguntas obrigatórias.`}
+                            {volunteerSignupOnlyBirthDateMissing(volunteerSignupCompletion)
+                                ? 'Só falta informar sua data de nascimento.'
+                                : volunteerSignupCompletion.missing_count === 1
+                                  ? 'Falta 1 pergunta obrigatória.'
+                                  : `Faltam ${volunteerSignupCompletion.missing_count} perguntas obrigatórias.`}
                         </p>
                         <Link href={signupHref} className={`${primaryBtnClass} mt-3`}>
                             <PencilSquareIcon className="h-5 w-5 shrink-0" aria-hidden />
-                            Continuar cadastro
+                            {signupCta}
                         </Link>
                     </div>
                 ) : null}

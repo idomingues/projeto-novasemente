@@ -227,13 +227,6 @@ export default function AttachVolunteerPickerModal({ open, onClose, pickerUrl, o
             onClose={onClose}
             maxWidth="7xl"
             disableBodyScroll
-            footer={
-                <div className="flex justify-end">
-                    <SecondaryButton type="button" onClick={onClose}>
-                        Fechar
-                    </SecondaryButton>
-                </div>
-            }
         >
             <div className="flex max-h-[min(90dvh,calc(100dvh-2rem))] min-h-0 flex-col">
                 <div className="shrink-0 border-b border-zinc-200 p-4 pr-12 dark:border-zinc-700 sm:p-6">

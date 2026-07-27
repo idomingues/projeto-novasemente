@@ -253,9 +253,12 @@ class SupportAdminController extends Controller
         abort_unless($user && $this->canManageSupport($user), 403);
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
+        $status = (string) $ticket->status;
         $ticket->delete();
 
-        return redirect()->route('support.index');
+        return redirect()
+            ->route('support.index', ['status' => $status])
+            ->with('success', 'Chamado excluído.');
     }
 
     public function sendMessage(Request $request, string $token): RedirectResponse
@@ -265,14 +268,6 @@ class SupportAdminController extends Controller
 
         $ticket = AppSupportTicket::query()->where('public_token', $token)->firstOrFail();
         abort_unless(AppSupportTicket::isActiveStatus((string) $ticket->status), 400);
-        $staffPastoralThread = $ticket->type === 'pastoral'
-            && empty($ticket->user_id)
-            && ! empty($ticket->pastoral_appointment_id);
-        abort_unless(
-            ! empty($ticket->user_id) || $staffPastoralThread,
-            400,
-            'Chat indisponível para chamados sem usuário logado.'
-        );
 
         $valid = $request->validate([
             'content' => ['required', 'string', 'max:5000'],

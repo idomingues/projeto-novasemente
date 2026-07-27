@@ -302,11 +302,6 @@ export default function PastoralAppointmentsHub({
                             </div>
                         </div>
                     </div>
-                    <div className="mt-6 flex justify-end">
-                        <SecondaryButton type="button" onClick={() => setNoSlotsOpen(false)}>
-                            Fechar
-                        </SecondaryButton>
-                    </div>
                 </div>
             </Modal>
 
@@ -445,16 +440,6 @@ export default function PastoralAppointmentsHub({
                                     ) : null}
                                 </div>
                             )}
-                        </div>
-
-                        <div className="mt-6 flex justify-end">
-                            <button
-                                type="button"
-                                className="text-sm font-medium text-zinc-600 underline dark:text-zinc-400"
-                                onClick={closeDetail}
-                            >
-                                Fechar
-                            </button>
                         </div>
                     </div>
                 ) : null}

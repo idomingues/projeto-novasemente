@@ -820,7 +820,6 @@ export default function ManagementCenter({
                                         (detail.volunteer.user as { photo_url?: string | null } | null)?.photo_url ??
                                         null
                                     }
-                                    onClose={closeVolunteerModal}
                                 />
 
                                 <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-900/40">

@@ -5,12 +5,10 @@ export default function PersonModalHeader({
     person,
     subtitle,
     badge,
-    onClose,
 }: {
     person: PersonIdentity;
     subtitle?: string | null;
     badge?: string | null;
-    onClose: () => void;
 }) {
     return (
         <RecordDetailHeader
@@ -18,7 +16,6 @@ export default function PersonModalHeader({
             subtitle={subtitle ?? undefined}
             photoUrl={person.photoUrl}
             badge={badge ?? undefined}
-            onClose={onClose}
         />
     );
 }

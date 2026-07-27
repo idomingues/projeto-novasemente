@@ -20,7 +20,7 @@ import {
 
 interface Props {
     church: { name: string } | null;
-    user: { name: string; email: string; photo_url?: string | null };
+    user: { name: string; email: string; birth_date?: string | null; photo_url?: string | null };
     volunteerSignupCompletion?: VolunteerSignupCompletion | null;
     profileCounts: {
         /** Pedidos em aberto no painel Atendimento Pastoral (null se o usuário não vê o painel). */
@@ -45,6 +45,19 @@ type Row = {
     badgeCount?: number | null;
 };
 
+/** Formata Y-m-d sem deslocar fuso (evita dia errado com Date UTC). */
+function formatBirthDateBr(iso: string | null | undefined): string | null {
+    if (!iso) {
+        return null;
+    }
+    const ymd = iso.slice(0, 10);
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+    if (!m) {
+        return null;
+    }
+    return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
 function countBadgeClass(tone: Row['tone']): string {
     if (tone === 'critical') {
         return 'bg-rose-600 text-white dark:bg-rose-500';
@@ -65,11 +78,11 @@ function RowItem({ row }: { row: Row }) {
                 href={route('logout')}
                 method="post"
                 as="button"
-                className="w-full text-left rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+                className="group w-full cursor-pointer rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-rose-200/70 transition duration-200 hover:bg-rose-50/70 hover:shadow-md hover:ring-rose-300/80 active:bg-rose-50 dark:bg-zinc-900 dark:ring-rose-900/50 dark:hover:bg-rose-950/30 dark:hover:ring-rose-800/60"
             >
                 <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-50 dark:bg-rose-950/40">
-                        <ArrowRightOnRectangleIcon className="h-6 w-6 text-rose-700 dark:text-rose-300" />
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200/70 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-800/50">
+                        <ArrowRightOnRectangleIcon className="h-6 w-6" />
                     </div>
                     <div className="min-w-0 flex-1">
                         <div className="font-semibold text-rose-700 dark:text-rose-200">{row.title}</div>
@@ -83,28 +96,20 @@ function RowItem({ row }: { row: Row }) {
     const tone = row.tone ?? 'member';
     const cardClass =
         tone === 'critical'
-            ? 'block rounded-2xl border border-amber-300 dark:border-amber-900 bg-amber-50/80 dark:bg-amber-950/25 p-4 shadow-sm transition-colors hover:bg-amber-50 dark:hover:bg-amber-950/40'
+            ? 'group block cursor-pointer rounded-2xl bg-amber-50/90 p-4 shadow-sm ring-1 ring-amber-200/80 transition duration-200 hover:bg-amber-50 hover:shadow-md hover:ring-amber-300/90 active:bg-amber-100/80 dark:bg-amber-950/30 dark:ring-amber-800/50 dark:hover:bg-amber-950/45 dark:hover:ring-amber-700/60'
             : tone === 'member'
-              ? 'block rounded-2xl border border-primary-200 dark:border-primary-900 bg-primary-50/80 dark:bg-primary-950/30 p-4 shadow-sm transition-colors hover:bg-primary-50 dark:hover:bg-primary-950/45'
-              : 'block rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40';
+              ? 'group block cursor-pointer rounded-2xl bg-white p-4 shadow-sm ring-1 ring-rose-200/60 transition duration-200 hover:bg-rose-50/50 hover:shadow-md hover:ring-rose-300/70 active:bg-rose-50/80 dark:bg-zinc-900 dark:ring-rose-900/40 dark:hover:bg-rose-950/25 dark:hover:ring-rose-800/55'
+              : 'group block cursor-pointer rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-200/80 transition duration-200 hover:bg-zinc-50 hover:shadow-md hover:ring-zinc-300/90 active:bg-zinc-100/80 dark:bg-zinc-900 dark:ring-zinc-700/70 dark:hover:bg-zinc-800/60 dark:hover:ring-zinc-600/70';
     const iconWrapClass =
         tone === 'critical'
-            ? 'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-900/30'
+            ? 'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-200/80 dark:bg-amber-900/35 dark:text-amber-200 dark:ring-amber-800/50'
             : tone === 'member'
-              ? 'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-100 dark:bg-primary-900/40'
-              : 'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800';
-    const iconClass =
-        tone === 'critical'
-            ? 'h-6 w-6 text-amber-800 dark:text-amber-200'
-            : tone === 'member'
-              ? 'h-6 w-6 text-primary-700 dark:text-primary-200'
-              : 'h-6 w-6 text-zinc-700 dark:text-zinc-200';
+              ? 'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200/70 dark:bg-rose-950/45 dark:text-rose-200 dark:ring-rose-800/50'
+              : 'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-700 ring-1 ring-inset ring-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700/60';
+    const iconClass = 'h-6 w-6';
 
     return (
-        <Link
-            href={row.href ?? '#'}
-            className={cardClass}
-        >
+        <Link href={row.href ?? '#'} className={cardClass}>
             <div className="flex items-center gap-4">
                 <div className={iconWrapClass}>
                     <Icon className={iconClass} />
@@ -113,7 +118,7 @@ function RowItem({ row }: { row: Row }) {
                     <div className="flex flex-wrap items-center gap-2">
                         <div className="font-semibold text-zinc-900 dark:text-white">{row.title}</div>
                         {tone === 'critical' ? (
-                            <span className="shrink-0 rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900 dark:bg-amber-900/50 dark:text-amber-200">
+                            <span className="shrink-0 rounded-full bg-amber-200/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900 dark:bg-amber-900/50 dark:text-amber-200">
                                 Painel
                             </span>
                         ) : null}
@@ -122,7 +127,7 @@ function RowItem({ row }: { row: Row }) {
                 </div>
                 {typeof row.badgeCount === 'number' ? (
                     <span
-                        className={`ml-auto shrink-0 inline-flex min-h-8 min-w-8 items-center justify-center rounded-full px-2.5 py-1 text-sm font-bold tabular-nums ${countBadgeClass(tone)}`}
+                        className={`ml-auto inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded-full px-2.5 py-1 text-sm font-bold tabular-nums ${countBadgeClass(tone)}`}
                         title={`${row.badgeCount} ${row.badgeCount === 1 ? 'item' : 'itens'}`}
                         aria-label={`${row.badgeCount} ${row.badgeCount === 1 ? 'item' : 'itens'}`}
                     >
@@ -135,6 +140,7 @@ function RowItem({ row }: { row: Row }) {
 }
 
 export default function MobileProfile({ church, user, profileCounts, volunteerSignupCompletion = null }: Props) {
+    const birthDateLabel = formatBirthDateBr(user.birth_date);
     const page = usePage();
     const auth = (page.props as {
         auth?: {
@@ -340,36 +346,44 @@ export default function MobileProfile({ church, user, profileCounts, volunteerSi
             <Head title="Meu perfil" />
 
             <div className="space-y-6">
-                <div className="flex items-start justify-between gap-4 rounded-3xl bg-white/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 p-5">
-                    <div className="flex items-start gap-4 min-w-0">
+                <div className="flex items-start justify-between gap-4 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-900/70 dark:ring-zinc-700/70">
+                    <div className="flex min-w-0 items-start gap-4">
                         {user.photo_url ? (
                             <img
                                 src={user.photo_url}
                                 alt=""
-                                className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-zinc-100 dark:ring-zinc-800"
+                                className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm dark:ring-zinc-800"
                             />
                         ) : (
-                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-xl font-bold text-white dark:bg-zinc-700">
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-xl font-bold text-white shadow-sm ring-2 ring-white dark:bg-zinc-700 dark:ring-zinc-800">
                                 {user.name.charAt(0).toUpperCase()}
                             </div>
                         )}
                         <div className="min-w-0">
-                            <div className="text-sm text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
+                            <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
                                 <ChevronDownIcon className="h-4 w-4" aria-hidden />
                                 <span>Meu perfil</span>
                             </div>
-                            <div className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white truncate">
+                            <div className="mt-1 truncate text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
                                 {user.name}
                             </div>
-                            <div className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 truncate">
-                                {church?.name ?? 'Igreja'}
+                            <div className="mt-1 space-y-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+                                <div className="truncate" title={user.email}>
+                                    {user.email}
+                                </div>
+                                <div className="truncate">
+                                    {birthDateLabel
+                                        ? `Nascimento: ${birthDateLabel}`
+                                        : 'Data de nascimento não informada'}
+                                </div>
+                                <div className="truncate">{church?.name ?? 'Igreja'}</div>
                             </div>
                         </div>
                     </div>
 
                     <Link
                         href={route('mobile.profile.edit')}
-                        className="inline-flex items-center gap-2 rounded-full bg-zinc-100 dark:bg-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-700 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                        className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-700 shadow-sm ring-1 ring-zinc-200/80 transition hover:bg-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-700 dark:hover:bg-zinc-700"
                     >
                         <PencilSquareIcon className="h-4 w-4" aria-hidden />
                         Editar perfil

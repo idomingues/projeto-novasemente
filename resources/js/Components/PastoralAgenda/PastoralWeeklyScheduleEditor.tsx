@@ -936,13 +936,6 @@ const PastoralWeeklyScheduleEditor = forwardRef<PastoralWeeklyScheduleEditorHand
                     show={bookingDetailOpen}
                     onClose={closeBookingDetails}
                     maxWidth="lg"
-                    footer={
-                        <div className="flex justify-end">
-                            <SecondaryButton type="button" onClick={closeBookingDetails}>
-                                Fechar
-                            </SecondaryButton>
-                        </div>
-                    }
                 >
                     <div className="p-6 pt-12 sm:p-8 sm:pt-10">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Dados da marcação</h2>

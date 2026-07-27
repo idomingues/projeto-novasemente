@@ -81,7 +81,7 @@ export default function PrayerRequestCardContent({
 
             <Modal show={detailOpen} onClose={() => setDetailOpen(false)}>
                 <div className="p-6">
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                    <h2 className="pr-10 text-lg font-semibold text-zinc-900 dark:text-white">
                         {displayName ?? 'Pedido de oração'}
                     </h2>
                     <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
@@ -92,11 +92,6 @@ export default function PrayerRequestCardContent({
                             <PrayerAmenButton prayerId={item.id} count={item.prayer_amen_count ?? 0} />
                         </div>
                     ) : null}
-                    <div className="mt-6 flex justify-end">
-                        <SecondaryButton type="button" onClick={() => setDetailOpen(false)}>
-                            Fechar
-                        </SecondaryButton>
-                    </div>
                 </div>
             </Modal>
         </>

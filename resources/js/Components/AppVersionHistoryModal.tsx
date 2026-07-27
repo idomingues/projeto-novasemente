@@ -56,7 +56,7 @@ export default function AppVersionHistoryModal({ show, onClose, highlightLabel =
         <Modal show={show} onClose={onClose} maxWidth="md">
             <div className="flex max-h-[min(90vh,820px)] flex-col">
                 <div className="shrink-0 px-5 pt-6 pb-1 sm:px-7 sm:pt-7">
-                    <h2 className="text-lg font-bold leading-tight tracking-tight text-zinc-900 dark:text-white">
+                    <h2 className="pr-10 text-lg font-bold leading-tight tracking-tight text-zinc-900 dark:text-white">
                         Versões do app
                     </h2>
                     {displayLabel ? (
@@ -118,16 +118,6 @@ export default function AppVersionHistoryModal({ show, onClose, highlightLabel =
                             ))}
                         </ul>
                     )}
-                </div>
-
-                <div className="shrink-0 border-t border-zinc-100 bg-zinc-50/90 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900/95 sm:px-7 sm:py-5">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="inline-flex min-h-[48px] w-full cursor-pointer items-center justify-center rounded-full border border-zinc-900 bg-white px-6 text-xs font-semibold uppercase tracking-wide text-zinc-900 transition-colors active:scale-[0.99] dark:border-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 sm:min-h-0 sm:w-auto sm:py-3 sm:float-right"
-                    >
-                        Fechar
-                    </button>
                 </div>
             </div>
         </Modal>

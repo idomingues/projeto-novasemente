@@ -802,17 +802,6 @@ export default function VersiculosCaixinhaIndex({
                     setPreviewError('');
                 }}
                 maxWidth="lg"
-                footer={
-                    <SecondaryButton
-                        type="button"
-                        onClick={() => {
-                            setIsImportOpen(false);
-                            setPreviewError('');
-                        }}
-                    >
-                        Fechar
-                    </SecondaryButton>
-                }
             >
                 <div className="space-y-5 px-5 py-6 sm:px-7">
                     <div>

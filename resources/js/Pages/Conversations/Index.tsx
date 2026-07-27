@@ -186,7 +186,7 @@ export default function ConversationsIndex({
             <Modal show={open && !!modal} onClose={closeModal} maxWidth="2xl" disableBodyScroll>
                 {modal ? (
                     <div className="flex max-h-[80dvh] flex-col p-6">
-                        <h2 className="text-lg font-semibold">{modal.headerTitle}</h2>
+                        <h2 className="pr-10 text-lg font-semibold">{modal.headerTitle}</h2>
                         <p className="text-sm text-zinc-500">
                             {modal.headerSubtitle} · {modal.statusLabel}
                         </p>
@@ -223,9 +223,6 @@ export default function ConversationsIndex({
                                     Assumir
                                 </PrimaryButton>
                             ) : null}
-                            <SecondaryButton type="button" onClick={closeModal}>
-                                Fechar
-                            </SecondaryButton>
                         </div>
                         {modal.canReply ? (
                             <form

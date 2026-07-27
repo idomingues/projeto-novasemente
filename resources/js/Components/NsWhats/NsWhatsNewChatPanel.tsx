@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeftIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { router } from '@inertiajs/react';
 import TextInput from '@/Components/TextInput';
 import UserListAvatar from '@/Components/UserListAvatar';
@@ -384,9 +384,10 @@ export default function NsWhatsNewChatPanel({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="cursor-pointer text-[12px] font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                        className="cursor-pointer rounded-full p-1.5 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                        aria-label="Fechar"
                     >
-                        Fechar
+                        <XMarkIcon className="h-5 w-5" aria-hidden />
                     </button>
                 </div>
                 <label className="relative block">

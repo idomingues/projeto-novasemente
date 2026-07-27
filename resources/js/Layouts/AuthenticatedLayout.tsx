@@ -21,7 +21,7 @@ export default function Authenticated({
         useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-100 dark:bg-zinc-900">
+        <div className="ns-app-shell fixed inset-0 z-0 h-[100dvh] max-h-[100dvh] overflow-y-auto overscroll-y-none bg-gray-100 dark:bg-zinc-900">
             <nav className="border-b border-gray-100 dark:border-zinc-700 bg-white dark:bg-zinc-800">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">

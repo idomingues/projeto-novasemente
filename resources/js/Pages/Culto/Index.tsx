@@ -1,5 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import { PencilIcon, TrashIcon, FilmIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
@@ -11,8 +11,9 @@ import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
-import { useCallback, useState, FormEventHandler } from 'react';
+import { useCallback, useEffect, useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { submitListModalDelete } from '@/utils/listModalFetchSave';
 import { useListModalSubmit } from '@/hooks/useListModalSubmit';
 import {
     useListModalEditUrl,
@@ -46,7 +47,14 @@ function formatDate(iso: string | null): string {
     });
 }
 
-export default function CultoIndex({ cultos }: Props) {
+export default function CultoIndex({ cultos: cultosProp }: Props) {
+    const csrf = (usePage().props as { csrf_token?: string }).csrf_token ?? '';
+    const [cultos, setCultos] = useState(cultosProp);
+    const [deletingId, setDeletingId] = useState<number | null>(null);
+
+    useEffect(() => {
+        setCultos(cultosProp);
+    }, [cultosProp]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -149,8 +157,21 @@ export default function CultoIndex({ cultos }: Props) {
             danger: true,
             icon: 'warning',
         });
-        if (ok) {
-            router.delete(route('culto.destroy', id));
+        if (!ok || deletingId !== null) {
+            return;
+        }
+        setDeletingId(id);
+        try {
+            const result = await submitListModalDelete(route('culto.destroy', id), csrf);
+            if (!result.ok) {
+                return;
+            }
+            setCultos((prev) => prev.filter((c) => c.id !== id));
+            if (editingId === id) {
+                closeModal();
+            }
+        } finally {
+            setDeletingId(null);
         }
     };
 
@@ -198,14 +219,15 @@ export default function CultoIndex({ cultos }: Props) {
                                     <h2 className="font-semibold text-zinc-900 dark:text-white text-lg leading-snug line-clamp-2">
                                         {c.title}
                                     </h2>
-                                    <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                        <CalendarDaysIcon className="w-4 h-4" />
-                                        <span>
-                                            {c.published_at
-                                                ? formatDate(c.published_at)
-                                                : 'Rascunho'}
-                                        </span>
-                                        {c.author?.name && <span>• {c.author.name}</span>}
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                        <CalendarDaysIcon className="w-4 h-4 shrink-0" aria-hidden />
+                                        <span>Cadastro: {formatDate(c.created_at)}</span>
+                                        {c.published_at ? (
+                                            <span>• Publicação: {formatDate(c.published_at)}</span>
+                                        ) : (
+                                            <span>• Rascunho</span>
+                                        )}
+                                        {c.author?.name ? <span>• {c.author.name}</span> : null}
                                     </div>
                                 </div>
                                 <ListCardActionRow className="mt-3 gap-1 sm:w-auto">
@@ -218,7 +240,8 @@ export default function CultoIndex({ cultos }: Props) {
                                         label="Excluir"
                                         icon={<TrashIcon className="h-5 w-5" />}
                                         tone="danger"
-                                        onClick={() => handleDelete(c.id)}
+                                        disabled={deletingId === c.id}
+                                        onClick={() => void handleDelete(c.id)}
                                     />
                                 </ListCardActionRow>
                             </div>

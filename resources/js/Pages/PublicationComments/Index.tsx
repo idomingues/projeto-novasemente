@@ -164,9 +164,6 @@ export default function PublicationCommentsIndex({ comments, filters, typeOption
                 maxWidth="md"
                 footer={
                     <div className="flex justify-end gap-2">
-                        <SecondaryButton type="button" onClick={() => setSelected(null)} className="cursor-pointer">
-                            Fechar
-                        </SecondaryButton>
                         <PrimaryButton
                             type="button"
                             onClick={destroy}

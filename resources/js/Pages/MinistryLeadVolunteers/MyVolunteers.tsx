@@ -146,12 +146,10 @@ function VolunteerModalHeader({
     volunteer,
     ministryName,
     badge,
-    onClose,
 }: {
     volunteer: VolunteerIdentity;
     ministryName?: string | null;
     badge: string;
-    onClose: () => void;
 }) {
     return (
         <RecordDetailHeader
@@ -159,7 +157,6 @@ function VolunteerModalHeader({
             subtitle={ministryName ?? 'Departamento'}
             photoUrl={volunteer.photoUrl}
             badge={badge}
-            onClose={onClose}
         />
     );
 }
@@ -1133,7 +1130,6 @@ export default function MyVolunteers() {
                             volunteer={row.volunteer}
                             ministryName={row.ministryName}
                             badge="Alterar status"
-                            onClose={closeEdit}
                         />
 
                         <div className="flex gap-2 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
@@ -1333,7 +1329,6 @@ export default function MyVolunteers() {
                             volunteer={inviteHelpRow.volunteer}
                             ministryName={inviteHelpRow.ministryName}
                             badge="Convite ao voluntário"
-                            onClose={closeInviteHelp}
                         />
                         {inviteHelpRow.volunteerHasLinkedUser ? (
                             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
@@ -1363,7 +1358,6 @@ export default function MyVolunteers() {
                             volunteer={profileRow.volunteer}
                             ministryName={profileRow.ministryName}
                             badge="Dados do voluntário"
-                            onClose={closeProfile}
                         />
 
                         <div className="grid gap-3 sm:grid-cols-2">

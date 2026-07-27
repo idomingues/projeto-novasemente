@@ -174,6 +174,7 @@ export default function Sidebar({
         linkedPastor?: { id: number } | null;
         pastoralAgendaMenuVisible?: boolean;
         openSolicitationsCount?: number;
+        openBaptismRequestsCount?: number;
         openVolunteerRequestsCount?: number;
         openSupportTicketsCount?: number;
     };
@@ -189,6 +190,8 @@ export default function Sidebar({
     const canAccessSupportAdmin = permissions.includes('support.view') || permissions.includes('support.manage');
     const openSolicitationsCount =
         typeof auth?.openSolicitationsCount === 'number' ? auth.openSolicitationsCount : 0;
+    const openBaptismRequestsCount =
+        typeof auth?.openBaptismRequestsCount === 'number' ? auth.openBaptismRequestsCount : 0;
     const openVolunteerRequestsCount =
         typeof auth?.openVolunteerRequestsCount === 'number' ? auth.openVolunteerRequestsCount : 0;
     const openSupportTicketsCount =
@@ -196,6 +199,7 @@ export default function Sidebar({
 
     const sidebarBadgeCountForRoute = (routeName: string): number => {
         if (routeName === 'solicitations.index') return openSolicitationsCount;
+        if (routeName === 'baptism-requests.index') return openBaptismRequestsCount;
         if (
             routeName === 'ministry-lead.volunteers.index' ||
             routeName === 'ministry-lead.volunteers.central' ||
@@ -461,8 +465,8 @@ export default function Sidebar({
                                             ? 'bg-white/20 text-white dark:bg-zinc-900/15 dark:text-zinc-900'
                                             : 'bg-rose-500 text-white shadow-sm shadow-rose-500/30'
                                     }`}
-                                    title={`${sidebarBadgeCount} em aberto`}
-                                    aria-label={`${sidebarBadgeCount} em aberto`}
+                                    title={`${sidebarBadgeCount} pendente${sidebarBadgeCount === 1 ? '' : 's'}`}
+                                    aria-label={`${sidebarBadgeCount} pendente${sidebarBadgeCount === 1 ? '' : 's'}`}
                                 >
                                     {sidebarBadgeCount > 99 ? '99+' : sidebarBadgeCount}
                                 </span>

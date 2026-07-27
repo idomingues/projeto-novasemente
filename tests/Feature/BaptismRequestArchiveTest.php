@@ -94,6 +94,57 @@ class BaptismRequestArchiveTest extends TestCase
                 ->where('demands.0.id', $archived->id));
     }
 
+    public function test_sidebar_baptism_badge_counts_only_pending(): void
+    {
+        $admin = $this->actingAsAdmin();
+        $church = Church::query()->firstOrFail();
+
+        ChurchSolicitation::query()->create([
+            'church_id' => $church->id,
+            'user_id' => $admin->id,
+            'type' => 'baptism',
+            'status' => BaptismSolicitationStatus::PENDING,
+            'subject' => 'Pendente',
+            'message' => 'Mensagem',
+        ]);
+
+        ChurchSolicitation::query()->create([
+            'church_id' => $church->id,
+            'user_id' => $admin->id,
+            'type' => 'baptism',
+            'status' => BaptismSolicitationStatus::WAITING,
+            'subject' => 'Aguardando',
+            'message' => 'Mensagem',
+        ]);
+
+        ChurchSolicitation::query()->create([
+            'church_id' => $church->id,
+            'user_id' => $admin->id,
+            'type' => 'baptism',
+            'status' => BaptismSolicitationStatus::BAPTIZED,
+            'subject' => 'Batizado',
+            'message' => 'Mensagem',
+            'completed_at' => now(),
+        ]);
+
+        ChurchSolicitation::query()->create([
+            'church_id' => $church->id,
+            'user_id' => $admin->id,
+            'type' => 'baptism',
+            'status' => BaptismSolicitationStatus::ARCHIVED,
+            'subject' => 'Arquivado',
+            'message' => 'Mensagem',
+        ]);
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('baptism-requests.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('auth.openBaptismRequestsCount', 1)
+                ->where('auth.openSolicitationsCount', 0));
+    }
+
     public function test_admin_can_archive_and_restore_baptism_via_routes(): void
     {
         $admin = $this->actingAsAdmin();

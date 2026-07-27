@@ -538,9 +538,6 @@ export default function Index({ items, dayOptions, timeModes, canManage = false 
                     </div>
 
                     <div className="mt-6 flex justify-end gap-3">
-                        <SecondaryButton type="button" onClick={closeModal}>
-                            Fechar
-                        </SecondaryButton>
                         <PrimaryButton type="submit" disabled={saving}>
                             {saving ? 'Salvando…' : 'Salvar'}
                         </PrimaryButton>

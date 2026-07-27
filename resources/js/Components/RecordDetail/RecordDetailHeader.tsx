@@ -1,4 +1,3 @@
-import SecondaryButton from '@/Components/SecondaryButton';
 import UserListAvatar from '@/Components/UserListAvatar';
 
 export default function RecordDetailHeader({
@@ -6,16 +5,14 @@ export default function RecordDetailHeader({
     subtitle,
     photoUrl,
     badge,
-    onClose,
 }: {
     title: string;
     subtitle?: string | null;
     photoUrl?: string | null;
     badge?: string | null;
-    onClose: () => void;
 }) {
     return (
-        <div className="flex items-start justify-between gap-4 rounded-2xl border border-teal-200/70 bg-gradient-to-br from-teal-50/90 via-white to-white p-4 dark:border-teal-900/50 dark:from-teal-950/35 dark:via-zinc-900/80 dark:to-zinc-900/80">
+        <div className="flex items-start gap-4 rounded-2xl border border-teal-200/70 bg-gradient-to-br from-teal-50/90 via-white to-white p-4 pr-10 sm:pr-12 dark:border-teal-900/50 dark:from-teal-950/35 dark:via-zinc-900/80 dark:to-zinc-900/80">
             <div className="flex min-w-0 items-center gap-4">
                 <UserListAvatar name={title} photoUrl={photoUrl} size="lg" previewOnClick />
                 <div className="min-w-0">
@@ -28,9 +25,6 @@ export default function RecordDetailHeader({
                     ) : null}
                 </div>
             </div>
-            <SecondaryButton type="button" onClick={onClose}>
-                Fechar
-            </SecondaryButton>
         </div>
     );
 }

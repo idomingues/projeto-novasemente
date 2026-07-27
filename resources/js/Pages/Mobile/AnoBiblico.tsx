@@ -1,6 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { AcademicCapIcon, BookOpenIcon, CheckCircleIcon, CalendarDaysIcon, ArrowPathIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
+import { AcademicCapIcon, BookOpenIcon, CheckCircleIcon, CalendarDaysIcon, ArrowPathIcon, Squares2X2Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useEffect, useMemo, useState } from 'react';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
@@ -411,9 +411,10 @@ export default function MobileAnoBiblico(props: Props) {
                             <button
                                 type="button"
                                 onClick={() => setReprogramOpen(false)}
-                                className="rounded-full px-3 py-1 text-sm font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                                className="cursor-pointer rounded-full p-2 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800/60 dark:hover:text-white"
+                                aria-label="Fechar"
                             >
-                                Fechar
+                                <XMarkIcon className="h-5 w-5" aria-hidden />
                             </button>
                         </div>
 
@@ -537,9 +538,10 @@ export default function MobileAnoBiblico(props: Props) {
                                 <button
                                     type="button"
                                     onClick={() => setChallengeOpen(false)}
-                                    className="rounded-full px-3 py-1 text-sm font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                                    className="cursor-pointer rounded-full p-2 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800/60 dark:hover:text-white"
+                                    aria-label="Fechar"
                                 >
-                                    Fechar
+                                    <XMarkIcon className="h-5 w-5" aria-hidden />
                                 </button>
                             ) : null}
                         </div>

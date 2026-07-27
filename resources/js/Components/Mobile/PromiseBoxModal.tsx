@@ -180,15 +180,6 @@ export default function PromiseBoxModal({
             show={show}
             onClose={handleClose}
             maxWidth="md"
-            footer={
-                <button
-                    type="button"
-                    onClick={handleClose}
-                    className="inline-flex w-full min-h-[44px] cursor-pointer items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-medium text-zinc-500 transition-colors hover:bg-zinc-100/80 hover:text-zinc-800 active:scale-[0.99] dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-100"
-                >
-                    Fechar
-                </button>
-            }
         >
             <div className="relative overflow-hidden px-5 pt-6 pb-1 sm:px-7 sm:pt-7">
                 <div

@@ -36,6 +36,7 @@ use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
 use App\Services\YoutubePlaylistImportService;
 use App\Support\ChurchAppFeatures;
+use App\Support\CultoEpisodeCatalog;
 use App\Support\HomeCardKeys;
 use App\Support\HomeFeaturedWeek;
 use App\Support\HomeModuleSpotlight;
@@ -344,13 +345,17 @@ class MobileController extends Controller
     {
         $church = $this->currentChurch();
         $churchId = $church?->id;
-        $cultos = Culto::query()
-            ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
-            ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->orderByDesc('published_at')
-            ->get()
+        $cultos = CultoEpisodeCatalog::dedupeByYoutubeVideo(
+            CultoEpisodeCatalog::filterToCurrentSeries(
+                Culto::query()
+                    ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
+                    ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
+                    ->whereNotNull('published_at')
+                    ->where('published_at', '<=', now())
+                    ->orderByDesc('published_at')
+                    ->get(),
+            ),
+        )
             ->map(fn (Culto $c) => [
                 'id' => $c->id,
                 'title' => $c->title,
@@ -2070,6 +2075,10 @@ class MobileController extends Controller
 
         $volunteerSignupCompletion = VolunteerSignupCompletion::profileAlertForUser($user);
 
+        $user->loadMissing('volunteerProfile');
+        $birthDate = $user->birth_date?->format('Y-m-d')
+            ?? $user->volunteerProfile?->birth_date?->format('Y-m-d');
+
         return Inertia::render('Mobile/Profile', [
             'church' => $church ? [
                 'name' => $church->name,
@@ -2077,6 +2086,7 @@ class MobileController extends Controller
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
+                'birth_date' => $birthDate,
                 'photo_url' => $user->photo_url,
             ],
             'profileCounts' => [
@@ -2125,6 +2135,7 @@ class MobileController extends Controller
             'status' => session('status'),
             'volunteerMinistries' => $volunteerMinistries,
             'profileRedirectTo' => 'mobile.profile.edit',
+            'profileMaxBirthDate' => now()->subYears(10)->toDateString(),
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
             'volunteerSignupProgress' => $volunteerSignupProgress,
         ]);

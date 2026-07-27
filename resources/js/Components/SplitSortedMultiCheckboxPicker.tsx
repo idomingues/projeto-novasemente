@@ -12,8 +12,6 @@ type SplitSortedMultiCheckboxPickerProps = {
     maxHeightClass?: string;
     error?: string;
     className?: string;
-    availableLabel?: string;
-    selectedLabel?: string;
     showSearch?: boolean;
     /** Pergunta ao marcar/desmarcar (como na tela de departamentos); só aplica ao salvar o formulário */
     confirmChanges?: boolean;
@@ -29,14 +27,11 @@ export default function SplitSortedMultiCheckboxPicker({
     maxHeightClass = DEFAULT_PANE_MAX_HEIGHT,
     error,
     className,
-    availableLabel = 'Disponíveis',
-    selectedLabel = 'Selecionados',
     showSearch = true,
     confirmChanges = false,
     renderTrailingAction,
 }: SplitSortedMultiCheckboxPickerProps) {
-    const [availableFilter, setAvailableFilter] = useState('');
-    const [selectedFilter, setSelectedFilter] = useState('');
+    const [filter, setFilter] = useState('');
 
     const optionById = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
 
@@ -112,94 +107,39 @@ export default function SplitSortedMultiCheckboxPicker({
         [confirmChanges, confirmSelectionChange, onChange, selectedIds],
     );
 
-    const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-
-    const selectedListOptions = useMemo(() => {
-        const q = selectedFilter.trim();
-        return options
-            .filter((o) => selectedSet.has(o.id))
-            .filter((o) => !q || textMatchesSearchFields(q, o.name, o.subline));
-    }, [options, selectedSet, selectedFilter]);
-
-    const otherListOptions = useMemo(() => {
-        const q = availableFilter.trim();
-        return options
-            .filter((o) => !selectedSet.has(o.id))
-            .filter((o) => !q || textMatchesSearchFields(q, o.name, o.subline));
-    }, [options, selectedSet, availableFilter]);
+    const filteredOptions = useMemo(() => {
+        const q = filter.trim();
+        if (!q) {
+            return options;
+        }
+        return options.filter((o) => textMatchesSearchFields(q, o.name, o.subline));
+    }, [options, filter]);
 
     return (
         <div className={className}>
-            <div className="mx-auto grid min-h-0 w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="flex min-h-0 min-w-0 flex-col">
-                    <p className="shrink-0 px-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                        {availableLabel}
-                        <span className="ml-1.5 font-normal text-zinc-500 dark:text-zinc-400">
-                            ({otherListOptions.length})
-                        </span>
-                    </p>
-                    {showSearch ? (
-                        <TextInput
-                            value={availableFilter}
-                            onChange={(e) => setAvailableFilter(e.target.value)}
-                            className="mt-1.5 block w-full"
-                            placeholder="Buscar disponíveis…"
-                            aria-label="Buscar disponíveis por nome"
-                        />
-                    ) : null}
-                    <SortedMultiCheckboxList
-                        className="mt-1.5 min-h-0 flex-1"
-                        options={otherListOptions}
-                        selectedIds={selectedIds}
-                        onChange={handleSelectionChange}
-                        maxHeightClass={maxHeightClass}
-                        hideSectionLabels
-                        emptyMessage={
-                            availableFilter.trim()
-                                ? 'Nenhum resultado para esta busca.'
-                                : 'Todos já foram selecionados.'
-                        }
-                        showSelectedCount={false}
-                        renderTrailingAction={renderTrailingAction}
+            <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-col">
+                {showSearch ? (
+                    <TextInput
+                        value={filter}
+                        onChange={(e) => setFilter(e.target.value)}
+                        className="block w-full"
+                        placeholder="Buscar departamentos…"
+                        aria-label="Buscar departamentos por nome"
                     />
-                </div>
-
-                <div className="flex min-h-0 min-w-0 flex-col sm:border-l sm:border-zinc-200 sm:pl-4 dark:sm:border-zinc-700">
-                    <p className="shrink-0 px-1 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                        {selectedLabel}
-                        <span className="ml-1.5 font-normal text-zinc-500 dark:text-zinc-400">
-                            ({selectedListOptions.length}
-                            {selectedFilter.trim() && selectedListOptions.length !== selectedIds.length
-                                ? ` de ${selectedIds.length}`
-                                : ''}
-                            )
-                        </span>
-                    </p>
-                    {showSearch ? (
-                        <TextInput
-                            value={selectedFilter}
-                            onChange={(e) => setSelectedFilter(e.target.value)}
-                            className="mt-1.5 block w-full"
-                            placeholder="Buscar selecionados…"
-                            aria-label="Buscar selecionados por nome"
-                        />
-                    ) : null}
-                    <SortedMultiCheckboxList
-                        className="mt-1.5 min-h-0 flex-1"
-                        options={selectedListOptions}
-                        selectedIds={selectedIds}
-                        onChange={handleSelectionChange}
-                        maxHeightClass={maxHeightClass}
-                        hideSectionLabels
-                        emptyMessage={
-                            selectedFilter.trim()
-                                ? 'Nenhum selecionado corresponde a esta busca.'
-                                : 'Nenhum selecionado.'
-                        }
-                        showSelectedCount={false}
-                        renderTrailingAction={renderTrailingAction}
-                    />
-                </div>
+                ) : null}
+                <SortedMultiCheckboxList
+                    className={showSearch ? 'mt-1.5 min-h-0 flex-1' : 'min-h-0 flex-1'}
+                    options={filteredOptions}
+                    selectedIds={selectedIds}
+                    onChange={handleSelectionChange}
+                    maxHeightClass={maxHeightClass}
+                    hideSectionLabels
+                    emptyMessage={
+                        filter.trim() ? 'Nenhum resultado para esta busca.' : 'Nenhum departamento disponível.'
+                    }
+                    showSelectedCount
+                    renderTrailingAction={renderTrailingAction}
+                />
             </div>
             {error ? <InputError message={error} className="mt-1" /> : null}
         </div>

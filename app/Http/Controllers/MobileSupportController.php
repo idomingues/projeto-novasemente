@@ -18,6 +18,11 @@ use Inertia\Response;
 
 class MobileSupportController extends Controller
 {
+    private const GUEST_TICKET_TOKENS_SESSION_KEY = 'mobile_support_guest_tokens';
+
+    /** Janela para reaproveitar envio idêntico (evita triplicar por reenvio do visitante). */
+    private const DUPLICATE_SUBMIT_WINDOW_MINUTES = 10;
+
     private function typeLabel(string $type): string
     {
         return match ($type) {
@@ -72,42 +77,18 @@ class MobileSupportController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $isAdmin = $this->isAdmin($user);
 
-        $tickets = [];
-        if ($user) {
-            $ticketsQuery = AppSupportTicket::query()->whereIn('status', AppSupportTicket::activeStatuses());
-            if (! $isAdmin) {
-                $ticketsQuery->where('type', '!=', 'development')
-                    ->where('user_id', $user->id)
-                    ->whereNull('user_hidden_at');
-            } else {
-                $ticketsQuery->where('type', '!=', 'development');
-            }
-
-            $tickets = $ticketsQuery
-                ->orderByDesc('created_at')
-                ->limit(20)
-                ->get()
-                ->map(fn (AppSupportTicket $t) => [
-                    'publicToken' => $t->public_token,
-                    'type' => $t->type,
-                    'typeLabel' => $this->typeLabel($t->type),
-                    'status' => $t->status,
-                    'statusLabel' => $this->statusLabel((string) $t->status),
-                    'message' => $t->message,
-                    'forecastAt' => $t->forecast_at?->toDateString(),
-                    'createdAt' => $t->created_at?->toIso8601String(),
-                    'solutionText' => $t->solution_text,
-                ])
-                ->values()
-                ->all();
-        }
+        $tickets = $this->listTicketsPayload($request, $user);
 
         $modalDetail = null;
         $modalToken = $request->query('modal');
         if (is_string($modalToken) && $modalToken !== '') {
             $modalDetail = $this->ticketPagePayloadForModal($request, $modalToken);
+            // Visitante que abriu o chamado por link/modal passa a vê-lo em «Chamados».
+            if ($modalDetail && ! $user && is_string($modalDetail['ticket']['publicToken'] ?? null)) {
+                $this->rememberGuestTicketToken($request, (string) $modalDetail['ticket']['publicToken']);
+                $tickets = $this->listTicketsPayload($request, $user);
+            }
         }
 
         return Inertia::render('Mobile/Support', [
@@ -119,7 +100,7 @@ class MobileSupportController extends Controller
         ]);
     }
 
-    public function store(Request $request): Response
+    public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
 
@@ -133,6 +114,15 @@ class MobileSupportController extends Controller
             'guest_email' => ['nullable', 'email', 'max:255'],
             'guest_phone' => ['nullable', 'string', 'max:50'],
         ]);
+
+        $existing = $this->findRecentDuplicateTicket($request, $user, $valid);
+        if ($existing) {
+            if (! $user) {
+                $this->rememberGuestTicketToken($request, (string) $existing->public_token);
+            }
+
+            return redirect()->route('mobile.support.index', ['modal' => $existing->public_token]);
+        }
 
         $screenshotPath = null;
         if ($request->hasFile('screenshot_file')) {
@@ -156,9 +146,120 @@ class MobileSupportController extends Controller
             'status' => AppSupportTicket::STATUS_OPEN,
         ]);
 
+        if (! $user) {
+            $this->rememberGuestTicketToken($request, (string) $ticket->public_token);
+        }
+
         app(SupportTicketChatNotifier::class)->notifyStaffOfNewTicket($ticket, $user);
 
         return redirect()->route('mobile.support.index', ['modal' => $ticket->public_token]);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function listTicketsPayload(Request $request, ?User $user): array
+    {
+        $ticketsQuery = AppSupportTicket::query()
+            ->whereIn('status', AppSupportTicket::activeStatuses())
+            ->where('type', '!=', 'development');
+
+        if ($user) {
+            // «Os meus chamados»: só os do usuário (admin gerencia o restante em /support).
+            $ticketsQuery->where('user_id', $user->id)->whereNull('user_hidden_at');
+        } else {
+            $tokens = $this->guestTicketTokensFromSession($request);
+            if ($tokens === []) {
+                return [];
+            }
+            $ticketsQuery->whereNull('user_id')->whereIn('public_token', $tokens);
+        }
+
+        return $ticketsQuery
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get()
+            ->map(fn (AppSupportTicket $t) => [
+                'publicToken' => $t->public_token,
+                'type' => $t->type,
+                'typeLabel' => $this->typeLabel($t->type),
+                'status' => $t->status,
+                'statusLabel' => $this->statusLabel((string) $t->status),
+                'message' => $t->message,
+                'forecastAt' => $t->forecast_at?->toDateString(),
+                'createdAt' => $t->created_at?->toIso8601String(),
+                'solutionText' => $t->solution_text,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array{type: string, message: string, guest_email?: string|null, guest_phone?: string|null}  $valid
+     */
+    private function findRecentDuplicateTicket(Request $request, ?User $user, array $valid): ?AppSupportTicket
+    {
+        $query = AppSupportTicket::query()
+            ->where('type', $valid['type'])
+            ->where('message', $valid['message'])
+            ->whereIn('status', AppSupportTicket::activeStatuses())
+            ->where('created_at', '>=', now()->subMinutes(self::DUPLICATE_SUBMIT_WINDOW_MINUTES));
+
+        if ($user) {
+            $query->where('user_id', $user->id);
+        } else {
+            $email = trim((string) ($valid['guest_email'] ?? ''));
+            $phone = trim((string) ($valid['guest_phone'] ?? ''));
+            $sessionTokens = $this->guestTicketTokensFromSession($request);
+
+            $query->whereNull('user_id')->where(function ($q) use ($email, $phone, $sessionTokens) {
+                $matched = false;
+                if ($email !== '') {
+                    $q->orWhere('guest_email', $email);
+                    $matched = true;
+                }
+                if ($phone !== '') {
+                    $q->orWhere('guest_phone', $phone);
+                    $matched = true;
+                }
+                if ($sessionTokens !== []) {
+                    $q->orWhereIn('public_token', $sessionTokens);
+                    $matched = true;
+                }
+                if (! $matched) {
+                    $q->whereRaw('0 = 1');
+                }
+            });
+        }
+
+        return $query->orderByDesc('id')->first();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function guestTicketTokensFromSession(Request $request): array
+    {
+        $tokens = $request->session()->get(self::GUEST_TICKET_TOKENS_SESSION_KEY, []);
+        if (! is_array($tokens)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(
+            $tokens,
+            static fn ($t) => is_string($t) && $t !== '',
+        )));
+    }
+
+    private function rememberGuestTicketToken(Request $request, string $token): void
+    {
+        $tokens = $this->guestTicketTokensFromSession($request);
+        $tokens[] = $token;
+        $tokens = array_values(array_unique($tokens));
+        $request->session()->put(
+            self::GUEST_TICKET_TOKENS_SESSION_KEY,
+            array_slice($tokens, -20),
+        );
     }
 
     public function ticket(Request $request, string $token): RedirectResponse
@@ -251,11 +352,23 @@ class MobileSupportController extends Controller
         bool $isSupportStaff,
         bool $isPastoralStaff,
     ): array {
-        $canChat = (bool) $hasOwner
-            && AppSupportTicket::isActiveStatus((string) $ticket->status)
-            && ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff);
+        $isStaff = $isAdmin || $isSupportStaff || $isPastoralStaff;
+        $isActive = AppSupportTicket::isActiveStatus((string) $ticket->status);
 
-        $staffReplySendsOwnerEmail = $canChat && ($isAdmin || $isSupportStaff || $isPastoralStaff);
+        // Equipe responde mesmo em chamado de visitante (sem user_id); o dono só conversa se tiver conta.
+        $canChat = $isActive && (
+            $isStaff
+            || ((bool) $hasOwner && $isOwner)
+        );
+
+        $staffReplySendsOwnerEmail = $canChat && $isStaff && (
+            (bool) $hasOwner
+            || (is_string($ticket->guest_email) && trim((string) $ticket->guest_email) !== '')
+        );
+
+        $showMessages = $isStaff
+            || ((bool) $hasOwner && $isOwner)
+            || $isGuestTicket;
 
         return [
             'ticket' => [
@@ -277,7 +390,7 @@ class MobileSupportController extends Controller
             'isAdmin' => $isAdmin,
             'staffReplySendsOwnerEmail' => $staffReplySendsOwnerEmail,
             'isAuthenticated' => (bool) $user,
-            'showMessages' => (bool) $hasOwner && (bool) ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff),
+            'showMessages' => $showMessages,
             'isGuestTicket' => $isGuestTicket,
             'guestName' => $ticket->guest_name,
             'hideFromMyAppUrl' => ($isOwner && ! $isAdmin)
@@ -311,10 +424,15 @@ class MobileSupportController extends Controller
         abort_unless($canAccess, 403);
 
         $hasOwner = ! empty($ticket->user_id);
-        $canChat = (bool) $hasOwner
-            && AppSupportTicket::isActiveStatus((string) $ticket->status)
-            && ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff);
-        $showMessages = (bool) $hasOwner && (bool) ($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff);
+        $isStaff = $isAdmin || $isSupportStaff || $isPastoralStaff;
+        $isActive = AppSupportTicket::isActiveStatus((string) $ticket->status);
+        $canChat = $isActive && (
+            $isStaff
+            || ((bool) $hasOwner && $isOwner)
+        );
+        $showMessages = $isStaff
+            || ((bool) $hasOwner && $isOwner)
+            || empty($ticket->user_id);
 
         return response()->json([
             'ticket' => [
@@ -363,7 +481,7 @@ class MobileSupportController extends Controller
             ->all();
     }
 
-    public function sendMessage(Request $request, string $token): Response
+    public function sendMessage(Request $request, string $token): RedirectResponse
     {
         $user = $request->user();
         $isAdmin = $this->isAdmin($user);
@@ -379,14 +497,17 @@ class MobileSupportController extends Controller
         $isPastoralStaff = $this->canReplyAsPastoralStaff($user, $ticket);
         abort_unless($isAdmin || $isOwner || $isSupportStaff || $isPastoralStaff, 403);
         abort_unless(AppSupportTicket::isActiveStatus((string) $ticket->status), 400);
-        abort_unless(! empty($ticket->user_id), 400, 'Chat indisponível para chamados sem usuário logado.');
+
+        $senderStaff = $isAdmin || $isSupportStaff || $isPastoralStaff;
+        // Visitante sem conta: só a equipe responde (histórico + e-mail do guest, se houver).
+        if (empty($ticket->user_id)) {
+            abort_unless($senderStaff, 400, 'Chat indisponível para chamados sem usuário logado.');
+        }
 
         $valid = $request->validate([
             'content' => ['required', 'string', 'max:5000'],
             'return_to' => ['nullable', 'string', Rule::in(['pastoral_hub'])],
         ]);
-
-        $senderStaff = $isAdmin || $isSupportStaff || $isPastoralStaff;
 
         AppSupportMessage::create([
             'ticket_id' => $ticket->id,
@@ -419,7 +540,7 @@ class MobileSupportController extends Controller
         return redirect()->route('mobile.support.index', ['modal' => $ticket->public_token]);
     }
 
-    public function closeTicket(Request $request, string $token): Response
+    public function closeTicket(Request $request, string $token): RedirectResponse
     {
         $user = $request->user();
         $isAdmin = $this->isAdmin($user);

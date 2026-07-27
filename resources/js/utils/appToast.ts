@@ -18,5 +18,8 @@ export function appToast(title: string, icon: 'success' | 'error' | 'info' = 'su
         timerProgressBar: true,
         background: dark ? '#18181b' : '#ffffff',
         color: dark ? '#fafafa' : '#18181b',
+        customClass: {
+            popup: 'swal-app-toast',
+        },
     });
 }
