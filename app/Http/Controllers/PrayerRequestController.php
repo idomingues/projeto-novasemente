@@ -181,7 +181,17 @@ class PrayerRequestController extends Controller
         $throttleKey = 'prayer_amen:'.$prayer->id.':'.$actorKey;
         $allowed = Cache::add($throttleKey, 1, now()->addHour());
         if (! $allowed) {
-            return back()->with('error', 'Você já marcou que está orando por este pedido recentemente. Aguarde 1 hora para marcar novamente.');
+            $message = 'Você já contabilizou uma oração neste pedido. Pode adicionar novamente em 1 hora.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => $message,
+                    'prayer_amen_count' => (int) $prayer->prayer_amen_count,
+                ], 429);
+            }
+
+            return back()->with('error', $message);
         }
 
         $prayer->increment('prayer_amen_count');
@@ -216,6 +226,13 @@ class PrayerRequestController extends Controller
                     ]);
                 }
             }
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'prayer_amen_count' => (int) $prayer->prayer_amen_count,
+            ]);
         }
 
         return back();
