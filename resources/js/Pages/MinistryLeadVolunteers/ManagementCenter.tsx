@@ -1157,7 +1157,11 @@ export default function ManagementCenter({
                                         }
                                         onSuccessMessage={showModalSaveMessage}
                                         onRefresh={
-                                            selectedId ? () => refreshVolunteerDetail(selectedId) : undefined
+                                            selectedId
+                                                ? async () => {
+                                                      await refreshVolunteerDetail(selectedId);
+                                                  }
+                                                : undefined
                                         }
                                     />
                                 )}
