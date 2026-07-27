@@ -64,6 +64,10 @@ class CreateChurchUserProfile
             $syncIds = $isVolunteer ? $allowedMinistryIds : [];
             app(SyncVolunteerMinistryAttachments::class)($volunteer, $syncIds);
             $user->fresh()->ensureVolunteerProfile();
+            $birthDate = $userPayload['birth_date'] ?? null;
+            if ($birthDate) {
+                $volunteer->fresh()->forceFill(['birth_date' => $birthDate])->save();
+            }
         }
 
         return $user->fresh();

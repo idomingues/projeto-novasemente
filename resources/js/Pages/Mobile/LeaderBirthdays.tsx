@@ -17,6 +17,7 @@ type BirthdayRow = {
     birthDate: string;
     day: number;
     isToday: boolean;
+    isSelf?: boolean;
     ministryNames: string[];
     userId?: number | null;
     ministryId?: number | null;
@@ -42,8 +43,14 @@ function capitalizeMonthLabel(label: string): string {
     return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
+/** Formata `YYYY-MM-DD` sem deslocar o dia por fuso (evita `new Date('YYYY-MM-DD')` em UTC). */
 function formatDayMonth(birthDate: string): string {
-    const d = new Date(`${birthDate}T12:00:00`);
+    const part = birthDate.trim().split('T')[0] ?? '';
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(part);
+    if (!m) {
+        return birthDate;
+    }
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
     return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
 }
 
@@ -246,6 +253,11 @@ function BirthdayCard({
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                             <h3 className="truncate text-[15px] font-bold text-zinc-900 dark:text-white">{row.name}</h3>
+                            {row.isSelf ? (
+                                <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white dark:bg-zinc-200 dark:text-zinc-900">
+                                    Você
+                                </span>
+                            ) : null}
                             <span className="shrink-0 rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white dark:bg-rose-500">
                                 Aniversário hoje
                             </span>
@@ -274,7 +286,14 @@ function BirthdayCard({
             <div className="flex items-center gap-3">
                 <UserListAvatar name={row.name} photoUrl={row.photoUrl} size="md" />
                 <div className="min-w-0 flex-1">
-                    <h3 className="truncate text-[15px] font-semibold text-zinc-900 dark:text-white">{row.name}</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-[15px] font-semibold text-zinc-900 dark:text-white">{row.name}</h3>
+                        {row.isSelf ? (
+                            <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white dark:bg-zinc-200 dark:text-zinc-900">
+                                Você
+                            </span>
+                        ) : null}
+                    </div>
                     <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-300">{formatDayMonth(row.birthDate)}</p>
                     {ministries ? (
                         <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">{ministries}</p>

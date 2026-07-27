@@ -50,7 +50,7 @@ class StoreMemberRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:20'],
-            'birth_date' => ['nullable', 'date'],
+            'birth_date' => ['required', 'date', 'before:today'],
             'address' => ['nullable', 'string', 'max:1000'],
             'status' => ['required', 'in:active,inactive'],
             'is_volunteer' => ['sometimes', 'boolean'],

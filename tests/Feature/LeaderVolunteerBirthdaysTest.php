@@ -142,17 +142,130 @@ class LeaderVolunteerBirthdaysTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Mobile/LeaderBirthdays')
-                ->has('birthdays', 1)
-                ->where('birthdays.0.name', 'Colega Aniversariante')
-                ->where('birthdays.0.canCongratulate', true)
-                ->where('birthdays.0.userId', $peerUser->id)
-                ->where('birthdays.0.ministryId', $ministry->id)
-                ->where('birthdays.0.congratulateUrl', fn ($url) => is_string($url)
-                    && str_contains($url, 'nova=1')
-                    && str_contains($url, 'ministry='.$ministry->id)
-                    && str_contains($url, 'recipient='.$peerUser->id)
-                    && str_contains($url, rawurlencode('Feliz aniversário!')))
+                ->has('birthdays', 2)
+                ->where('birthdays', function ($birthdays) use ($peerUser, $viewerUser, $ministry) {
+                    $rows = collect($birthdays);
+                    $peer = $rows->firstWhere('userId', $peerUser->id);
+                    $self = $rows->firstWhere('userId', $viewerUser->id);
+
+                    return is_array($peer)
+                        && $peer['name'] === 'Colega Aniversariante'
+                        && $peer['canCongratulate'] === true
+                        && $peer['isSelf'] === false
+                        && $peer['ministryId'] === $ministry->id
+                        && is_string($peer['congratulateUrl'] ?? null)
+                        && str_contains($peer['congratulateUrl'], 'nova=1')
+                        && str_contains($peer['congratulateUrl'], 'ministry='.$ministry->id)
+                        && str_contains($peer['congratulateUrl'], 'recipient='.$peerUser->id)
+                        && str_contains($peer['congratulateUrl'], rawurlencode('Feliz aniversário!'))
+                        && is_array($self)
+                        && $self['name'] === 'Voluntário Viewer'
+                        && $self['isSelf'] === true
+                        && $self['canCongratulate'] === false
+                        && $self['congratulateUrl'] === null;
+                })
             );
+    }
+
+    public function test_viewer_appears_in_own_birthday_month_without_congratulate(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->create([
+            'church_id' => $church->id,
+            'name' => 'Departamento Eu Também',
+        ]);
+
+        $today = now();
+        $viewer = User::factory()->create([
+            'church_id' => $church->id,
+            'is_volunteer' => true,
+            'name' => 'Eu Aniversariante',
+        ]);
+        $viewer->ensureVolunteerProfile();
+        $volunteer = $viewer->volunteerProfile()->firstOrFail();
+        $volunteer->forceFill([
+            'name' => 'Eu Aniversariante',
+            'email' => 'eu.aniversario@example.com',
+            'active' => true,
+            'birth_date' => $today->copy()->subYears(33)->toDateString(),
+        ])->save();
+        $volunteer->ministries()->sync([$ministry->id]);
+
+        $this->actingAs($viewer)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.leader.birthdays', [
+                'month' => (int) $today->month,
+                'year' => (int) $today->year,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/LeaderBirthdays')
+                ->has('birthdays', 1)
+                ->where('birthdays.0.name', 'Eu Aniversariante')
+                ->where('birthdays.0.isSelf', true)
+                ->where('birthdays.0.isToday', true)
+                ->where('birthdays.0.canCongratulate', false)
+                ->where('birthdays.0.day', (int) $today->day)
+                ->where('birthdays.0.birthDate', $today->copy()->subYears(33)->toDateString())
+            );
+    }
+
+    public function test_birthdays_are_sorted_today_first_then_by_day(): void
+    {
+        $this->seed();
+
+        \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::parse('2026-07-15 12:00:00', 'America/Sao_Paulo'));
+
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->create([
+            'church_id' => $church->id,
+            'name' => 'Departamento Ordenação',
+        ]);
+
+        $leader = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => true,
+        ]);
+        $leader->forceFill(['is_ministry_leader' => true])->save();
+        $leader->ministries()->sync([$ministry->id]);
+
+        foreach ([
+            ['name' => 'Dia Vinte e Oito', 'date' => '1990-07-28'],
+            ['name' => 'Aniversário Hoje', 'date' => '1991-07-15'],
+            ['name' => 'Dia Três', 'date' => '1992-07-03'],
+        ] as $row) {
+            $volunteer = Volunteer::query()->create([
+                'user_id' => null,
+                'name' => $row['name'],
+                'email' => strtolower(str_replace(' ', '.', $row['name'])).'@example.com',
+                'active' => true,
+                'birth_date' => $row['date'],
+            ]);
+            $volunteer->ministries()->attach($ministry->id);
+        }
+
+        $this->actingAs($leader)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.leader.birthdays', [
+                'month' => 7,
+                'year' => 2026,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/LeaderBirthdays')
+                ->has('birthdays', 3)
+                ->where('birthdays.0.name', 'Aniversário Hoje')
+                ->where('birthdays.0.isToday', true)
+                ->where('birthdays.0.day', 15)
+                ->where('birthdays.1.name', 'Dia Três')
+                ->where('birthdays.1.day', 3)
+                ->where('birthdays.2.name', 'Dia Vinte e Oito')
+                ->where('birthdays.2.day', 28)
+            );
+
+        \Illuminate\Support\Carbon::setTestNow();
     }
 
     public function test_non_area_member_cannot_open_birthdays_page(): void

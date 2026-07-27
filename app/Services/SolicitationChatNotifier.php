@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Support\CommunicationRequestOptions;
+use App\Support\LeaderOperationalNotifications;
 use App\Support\SafeSpatieUsersByPermission;
 use App\Support\UserMessagingPreferences;
 use Illuminate\Support\Facades\Mail;
@@ -121,13 +122,19 @@ class SolicitationChatNotifier
         $body = $member->name.' respondeu sobre: '.$typeLabel.'.';
 
         if ($solicitation->type === 'leader_chat' && $solicitation->assigned_volunteer_id) {
-            $leaderUserId = Volunteer::query()
+            $leader = Volunteer::query()
                 ->whereKey($solicitation->assigned_volunteer_id)
-                ->value('user_id');
-            if ($leaderUserId && (int) $leaderUserId !== (int) $member->id) {
+                ->with(['user:id,is_ministry_leader'])
+                ->first();
+            $leaderUser = $leader?->user;
+            if (
+                $leaderUser
+                && LeaderOperationalNotifications::userShouldReceive($leaderUser)
+                && (int) $leaderUser->id !== (int) $member->id
+            ) {
                 $subjectLine = $solicitation->subject ? (string) $solicitation->subject : $typeLabel;
                 $this->pushInboxForUser(
-                    (int) $leaderUserId,
+                    (int) $leaderUser->id,
                     'Nova mensagem do membro',
                     'Resposta sobre: '.$subjectLine.'.',
                     'mobile.leader-solicitations.show',
@@ -175,13 +182,18 @@ class SolicitationChatNotifier
 
         $volunteer = Volunteer::query()
             ->whereKey($solicitation->assigned_volunteer_id)
-            ->with(['user:id,name,email'])
+            ->with(['user:id,name,email,is_ministry_leader'])
             ->first();
         if (! $volunteer?->user_id) {
             return;
         }
 
-        $leaderUserId = (int) $volunteer->user_id;
+        $leaderUser = $volunteer->user;
+        if (! $leaderUser || ! LeaderOperationalNotifications::userShouldReceive($leaderUser)) {
+            return;
+        }
+
+        $leaderUserId = (int) $leaderUser->id;
 
         $member = User::query()->find($solicitation->user_id);
         $memberName = $member?->name ?? 'Um membro';

@@ -38,6 +38,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'status.pipeline@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -80,6 +81,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'detalhe.pipeline@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -157,6 +159,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'lidera.depto.teste@example.com',
             'ministry_ids' => [$ministryA->id, $ministryB->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -197,6 +200,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'sync.encaminhar.check@example.com',
             'ministry_ids' => [],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -250,6 +254,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'sync.sem.encaminhar@example.com',
             'ministry_ids' => [],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -299,6 +304,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'remove.lideranca@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -379,6 +385,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'senha.pipeline@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -409,6 +416,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'recusa.pipeline@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -446,6 +454,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'recusa.desvincula@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -487,6 +496,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'em.analise.pipeline@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -523,6 +533,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'limpar.status.pipeline@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -621,6 +632,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'lista.fase.principal@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -662,6 +674,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'filtro.sem.fase.principal@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -698,6 +711,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'fase.principal.encaminhado@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -745,6 +759,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'fase.principal.crud@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -805,6 +820,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'fase.principal.atuante@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -863,6 +879,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'fases.depto.lista@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -911,6 +928,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'encaminhado.sem.envio@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -932,6 +950,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'convite.enviado@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -976,6 +995,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'antigo.sort@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -988,6 +1008,7 @@ class VolunteerPipelineLeadTest extends TestCase
             'email' => 'recente.sort@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);

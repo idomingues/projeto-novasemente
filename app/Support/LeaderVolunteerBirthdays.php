@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\User;
 use App\Models\Volunteer;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 class LeaderVolunteerBirthdays
@@ -17,7 +18,7 @@ class LeaderVolunteerBirthdays
     public static function ministryIdsForUser(User $user, int $churchId): array
     {
         $asLeader = $user->ministries()
-            ->where('church_id', $churchId)
+            ->where('ministries.church_id', $churchId)
             ->pluck('ministries.id')
             ->map(fn ($id) => (int) $id)
             ->all();
@@ -26,7 +27,7 @@ class LeaderVolunteerBirthdays
         $volunteer = $user->volunteerProfile;
         if ($volunteer) {
             $asVolunteer = $volunteer->ministries()
-                ->where('church_id', $churchId)
+                ->where('ministries.church_id', $churchId)
                 ->pluck('ministries.id')
                 ->map(fn ($id) => (int) $id)
                 ->all();
@@ -51,6 +52,7 @@ class LeaderVolunteerBirthdays
     /**
      * Voluntários ativos da área com aniversário no mês.
      * Usa `volunteers.birth_date`, com fallback para `users.birth_date`.
+     * O visualizador permanece na lista; `$viewerUserId` só impede "Dar parabéns" a si mesmo.
      *
      * @param  list<int>  $ministryIds
      * @return list<array{
@@ -60,6 +62,7 @@ class LeaderVolunteerBirthdays
      *     birthDate: string,
      *     day: int,
      *     isToday: bool,
+     *     isSelf: bool,
      *     ministryNames: list<string>,
      *     userId: int|null,
      *     ministryId: int|null,
@@ -71,7 +74,7 @@ class LeaderVolunteerBirthdays
         int $churchId,
         array $ministryIds,
         ?Carbon $reference = null,
-        ?int $excludeUserId = null,
+        ?int $viewerUserId = null,
     ): array {
         if ($ministryIds === []) {
             return [];
@@ -86,12 +89,6 @@ class LeaderVolunteerBirthdays
         /** @var Collection<int, Volunteer> $volunteers */
         $volunteers = Volunteer::query()
             ->where('active', true)
-            ->when(
-                $excludeUserId !== null,
-                fn ($q) => $q->where(function ($inner) use ($excludeUserId) {
-                    $inner->whereNull('user_id')->orWhere('user_id', '!=', $excludeUserId);
-                }),
-            )
             ->whereHas(
                 'ministries',
                 fn ($q) => $q->where('ministries.church_id', $churchId)->whereIn('ministries.id', $ministryIds),
@@ -116,28 +113,33 @@ class LeaderVolunteerBirthdays
             ->get(['id', 'user_id', 'name', 'birth_date']);
 
         return $volunteers
-            ->map(function (Volunteer $v) use ($isCurrentMonth, $todayDay, $excludeUserId) {
-                $birth = $v->birth_date ?? $v->user?->birth_date;
-                if ($birth === null) {
+            ->map(function (Volunteer $v) use ($isCurrentMonth, $todayDay, $viewerUserId) {
+                $parts = self::calendarDateParts(
+                    $v->birth_date ?? $v->user?->birth_date,
+                    $v->getAttributes()['birth_date'] ?? $v->user?->getAttributes()['birth_date'] ?? null,
+                );
+                if ($parts === null) {
                     return null;
                 }
 
-                $day = (int) $birth->day;
+                $day = $parts['day'];
                 $isToday = $isCurrentMonth && $day === $todayDay;
                 $userId = $v->user_id !== null ? (int) $v->user_id : null;
+                $isSelf = $viewerUserId !== null && $userId !== null && $userId === $viewerUserId;
                 $sharedMinistry = $v->ministries->first();
                 $ministryId = $sharedMinistry ? (int) $sharedMinistry->id : null;
                 $canCongratulate = $userId !== null
                     && $ministryId !== null
-                    && ($excludeUserId === null || $userId !== $excludeUserId);
+                    && ! $isSelf;
 
                 return [
                     'id' => (int) $v->id,
                     'name' => (string) ($v->name ?: 'Sem nome'),
                     'photoUrl' => $v->user?->photo_url,
-                    'birthDate' => $birth->toDateString(),
+                    'birthDate' => $parts['ymd'],
                     'day' => $day,
                     'isToday' => $isToday,
+                    'isSelf' => $isSelf,
                     'ministryNames' => $v->ministries
                         ->pluck('name')
                         ->filter()
@@ -158,12 +160,37 @@ class LeaderVolunteerBirthdays
                 ];
             })
             ->filter()
-            ->sortBy([
-                fn (array $row) => $row['isToday'] ? 0 : 1,
-                fn (array $row) => $row['day'],
-                fn (array $row) => mb_strtolower($row['name']),
+            ->sortBy(fn (array $row) => [
+                $row['isToday'] ? 0 : 1,
+                $row['day'],
+                mb_strtolower($row['name']),
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Extrai Y-m-d e dia do mês a partir do valor cru do banco (DATE),
+     * evitando deslocamento de fuso ao ler Carbon.
+     *
+     * @return array{ymd: string, day: int}|null
+     */
+    private static function calendarDateParts(?CarbonInterface $birth, mixed $raw): ?array
+    {
+        if (is_string($raw) && preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $raw, $m) === 1) {
+            return [
+                'ymd' => $m[1].'-'.$m[2].'-'.$m[3],
+                'day' => (int) $m[3],
+            ];
+        }
+
+        if ($birth === null) {
+            return null;
+        }
+
+        return [
+            'ymd' => $birth->toDateString(),
+            'day' => (int) $birth->day,
+        ];
     }
 }

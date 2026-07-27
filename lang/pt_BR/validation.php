@@ -177,6 +177,7 @@ return [
         'remember' => 'manter conectado',
         'already_volunteer' => 'já sou voluntário',
         'invitation_token' => 'convite',
+        'birth_date' => 'data de nascimento',
     ],
 
 ];

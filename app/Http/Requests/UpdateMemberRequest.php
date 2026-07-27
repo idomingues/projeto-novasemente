@@ -69,7 +69,7 @@ class UpdateMemberRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($memberId),
             ],
             'phone' => ['nullable', 'string', 'max:20'],
-            'birth_date' => ['nullable', 'date'],
+            'birth_date' => ['required', 'date', 'before:today'],
             'address' => ['nullable', 'string', 'max:1000'],
             'status' => ['required', 'in:active,inactive'],
             'is_volunteer' => ['sometimes', 'boolean'],

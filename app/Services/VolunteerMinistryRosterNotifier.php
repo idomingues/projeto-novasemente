@@ -6,6 +6,7 @@ use App\Models\Ministry;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
+use App\Support\LeaderOperationalNotifications;
 use App\Support\UserMessagingPreferences;
 
 class VolunteerMinistryRosterNotifier
@@ -45,6 +46,9 @@ class VolunteerMinistryRosterNotifier
                 ->get(['id', 'name', 'notify_via_app']);
 
             foreach ($leaders as $leaderUser) {
+                if (! LeaderOperationalNotifications::userShouldReceive($leaderUser)) {
+                    continue;
+                }
                 if (! UserMessagingPreferences::acceptsInbox($leaderUser)) {
                     continue;
                 }

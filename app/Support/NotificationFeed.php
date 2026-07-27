@@ -6,6 +6,7 @@ use App\Models\AppNotification;
 use App\Models\User;
 use App\Models\UserDismissedAppNotification;
 use App\Models\UserInboxNotification;
+use App\Support\LeaderOperationalNotifications;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -58,28 +59,31 @@ class NotificationFeed
 
         $inbox = collect();
         if ($request->user()) {
-            $inbox = UserInboxNotification::forUser($request->user(), $limit)->map(function (UserInboxNotification $n) use ($request) {
-                $raw = $n->action_url;
-                $href = is_string($raw) && $raw !== ''
-                    ? self::inertiaHrefFromStoredUrl($request, $raw)
-                    : route('mobile.notifications');
+            $viewer = $request->user();
+            $inbox = UserInboxNotification::forUser($viewer, $limit)
+                ->reject(fn (UserInboxNotification $n) => LeaderOperationalNotifications::shouldHideFromUser($viewer, $n))
+                ->map(function (UserInboxNotification $n) use ($request) {
+                    $raw = $n->action_url;
+                    $href = is_string($raw) && $raw !== ''
+                        ? self::inertiaHrefFromStoredUrl($request, $raw)
+                        : route('mobile.notifications');
 
-                return [
-                    'id' => 'inbox-'.$n->id,
-                    'title' => $n->title,
-                    'body' => $n->body,
-                    'created_at' => $n->created_at->toIso8601String(),
-                    'author' => null,
-                    'href' => $href,
-                    'kind' => 'inbox',
-                    'intent' => UserInboxNotification::normalizeIntent(
-                        is_string($n->intent) ? $n->intent : null,
-                    ),
-                    'inbox_notification_id' => $n->id,
-                    'inbox_unread' => $n->read_at === null,
-                    'can_remove' => true,
-                ];
-            });
+                    return [
+                        'id' => 'inbox-'.$n->id,
+                        'title' => $n->title,
+                        'body' => $n->body,
+                        'created_at' => $n->created_at->toIso8601String(),
+                        'author' => null,
+                        'href' => $href,
+                        'kind' => 'inbox',
+                        'intent' => UserInboxNotification::normalizeIntent(
+                            is_string($n->intent) ? $n->intent : null,
+                        ),
+                        'inbox_notification_id' => $n->id,
+                        'inbox_unread' => $n->read_at === null,
+                        'can_remove' => true,
+                    ];
+                });
         }
 
         return $app->concat($inbox)
@@ -131,8 +135,11 @@ class NotificationFeed
 
         $inboxCount = 0;
         if ($request->user() && Schema::hasTable('user_inbox_notifications')) {
+            $viewer = $request->user();
             $inboxCount = (int) UserInboxNotification::query()
-                ->where('user_id', $request->user()->id)
+                ->where('user_id', $viewer->id)
+                ->get()
+                ->reject(fn (UserInboxNotification $n) => LeaderOperationalNotifications::shouldHideFromUser($viewer, $n))
                 ->count();
         }
 
@@ -145,19 +152,18 @@ class NotificationFeed
      */
     public static function unreadInboxCount(Request $request): int
     {
-        if (! $request->user()) {
-            return 0;
-        }
-
-        if (! Schema::hasTable('user_inbox_notifications')) {
+        $viewer = $request->user();
+        if ($viewer === null || ! Schema::hasTable('user_inbox_notifications')) {
             return 0;
         }
 
         return (int) UserInboxNotification::query()
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $viewer->id)
             ->whereNull('read_at')
-            ->distinct()
-            ->count('title');
+            ->get()
+            ->reject(fn (UserInboxNotification $n) => LeaderOperationalNotifications::shouldHideFromUser($viewer, $n))
+            ->unique(fn (UserInboxNotification $n) => (string) $n->title)
+            ->count();
     }
 
     /**
@@ -177,7 +183,8 @@ class NotificationFeed
             ->whereNull('read_at')
             ->orderByDesc('created_at')
             ->orderByDesc('id')
-            ->get();
+            ->get()
+            ->reject(fn (UserInboxNotification $n) => LeaderOperationalNotifications::shouldHideFromUser($user, $n));
 
         $grouped = [];
         foreach ($rows as $n) {

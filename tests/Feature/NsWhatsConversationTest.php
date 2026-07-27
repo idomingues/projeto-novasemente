@@ -149,6 +149,73 @@ class NsWhatsConversationTest extends TestCase
         ]);
     }
 
+    public function test_admin_without_leader_flag_does_not_receive_ns_conecta_inbox(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+
+        $adminOnly = User::factory()->create([
+            'church_id' => $churchId,
+            'name' => 'Admin Sem Líder',
+            'is_ministry_leader' => false,
+        ]);
+        $adminOnly->assignRole('admin');
+        $adminOnly->forceFill(['is_ministry_leader' => false])->save();
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.store'), [
+            'ministry_id' => $ministry->id,
+            'message' => 'Fila do departamento.',
+        ])->assertRedirect();
+
+        $conversation = ChurchConversation::query()->firstOrFail();
+
+        // Simula admin assumindo a conversa (módulo admin) sem ser líder.
+        $conversation->forceFill([
+            'assignee_user_id' => $adminOnly->id,
+            'preferred_leader_user_id' => $adminOnly->id,
+            'staff_alerted_at' => null,
+        ])->save();
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.messages.store', $conversation), [
+            'content' => 'Nova mensagem para o responsável.',
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('user_inbox_notifications', [
+            'user_id' => $adminOnly->id,
+            'title' => 'NS Conecta',
+        ]);
+
+        // Líder real do departamento continua elegível na fila (primeira notificação da criação).
+        $this->assertDatabaseHas('user_inbox_notifications', [
+            'user_id' => $leader->id,
+            'title' => 'Nova conversa no NS Conecta',
+        ]);
+    }
+
+    public function test_admin_who_is_also_leader_receives_ns_conecta_inbox(): void
+    {
+        [$churchId, $member, $ministry] = $this->seedNsWhats();
+
+        $adminLeader = User::factory()->create([
+            'church_id' => $churchId,
+            'name' => 'Admin Líder',
+            'is_ministry_leader' => true,
+        ]);
+        $adminLeader->assignRole('admin');
+        $adminLeader->forceFill(['is_ministry_leader' => true])->save();
+        $adminLeader->ministries()->sync([$ministry->id]);
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.store'), [
+            'ministry_id' => $ministry->id,
+            'recipient_user_id' => $adminLeader->id,
+            'message' => 'Falar com admin que também é líder.',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('user_inbox_notifications', [
+            'user_id' => $adminLeader->id,
+            'title' => 'Nova conversa no NS Conecta',
+        ]);
+    }
+
     public function test_message_alert_repeats_after_one_hour_without_reply(): void
     {
         [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();

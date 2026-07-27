@@ -6,6 +6,7 @@ use App\Models\ChurchConversation;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Support\NsWhatsAccess;
+use App\Support\LeaderOperationalNotifications;
 use App\Support\UserMessagingPreferences;
 use Illuminate\Support\Str;
 
@@ -109,6 +110,10 @@ class ConversationNotifier
 
     public function notifyLeaderOfTransfer(ChurchConversation $conversation, User $toLeader): void
     {
+        if (! LeaderOperationalNotifications::userShouldReceive($toLeader)) {
+            return;
+        }
+
         $this->pushInbox(
             $toLeader,
             'Conversa transferida no NS Conecta',
@@ -233,6 +238,10 @@ class ConversationNotifier
 
         $add = function (?User $user) use (&$users, &$seen): void {
             if (! $user || isset($seen[$user->id])) {
+                return;
+            }
+            // Admin puro não recebe alerta de liderança — só se também for líder.
+            if (! LeaderOperationalNotifications::userShouldReceive($user)) {
                 return;
             }
             $seen[$user->id] = true;

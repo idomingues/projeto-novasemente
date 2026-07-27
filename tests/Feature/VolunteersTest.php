@@ -36,6 +36,7 @@ class VolunteersTest extends TestCase
             'active' => '1',
             'app_role' => '',
             'app_ministry_ids' => [],
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ];
@@ -72,6 +73,7 @@ class VolunteersTest extends TestCase
             'email' => 'sem.senha@example.com',
             'ministry_ids' => [],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => '',
             'app_password_confirmation' => '',
         ];
@@ -93,6 +95,7 @@ class VolunteersTest extends TestCase
             'email' => 'duplicado@example.com',
             'ministry_ids' => [],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ];
@@ -115,6 +118,7 @@ class VolunteersTest extends TestCase
             'email' => 'lider.existente@example.com',
             'ministry_ids' => [],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ];
@@ -136,6 +140,7 @@ class VolunteersTest extends TestCase
             'active' => '1',
             'app_role' => '',
             'app_ministry_ids' => [],
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);
@@ -150,6 +155,7 @@ class VolunteersTest extends TestCase
             'email' => 'senha.voluntario@example.com',
             'ministry_ids' => [],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_role' => '',
             'app_ministry_ids' => [],
             'app_password' => 'novaSenha456',
@@ -175,6 +181,7 @@ class VolunteersTest extends TestCase
             'active' => '1',
             'app_role' => '',
             'app_ministry_ids' => [],
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ]);

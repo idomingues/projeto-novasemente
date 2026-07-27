@@ -280,7 +280,7 @@ export default function VolunteerUserEditForm({
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <InputLabel htmlFor={`${idPrefix}_birth_date`} value="Data de nascimento (opcional)" />
+                        <InputLabel htmlFor={`${idPrefix}_birth_date`} value="Data de nascimento" />
                         <BrDateInput
                             id={`${idPrefix}_birth_date`}
                             value={data.birth_date}

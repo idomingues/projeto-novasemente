@@ -935,7 +935,7 @@ export default function Index({
                                 </div>
                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
-                                        <InputLabel htmlFor="birth_date" value="Data de nascimento (opcional)" />
+                                        <InputLabel htmlFor="birth_date" value="Data de nascimento" />
                                         <BrDateInput
                                             id="birth_date"
                                             value={data.birth_date}

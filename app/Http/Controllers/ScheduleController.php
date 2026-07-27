@@ -12,6 +12,7 @@ use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Services\ScheduleAssignmentPresenter;
 use App\Services\ScheduleCheckinNotifier;
+use App\Support\LeaderOperationalNotifications;
 use App\Support\ScheduleBoardViewData;
 use App\Support\UserMessagingPreferences;
 use Carbon\Carbon;
@@ -468,8 +469,11 @@ class ScheduleController extends Controller
             return;
         }
 
-        foreach (User::query()->whereIn('id', $leaderIds)->get(['id', 'name', 'notify_via_app']) as $u) {
+        foreach (User::query()->whereIn('id', $leaderIds)->get(['id', 'name', 'notify_via_app', 'is_ministry_leader']) as $u) {
             if ($actor && (int) $u->id === (int) $actor->id) {
+                continue;
+            }
+            if (! LeaderOperationalNotifications::userShouldReceive($u)) {
                 continue;
             }
             if (! UserMessagingPreferences::acceptsInbox($u)) {

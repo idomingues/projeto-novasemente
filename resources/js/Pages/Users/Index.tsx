@@ -1248,7 +1248,7 @@ export default function Index({
                             </div>
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
-                                    <InputLabel htmlFor="birth_date" value="Data de nascimento (opcional)" className="mb-1" />
+                                    <InputLabel htmlFor="birth_date" value="Data de nascimento" className="mb-1" />
                                     <BrDateInput
                                         id="birth_date"
                                         className="block w-full"

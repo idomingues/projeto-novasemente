@@ -35,6 +35,7 @@ class VolunteerManagementCenterTest extends TestCase
             'email' => 'central.gestao@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -80,6 +81,7 @@ class VolunteerManagementCenterTest extends TestCase
             'email' => 'sem.depto@example.com',
             'ministry_ids' => [],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -108,6 +110,7 @@ class VolunteerManagementCenterTest extends TestCase
             'email' => 'fase.treino@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -139,6 +142,7 @@ class VolunteerManagementCenterTest extends TestCase
             'email' => 'central.gestao@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -207,6 +211,7 @@ class VolunteerManagementCenterTest extends TestCase
             'email' => 'so.encaminhado.depto@example.com',
             'ministry_ids' => [$ministryA->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -271,6 +276,7 @@ class VolunteerManagementCenterTest extends TestCase
             'email' => 'voluntario.recente@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -280,6 +286,7 @@ class VolunteerManagementCenterTest extends TestCase
             'email' => 'voluntario.antigo@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -331,6 +338,7 @@ class VolunteerManagementCenterTest extends TestCase
             'email' => 'voluntario.com.nota.filtro@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -340,6 +348,7 @@ class VolunteerManagementCenterTest extends TestCase
             'email' => 'voluntario.sem.nota.filtro@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -391,6 +400,7 @@ class VolunteerManagementCenterTest extends TestCase
             'email' => 'voluntario.com.nota@example.com',
             'ministry_ids' => [$ministry->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();

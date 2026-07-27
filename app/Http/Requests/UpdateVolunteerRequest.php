@@ -35,7 +35,7 @@ class UpdateVolunteerRequest extends FormRequest
             'app_ministry_ids.*' => ['exists:ministries,id'],
             'app_password' => ['nullable', 'string', 'max:255', 'confirmed'],
             'user_status' => ['nullable', 'in:active,inactive'],
-            'birth_date' => ['nullable', 'date'],
+            'birth_date' => ['required', 'date', 'before:today'],
             'notify_via_app' => ['sometimes', 'boolean'],
             'notify_via_email' => ['sometimes', 'boolean'],
             'notify_via_whatsapp' => ['sometimes', 'boolean'],

@@ -14,7 +14,7 @@ import {
 } from '@/utils/listModalFetchSave';
 import { textIncludesSearch } from '@/utils/searchText';
 import { ArrowsRightLeftIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/outline';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface RoleUserRow {
     id: number;
@@ -61,6 +61,8 @@ export default function RoleUsersModal({
     const [busy, setBusy] = useState(false);
     const [editingUserId, setEditingUserId] = useState<number | null>(null);
     const [nextRoleName, setNextRoleName] = useState('');
+    /** Impede o Dialog (Headless) fechar ao perder foco no SweetAlert / reload Inertia. */
+    const stayOpenRef = useRef(false);
 
     useEffect(() => {
         if (!show) {
@@ -69,6 +71,7 @@ export default function RoleUsersModal({
             setEditingUserId(null);
             setNextRoleName('');
             setBusy(false);
+            stayOpenRef.current = false;
         }
     }, [show]);
 
@@ -76,6 +79,13 @@ export default function RoleUsersModal({
         setEditingUserId(null);
         setNextRoleName('');
     }, [roleId]);
+
+    const requestClose = () => {
+        if (stayOpenRef.current || busy) {
+            return;
+        }
+        onClose();
+    };
 
     const addOptions: SearchableOption[] = useMemo(() => {
         const onRole = new Set(users.map((u) => u.id));
@@ -115,18 +125,32 @@ export default function RoleUsersModal({
         [candidateUsers, userIdToAdd],
     );
 
-    const runAction = async (action: () => Promise<{ ok: boolean; message?: string }>, onOk?: () => void) => {
-        setBusy(true);
+    const runConfirmedAction = async (
+        confirmOpts: Parameters<typeof confirmAction>[0],
+        action: () => Promise<{ ok: boolean; message?: string }>,
+        onOk?: () => void,
+    ) => {
+        stayOpenRef.current = true;
         try {
-            const result = await action();
-            if (!result.ok) {
-                window.alert(result.message ?? 'Não foi possível concluir a ação. Tente novamente.');
+            const confirmed = await confirmAction(confirmOpts);
+            if (!confirmed) {
                 return;
             }
-            await reloadListModalProps(RELOAD_ONLY);
-            onOk?.();
+
+            setBusy(true);
+            try {
+                const result = await action();
+                if (!result.ok) {
+                    window.alert(result.message ?? 'Não foi possível concluir a ação. Tente novamente.');
+                    return;
+                }
+                await reloadListModalProps(RELOAD_ONLY);
+                onOk?.();
+            } finally {
+                setBusy(false);
+            }
         } finally {
-            setBusy(false);
+            stayOpenRef.current = false;
         }
     };
 
@@ -147,17 +171,13 @@ export default function RoleUsersModal({
                   ? ' A pessoa ainda não tem perfil de painel.'
                   : '';
 
-        const ok = await confirmAction({
-            title: 'Incluir no perfil?',
-            text: `«${candidate.name}» passará a usar o perfil «${roleLabel}».${previous}`,
-            confirmButtonText: 'Incluir',
-            icon: 'question',
-        });
-        if (!ok) {
-            return;
-        }
-
-        await runAction(
+        await runConfirmedAction(
+            {
+                title: 'Incluir no perfil?',
+                text: `«${candidate.name}» passará a usar o perfil «${roleLabel}».${previous}`,
+                confirmButtonText: 'Incluir',
+                icon: 'question',
+            },
             () =>
                 submitListModalPost(
                     route('roles.users.attach', roleId),
@@ -173,19 +193,15 @@ export default function RoleUsersModal({
             return;
         }
 
-        const ok = await confirmAction({
-            title: 'Remover deste perfil?',
-            text: `«${user.name}» sairá de «${roleLabel}» e ficará como Usuário (app), sem acesso de painel por este perfil.`,
-            confirmButtonText: 'Remover',
-            danger: true,
-            icon: 'warning',
-        });
-        if (!ok) {
-            return;
-        }
-
-        await runAction(() =>
-            submitListModalDelete(route('roles.users.detach', { role: roleId, user: user.id }), csrf),
+        await runConfirmedAction(
+            {
+                title: 'Remover deste perfil?',
+                text: `«${user.name}» sairá de «${roleLabel}» e ficará como Usuário (app), sem acesso de painel por este perfil.`,
+                confirmButtonText: 'Remover',
+                danger: true,
+                icon: 'warning',
+            },
+            () => submitListModalDelete(route('roles.users.detach', { role: roleId, user: user.id }), csrf),
         );
     };
 
@@ -204,17 +220,13 @@ export default function RoleUsersModal({
                 ? 'Sem perfil'
                 : otherTargets.find((t) => t.name === nextRoleName)?.label ?? appRoleLabel(nextRoleName);
 
-        const ok = await confirmAction({
-            title: 'Alterar perfil?',
-            text: `«${user.name}» passará de «${roleLabel}» para «${nextLabel}».`,
-            confirmButtonText: 'Alterar',
-            icon: 'question',
-        });
-        if (!ok) {
-            return;
-        }
-
-        await runAction(
+        await runConfirmedAction(
+            {
+                title: 'Alterar perfil?',
+                text: `«${user.name}» passará de «${roleLabel}» para «${nextLabel}».`,
+                confirmButtonText: 'Alterar',
+                icon: 'question',
+            },
             () =>
                 submitListModalPatch(
                     route('roles.users.update', { role: roleId, user: user.id }),
@@ -229,7 +241,7 @@ export default function RoleUsersModal({
     };
 
     return (
-        <Modal show={show} onClose={() => !busy && onClose()} maxWidth="lg">
+        <Modal show={show} onClose={requestClose} closeable={!busy} maxWidth="lg">
             <div className="flex max-h-[min(90vh,720px)] flex-col">
                 <div className="border-b border-zinc-100 px-6 py-5 dark:border-zinc-800">
                     <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">
@@ -403,7 +415,7 @@ export default function RoleUsersModal({
                 </div>
 
                 <div className="flex justify-end border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
-                    <SecondaryButton type="button" disabled={busy} onClick={onClose}>
+                    <SecondaryButton type="button" disabled={busy} onClick={requestClose}>
                         Fechar
                     </SecondaryButton>
                 </div>

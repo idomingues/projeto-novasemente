@@ -218,7 +218,7 @@ class RoleController extends Controller
         return redirect()->route('roles.index')->with('success', 'Perfil removido.');
     }
 
-    public function attachUser(Request $request, Role $role): RedirectResponse|JsonResponse
+    public function attachUser(Request $request, Role $role): JsonResponse
     {
         if ($role->name === 'super_admin') {
             abort(404);
@@ -231,25 +231,17 @@ class RoleController extends Controller
         $target = User::query()->findOrFail((int) $validated['user_id']);
         MemberRoleAssignment::syncUserRoleFromProfilesPage($request->user(), $target, $role->name);
 
-        if ($request->expectsJson()) {
-            return response()->json(['message' => 'Usuário incluído no perfil.']);
-        }
-
-        return redirect()->route('roles.index')->with('success', 'Usuário incluído no perfil.');
+        return response()->json(['message' => 'Usuário incluído no perfil.']);
     }
 
-    public function updateUser(Request $request, Role $role, User $user): RedirectResponse|JsonResponse
+    public function updateUser(Request $request, Role $role, User $user): JsonResponse
     {
         if ($role->name === 'super_admin') {
             abort(404);
         }
 
         if (! $user->hasRole($role->name)) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Este usuário não está neste perfil.'], 422);
-            }
-
-            return redirect()->route('roles.index')->with('error', 'Este usuário não está neste perfil.');
+            return response()->json(['message' => 'Este usuário não está neste perfil.'], 422);
         }
 
         $validated = $request->validate([
@@ -258,19 +250,11 @@ class RoleController extends Controller
 
         $next = trim((string) ($validated['role_name'] ?? ''));
         if ($next === MemberRoleAssignment::RETIRED_LEADER_ROLE) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Líder de ministério não é mais um perfil.'], 422);
-            }
-
-            return redirect()->route('roles.index')->with('error', 'Líder de ministério não é mais um perfil.');
+            return response()->json(['message' => 'Líder de ministério não é mais um perfil.'], 422);
         }
 
         if ($next !== '' && $next === $role->name) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Perfil inalterado.']);
-            }
-
-            return redirect()->route('roles.index');
+            return response()->json(['message' => 'Perfil inalterado.']);
         }
 
         if ($next !== '') {
@@ -279,43 +263,27 @@ class RoleController extends Controller
                 ->where('guard_name', (string) config('auth.defaults.guard'))
                 ->exists();
             if (! $exists) {
-                if ($request->expectsJson()) {
-                    return response()->json(['message' => 'Perfil inexistente.'], 422);
-                }
-
-                return redirect()->route('roles.index')->with('error', 'Perfil inexistente.');
+                return response()->json(['message' => 'Perfil inexistente.'], 422);
             }
         }
 
         MemberRoleAssignment::syncUserRoleFromProfilesPage($request->user(), $user, $next);
 
-        if ($request->expectsJson()) {
-            return response()->json(['message' => 'Perfil do usuário atualizado.']);
-        }
-
-        return redirect()->route('roles.index')->with('success', 'Perfil do usuário atualizado.');
+        return response()->json(['message' => 'Perfil do usuário atualizado.']);
     }
 
-    public function detachUser(Request $request, Role $role, User $user): RedirectResponse|JsonResponse
+    public function detachUser(Request $request, Role $role, User $user): JsonResponse
     {
         if ($role->name === 'super_admin') {
             abort(404);
         }
 
         if (! $user->hasRole($role->name)) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Este usuário não está neste perfil.'], 422);
-            }
-
-            return redirect()->route('roles.index')->with('error', 'Este usuário não está neste perfil.');
+            return response()->json(['message' => 'Este usuário não está neste perfil.'], 422);
         }
 
         MemberRoleAssignment::clearToMemberFromProfilesPage($request->user(), $user);
 
-        if ($request->expectsJson()) {
-            return response()->json(['message' => 'Usuário removido deste perfil.']);
-        }
-
-        return redirect()->route('roles.index')->with('success', 'Usuário removido deste perfil.');
+        return response()->json(['message' => 'Usuário removido deste perfil.']);
     }
 }

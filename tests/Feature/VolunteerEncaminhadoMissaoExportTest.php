@@ -43,6 +43,7 @@ class VolunteerEncaminhadoMissaoExportTest extends TestCase
             'email' => 'vol.vinc.missao@example.com',
             'ministry_ids' => [$missao->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();
@@ -52,6 +53,7 @@ class VolunteerEncaminhadoMissaoExportTest extends TestCase
             'email' => 'vol.enc.missao@example.com',
             'ministry_ids' => [$outro->id],
             'active' => '1',
+            'birth_date' => '1990-01-15',
             'app_password' => 'secret123',
             'app_password_confirmation' => 'secret123',
         ])->assertRedirect();

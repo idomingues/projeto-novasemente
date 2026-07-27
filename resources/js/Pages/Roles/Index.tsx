@@ -295,7 +295,27 @@ export default function RolesIndex({
     const [expandedRoles, setExpandedRoles] = useState<Record<string, boolean>>({});
     const [savingRoles, setSavingRoles] = useState<Record<string, boolean>>({});
     const [savedRoles, setSavedRoles] = useState<Record<string, boolean>>({});
-    const [usersModalRoleId, setUsersModalRoleId] = useState<number | null>(null);
+    const [usersModalRoleId, setUsersModalRoleId] = useState<number | null>(() => {
+        if (typeof window === 'undefined') {
+            return null;
+        }
+        const id = Number(new URLSearchParams(window.location.search).get('users'));
+        return Number.isFinite(id) && id > 0 ? id : null;
+    });
+
+    const openUsersModal = useCallback((roleId: number) => {
+        setUsersModalRoleId(roleId);
+        const url = new URL(window.location.href);
+        url.searchParams.set('users', String(roleId));
+        window.history.replaceState(window.history.state, '', url);
+    }, []);
+
+    const closeUsersModal = useCallback(() => {
+        setUsersModalRoleId(null);
+        const url = new URL(window.location.href);
+        url.searchParams.delete('users');
+        window.history.replaceState(window.history.state, '', url);
+    }, []);
     const saveSeqRef = useRef<Record<string, number>>({});
 
     const { data, setData } = useForm({
@@ -647,7 +667,7 @@ export default function RolesIndex({
 
             <RoleUsersModal
                 show={usersModalRole != null}
-                onClose={() => setUsersModalRoleId(null)}
+                onClose={closeUsersModal}
                 roleId={usersModalRole?.id ?? 0}
                 roleName={usersModalRole?.name ?? ''}
                 users={usersModalRole?.users ?? []}
@@ -730,7 +750,7 @@ export default function RolesIndex({
                                         {meta && (previewUsers.length > 0 || usersCount === 0) ? (
                                             <button
                                                 type="button"
-                                                onClick={() => setUsersModalRoleId(meta.id)}
+                                                onClick={() => openUsersModal(meta.id)}
                                                 className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-transparent px-1 py-1 text-left transition hover:border-zinc-200 hover:bg-zinc-50 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/60"
                                                 title="Gerenciar usuários deste perfil"
                                             >

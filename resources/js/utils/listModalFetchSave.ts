@@ -30,6 +30,7 @@ export function reloadListModalProps(only: string[], timeoutMs = 12000): Promise
         const timer = window.setTimeout(finish, timeoutMs);
         router.reload({
             only,
+            preserveUrl: true,
             onFinish: () => {
                 window.clearTimeout(timer);
                 finish();

@@ -54,6 +54,13 @@ async function resolveFetchSaveResponse(
             if (options?.parseNote && body.note) {
                 return { ok: true, redirectLocation: null, note: body.note };
             }
+
+            // Sucesso JSON sem redirect (ex.: incluir usuário no perfil).
+            return {
+                ok: true,
+                redirectLocation: null,
+                ...(options?.parseNote && body.note ? { note: body.note } : {}),
+            };
         } catch {
             // Resposta JSON inválida — trata como erro abaixo.
         }
