@@ -38,7 +38,6 @@ export function listVisibleVolunteerSignupQuestionKeys(ctx: VolunteerSignupQuest
             if (isWhatsappVisible(ctx)) keys.push('has_whatsapp');
             if (ctx.isFieldVisible('email')) keys.push('email');
             if (!ctx.focusMissingOnly) {
-                if (ctx.isEdit) keys.push('current_password');
                 keys.push('password', 'password_confirmation');
             }
             if (ctx.isFieldVisible('has_social_networks')) keys.push('has_social_networks');
@@ -95,7 +94,6 @@ export function questionRangeForPage(
         if (isWhatsappVisible(ctx)) pageKeys.push('has_whatsapp');
         if (ctx.isFieldVisible('email')) pageKeys.push('email');
         if (!ctx.focusMissingOnly) {
-            if (ctx.isEdit) pageKeys.push('current_password');
             pageKeys.push('password', 'password_confirmation');
         }
         if (ctx.isFieldVisible('has_social_networks')) pageKeys.push('has_social_networks');

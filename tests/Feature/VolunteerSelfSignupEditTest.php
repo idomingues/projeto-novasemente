@@ -133,7 +133,6 @@ class VolunteerSelfSignupEditTest extends TestCase
                 'email' => 'maria@example.com',
                 'phone' => '11977776666',
                 'professional_area' => 'Educação',
-                'current_password' => 'senhaAtual123',
                 'password' => 'novaSenha456',
                 'password_confirmation' => 'novaSenha456',
             ]))
@@ -143,7 +142,7 @@ class VolunteerSelfSignupEditTest extends TestCase
         $this->assertTrue(Hash::check('novaSenha456', $user->fresh()->password));
     }
 
-    public function test_volunteer_self_signup_edit_rejects_wrong_current_password(): void
+    public function test_volunteer_self_signup_edit_rejects_password_confirmation_mismatch(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
 
@@ -165,12 +164,11 @@ class VolunteerSelfSignupEditTest extends TestCase
                 'last_name' => 'Lima',
                 'email' => 'pedro@example.com',
                 'phone' => '11966665555',
-                'current_password' => 'senhaErrada',
                 'password' => 'novaSenha456',
-                'password_confirmation' => 'novaSenha456',
+                'password_confirmation' => 'outraSenha789',
             ]))
             ->assertRedirect(route('volunteers.self-signup.edit', absolute: false))
-            ->assertSessionHasErrors('current_password');
+            ->assertSessionHasErrors('password');
 
         $this->assertTrue(Hash::check('senhaAtual123', $user->fresh()->password));
     }

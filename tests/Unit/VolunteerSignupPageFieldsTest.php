@@ -63,7 +63,7 @@ class VolunteerSignupPageFieldsTest extends TestCase
         $page0 = [
             'photo_file', 'first_name', 'last_name', 'full_name', 'birth_date', 'has_whatsapp',
             'email', 'phone', 'has_social_networks', 'social_network_profiles', 'professional_area',
-            'current_password', 'password', 'password_confirmation',
+            'password', 'password_confirmation',
         ];
         $page1 = [
             'attendance_duration', 'is_official_member', 'volunteer_phase', 'desired_ministry_ids',

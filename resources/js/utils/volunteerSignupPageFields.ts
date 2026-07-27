@@ -27,7 +27,6 @@ export const VOLUNTEER_SIGNUP_PAGE_FIELD_KEYS: Record<number, readonly string[]>
 
 /** Campos extras da etapa 0 (senha) — não entram no autosave. */
 const VOLUNTEER_SIGNUP_PAGE_0_PASSWORD_FIELDS = new Set([
-    'current_password',
     'password',
     'password_confirmation',
 ]);

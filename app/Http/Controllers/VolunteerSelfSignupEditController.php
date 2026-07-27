@@ -243,7 +243,6 @@ class VolunteerSelfSignupEditController extends Controller
         $validated = $request->validate(array_merge(
             VolunteerSignupValidation::baseRules($user, $request, $minBirthDate),
             [
-                'current_password' => ['required_with:password', 'current_password'],
                 'password' => ['nullable', 'string', 'confirmed', Password::defaults()],
             ],
             UserProfilePhotoResolver::validationRules(required: ! $hasExistingPhoto)

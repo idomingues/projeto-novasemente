@@ -10,7 +10,6 @@ export type VolunteerSignupFormSlice = VolunteerSignupInitial & {
     photo_file?: File | null;
     password?: string;
     password_confirmation?: string;
-    current_password?: string;
 };
 
 export function normalizeSignupBool(value: BoolLike): boolean | null {
@@ -140,13 +139,8 @@ export function computeVolunteerSignupPageErrors({
             }
         } else if (!focusMissingOnly) {
             const changingPassword =
-                (data.password ?? '').trim() !== '' ||
-                (data.password_confirmation ?? '').trim() !== '' ||
-                (data.current_password ?? '').trim() !== '';
+                (data.password ?? '').trim() !== '' || (data.password_confirmation ?? '').trim() !== '';
             if (changingPassword) {
-                if (!(data.current_password ?? '').trim()) {
-                    next.current_password = 'Informe a senha atual para alterar.';
-                }
                 if (!(data.password ?? '').trim()) next.password = 'Informe a nova senha.';
                 else if ((data.password ?? '').length < 6) next.password = 'A senha deve ter pelo menos 6 caracteres.';
                 if (!(data.password_confirmation ?? '').trim()) next.password_confirmation = 'Confirme a nova senha.';

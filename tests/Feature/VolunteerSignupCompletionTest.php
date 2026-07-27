@@ -35,7 +35,6 @@ class VolunteerSignupCompletionTest extends TestCase
         $this->assertContains('full_name', $completion['missing_fields']);
         $this->assertContains('birth_date', $completion['missing_fields']);
         $this->assertNotContains('password', $completion['missing_fields']);
-        $this->assertNotContains('current_password', $completion['missing_fields']);
         foreach (VolunteerSignupCompletion::OPTIONAL_FIELD_KEYS as $optional) {
             $this->assertNotContains($optional, $completion['missing_fields'], "Campo opcional {$optional} não deve aparecer como pendente.");
         }

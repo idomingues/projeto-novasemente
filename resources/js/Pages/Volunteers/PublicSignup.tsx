@@ -160,7 +160,6 @@ const FIELD_SCROLL_TARGETS: Record<string, string> = {
     service_greatest_strength: 'field-service_greatest_strength',
     service_greatest_challenge: 'field-service_greatest_challenge',
     lgpd_data_consent: 'field-lgpd_data_consent',
-    current_password: 'field-current_password',
     password: 'field-password',
     password_confirmation: 'field-password_confirmation',
 };
@@ -487,7 +486,6 @@ function buildFormDefaults(
         service_greatest_strength: merged.service_greatest_strength,
         service_greatest_challenge: merged.service_greatest_challenge,
         lgpd_data_consent: merged.lgpd_data_consent,
-        current_password: '',
         password: '',
         password_confirmation: '',
     };
@@ -827,7 +825,6 @@ export default function PublicSignup({
             if (isEdit) {
                 delete prepared.token;
                 if (!String(prepared.password ?? '').trim()) {
-                    delete prepared.current_password;
                     delete prepared.password;
                     delete prepared.password_confirmation;
                 }
@@ -1366,7 +1363,6 @@ export default function PublicSignup({
         if (isEdit) {
             delete prepared.token;
             if (!String(prepared.password ?? '').trim()) {
-                delete prepared.current_password;
                 delete prepared.password;
                 delete prepared.password_confirmation;
             }
@@ -2022,28 +2018,6 @@ export default function PublicSignup({
                                 ) : null}
                                 {!focusMissingOnly ? (
                                     <>
-                                        {isEdit ? (
-                                            <Question
-                                                fieldKey="current_password"
-                                                number={qn('current_password')}
-                                                label="Senha atual"
-                                                required={false}
-                                                error={err('current_password')}
-                                            >
-                                                <PasswordInput
-                                                    className="w-full max-w-md"
-                                                    value={data.current_password}
-                                                    autoComplete="current-password"
-                                                    onChange={(e) => {
-                                                        setData('current_password', e.target.value);
-                                                        clearClientError('current_password');
-                                                    }}
-                                                />
-                                                <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                                    Preencha somente se quiser trocar a senha. Use o olho para ver o que está digitando.
-                                                </p>
-                                            </Question>
-                                        ) : null}
                                         <Question
                                             fieldKey="password"
                                             number={qn('password')}
@@ -2060,6 +2034,11 @@ export default function PublicSignup({
                                                     clearClientError('password');
                                                 }}
                                             />
+                                            {isEdit ? (
+                                                <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    Preencha somente se quiser trocar a senha. Use o olho para ver o que está digitando.
+                                                </p>
+                                            ) : null}
                                         </Question>
                                         <Question
                                             fieldKey="password_confirmation"

@@ -27,7 +27,7 @@ export function formatVolunteerSignupProgressLabel(completion: Pick<VolunteerSig
 const MIN_VOLUNTEER_AGE = 10;
 
 /** Campos que não entram no alerta de cadastro incompleto (espelha backend). */
-export const VOLUNTEER_SIGNUP_OPTIONAL_FIELD_KEYS = ['phone', 'password', 'password_confirmation', 'current_password'] as const;
+export const VOLUNTEER_SIGNUP_OPTIONAL_FIELD_KEYS = ['phone', 'password', 'password_confirmation'] as const;
 
 /** Ordem estável para rolar/destacar o primeiro erro (todas as etapas). */
 export const VOLUNTEER_SIGNUP_FIELD_ORDER = [
@@ -37,7 +37,6 @@ export const VOLUNTEER_SIGNUP_FIELD_ORDER = [
     'phone',
     'has_whatsapp',
     'email',
-    'current_password',
     'password',
     'password_confirmation',
     'has_social_networks',

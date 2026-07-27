@@ -15,7 +15,6 @@ final class VolunteerSignupCompletion
         'phone',
         'password',
         'password_confirmation',
-        'current_password',
     ];
 
     /**

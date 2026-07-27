@@ -8,7 +8,7 @@ const DRAFT_MAX_PHOTO_PREVIEW_CHARS = 350_000;
 
 type DraftFields = Omit<
     VolunteerSignupFormSlice,
-    'photo_file' | 'password' | 'password_confirmation' | 'current_password'
+    'photo_file' | 'password' | 'password_confirmation'
 >;
 
 export type VolunteerSignupDraftEnvelope = {
@@ -30,7 +30,7 @@ export function volunteerSignupDraftKey(token: string): string {
 }
 
 function stripDraftFields(data: VolunteerSignupFormSlice): Partial<DraftFields> {
-    const { photo_file: _photo, password: _p, password_confirmation: _pc, current_password: _cp, ...rest } = data;
+    const { photo_file: _photo, password: _p, password_confirmation: _pc, ...rest } = data;
     return rest;
 }
 
