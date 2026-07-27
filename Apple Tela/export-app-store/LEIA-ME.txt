@@ -1,0 +1,29 @@
+Export App Store — Nova Semente
+================================
+
+iPhone:
+  iphone-6.9  → 6,9"   (1320×2868)  ← PRINCIPAL
+  iphone-6.5  → 6,5"   (1284×2778)
+  iphone-6.3  → 6,3"   (1206×2622)
+  iphone-6.1  → 6,1"   (1170×2532)
+  iphone-5.5  → 5,5"   (1242×2208)
+  iphone-4.7  → 4,7"   (750×1334)
+  iphone-4.0  → 4"     (640×1136)
+  iphone-3.5  → 3,5"   (640×960)
+
+iPad (Media Manager):
+  ipad-13     → iPad Tela de 13 pol.                    (2064×2752)  ← PRINCIPAL
+  ipad-12.9   → iPad Pro (2ª geração) Tela de 12.9 pol. (2048×2732)
+  ipad-11     → iPad Tela de 11 pol.                    (1668×2388)
+  ipad-10.5   → iPad Tela de 10.5 pol.                  (1668×2224)
+  ipad-9.7    → iPad Tela de 9.7 pol.                   (1536×2048)
+
+ORDEM NO IPAD:
+1. Em Português (Brasil), abra iPad → 13 pol.
+2. Se aparecer "Usando … em Inglês (EUA)", clique Editar e use capturas em PT-BR
+   (ou Apagar tudo e enviar as da pasta ipad-13).
+3. Depois atualize 12.9 / 11 / 10.5 / 9.7 com as pastas correspondentes
+   (a Apple reclamou de prints antigos nesses tamanhos).
+
+IMPORTANTE: originais do WhatsApp em baixa resolução — ficam um pouco borradas
+ao ampliar. Ideal depois: prints nativos no simulador iPad.

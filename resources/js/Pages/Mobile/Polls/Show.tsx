@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import FlashMessages from '@/Components/FlashMessages';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
 import Textarea from '@/Components/Textarea';
 import TextInput from '@/Components/TextInput';
 import PollResultsCard from '@/Components/Polls/PollResultsCard';
@@ -24,10 +25,12 @@ type PollShow = {
     shows_results: boolean;
     text_answer_max: number;
     write_in_text_max?: number;
+    write_in_text_min?: number;
     status: string;
     status_label: string;
     is_open: boolean;
     has_voted: boolean;
+    can_change_vote?: boolean;
     options: PollOption[];
     selected_option_ids: number[];
     my_answer_text: string | null;
@@ -41,13 +44,15 @@ type Props = {
 
 export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: Props) {
     const isText = poll.response_type === 'text';
-    const [selected, setSelected] = useState<number[]>([]);
-    const [answerText, setAnswerText] = useState('');
+    const [selected, setSelected] = useState<number[]>(poll.selected_option_ids ?? []);
+    const [answerText, setAnswerText] = useState(poll.my_answer_text ?? '');
     const [otherText, setOtherText] = useState('');
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [editing, setEditing] = useState(false);
 
     const writeInMax = poll.write_in_text_max ?? 60;
+    const writeInMin = poll.write_in_text_min ?? 3;
     const selectedOption = useMemo(
         () => poll.options.find((o) => selected.includes(o.id)) ?? null,
         [poll.options, selected],
@@ -84,6 +89,7 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
                 {
                     preserveScroll: true,
                     onFinish: () => setProcessing(false),
+                    onSuccess: () => setEditing(false),
                     onError: (errs) => {
                         const msg = (errs as { answer_text?: string }).answer_text;
                         setError(msg ?? 'Não foi possível enviar sua sugestão.');
@@ -97,9 +103,12 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
             setError('Selecione pelo menos uma opção.');
             return;
         }
-        if (writingIn && otherText.trim() === '') {
-            setError('Escreva o nome do personagem.');
-            return;
+        if (writingIn) {
+            const typed = otherText.trim();
+            if (typed.length < writeInMin) {
+                setError(`Digite pelo menos ${writeInMin} letras.`);
+                return;
+            }
         }
         setProcessing(true);
         setError(null);
@@ -112,6 +121,10 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
             {
                 preserveScroll: true,
                 onFinish: () => setProcessing(false),
+                onSuccess: () => {
+                    setEditing(false);
+                    setOtherText('');
+                },
                 onError: (errs) => {
                     const e = errs as { option_ids?: string; other_text?: string };
                     setError(e.other_text ?? e.option_ids ?? 'Não foi possível enviar sua resposta.');
@@ -120,8 +133,9 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
         );
     };
 
-    const showResults = !isText && poll.has_voted && poll.results != null;
-    const showTextThanks = isText && poll.has_voted;
+    const showResults = !isText && poll.has_voted && poll.results != null && !editing;
+    const showTextThanks = isText && poll.has_voted && !editing;
+    const showForm = !showResults && !showTextThanks;
 
     return (
         <MobileLayout>
@@ -146,12 +160,28 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
                 <FlashMessages />
 
                 {showResults && poll.results ? (
-                    <PollResultsCard
-                        question={poll.question}
-                        allowMultiple={false}
-                        results={poll.results}
-                        selectedOptionIds={poll.selected_option_ids}
-                    />
+                    <div className="space-y-3">
+                        <PollResultsCard
+                            question={poll.question}
+                            allowMultiple={false}
+                            results={poll.results}
+                            selectedOptionIds={poll.selected_option_ids}
+                        />
+                        {poll.can_change_vote && poll.is_open ? (
+                            <SecondaryButton
+                                type="button"
+                                className="w-full cursor-pointer justify-center"
+                                onClick={() => {
+                                    setEditing(true);
+                                    setSelected(poll.selected_option_ids ?? []);
+                                    setError(null);
+                                    setOtherText('');
+                                }}
+                            >
+                                Mudar minha resposta
+                            </SecondaryButton>
+                        ) : null}
+                    </div>
                 ) : showTextThanks ? (
                     <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
                         <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">{poll.question}</h2>
@@ -169,14 +199,16 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
                             </div>
                         ) : null}
                     </div>
-                ) : (
+                ) : showForm ? (
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                             <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">{poll.question}</h2>
                             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                 {isText
                                     ? 'Texto livre · no máximo duas linhas · sem resultado público'
-                                    : 'Selecione uma opção'}
+                                    : editing
+                                      ? 'Escolha outra opção'
+                                      : 'Selecione uma opção'}
                             </p>
 
                             {isText ? (
@@ -237,8 +269,9 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
                                                                 setOtherText(e.target.value);
                                                             }}
                                                             maxLength={writeInMax}
+                                                            minLength={writeInMin}
                                                             disabled={!poll.is_open}
-                                                            placeholder="Digite o nome…"
+                                                            placeholder={`Digite o nome (mín. ${writeInMin} letras)…`}
                                                             className="w-full"
                                                             autoFocus
                                                         />
@@ -257,18 +290,35 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
                         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
                         {poll.is_open ? (
-                            <PrimaryButton
-                                type="submit"
-                                className="w-full cursor-pointer justify-center"
-                                disabled={
-                                    processing ||
-                                    (isText
-                                        ? answerText.trim().length === 0
-                                        : selected.length === 0 || (writingIn && otherText.trim().length === 0))
-                                }
-                            >
-                                {processing ? 'Enviando…' : 'Enviar'}
-                            </PrimaryButton>
+                            <div className="flex flex-col gap-2">
+                                <PrimaryButton
+                                    type="submit"
+                                    className="w-full cursor-pointer justify-center"
+                                    disabled={
+                                        processing ||
+                                        (isText
+                                            ? answerText.trim().length === 0
+                                            : selected.length === 0 ||
+                                              (writingIn && otherText.trim().length < writeInMin))
+                                    }
+                                >
+                                    {processing ? 'Enviando…' : editing ? 'Salvar nova resposta' : 'Enviar'}
+                                </PrimaryButton>
+                                {editing ? (
+                                    <SecondaryButton
+                                        type="button"
+                                        className="w-full cursor-pointer justify-center"
+                                        onClick={() => {
+                                            setEditing(false);
+                                            setError(null);
+                                            setOtherText('');
+                                            setSelected(poll.selected_option_ids ?? []);
+                                        }}
+                                    >
+                                        Cancelar
+                                    </SecondaryButton>
+                                ) : null}
+                            </div>
                         ) : (
                             <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                                 Esta enquete está encerrada.
@@ -281,7 +331,7 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
                                 : 'O resultado aparece assim que você enviar sua resposta.'}
                         </p>
                     </form>
-                )}
+                ) : null}
 
                 {poll.has_voted && otherOpenUnansweredCount > 0 ? (
                     <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">

@@ -168,10 +168,12 @@ final class PollPresenter
             'shows_results' => $poll->showsResults(),
             'text_answer_max' => Poll::TEXT_ANSWER_MAX,
             'write_in_text_max' => Poll::WRITE_IN_TEXT_MAX,
+            'write_in_text_min' => Poll::WRITE_IN_TEXT_MIN,
             'status' => $poll->status,
             'status_label' => Poll::STATUSES[$poll->status] ?? $poll->status,
             'is_open' => $poll->isOpen(),
             'has_voted' => $voted,
+            'can_change_vote' => $poll->isOpen() && ! $poll->isTextResponse(),
             'options' => $poll->isTextResponse()
                 ? []
                 : $poll->options->map(fn ($option) => [

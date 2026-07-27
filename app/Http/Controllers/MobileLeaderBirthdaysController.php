@@ -27,7 +27,10 @@ class MobileLeaderBirthdaysController extends Controller
         $canViewAllVolunteers = LeaderVolunteerBirthdays::isChurchAdmin($user);
         $ministryIds = LeaderVolunteerBirthdays::ministryIdsForUser($user, (int) $churchId);
 
-        $requestedScope = (string) $request->query('scope', 'area');
+        // ADM vê a igreja inteira por padrão (com ou sem área própria).
+        // «Minha área» continua disponível quando há ministérios vinculados.
+        $defaultScope = $canViewAllVolunteers ? 'all' : 'area';
+        $requestedScope = (string) $request->query('scope', $defaultScope);
         $scope = 'area';
         if ($canViewAllVolunteers && $requestedScope === 'all') {
             $scope = 'all';

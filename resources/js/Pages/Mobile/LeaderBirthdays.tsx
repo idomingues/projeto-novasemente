@@ -79,8 +79,9 @@ export default function LeaderBirthdays({
         const y = next.year ?? year;
         const nextScope = next.scope ?? scope;
         const query: Record<string, number | string> = { month: m, year: y };
-        if (canViewAllVolunteers && nextScope === 'all') {
-            query.scope = 'all';
+        if (canViewAllVolunteers) {
+            // Sempre envia o escopo: o padrão do servidor é «all» para ADM.
+            query.scope = nextScope;
         }
         router.get(route('mobile.leader.birthdays'), query, { preserveScroll: true });
     };

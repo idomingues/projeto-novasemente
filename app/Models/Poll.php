@@ -67,6 +67,9 @@ class Poll extends Model
     /** Nome curto digitado em «Outros». */
     public const WRITE_IN_TEXT_MAX = 60;
 
+    /** Mínimo de caracteres em «Outros» (bloqueia «E», «A»; permite «Jó»). */
+    public const WRITE_IN_TEXT_MIN = 2;
+
     public static function isWriteInLabel(?string $label): bool
     {
         if ($label === null || $label === '') {

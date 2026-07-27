@@ -16,6 +16,7 @@ class PollOption extends Model
         'label',
         'sort_order',
         'is_write_in',
+        'created_via_write_in',
     ];
 
     protected function casts(): array
@@ -23,6 +24,7 @@ class PollOption extends Model
         return [
             'sort_order' => 'integer',
             'is_write_in' => 'boolean',
+            'created_via_write_in' => 'boolean',
         ];
     }
 

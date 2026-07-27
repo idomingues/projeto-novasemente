@@ -32,7 +32,7 @@ class StorePollVoteRequest extends FormRequest
         return [
             'option_ids' => ['required', 'array', 'size:1'],
             'option_ids.*' => ['integer', 'distinct'],
-            'other_text' => ['nullable', 'string', 'max:'.Poll::WRITE_IN_TEXT_MAX],
+            'other_text' => ['nullable', 'string', 'min:'.Poll::WRITE_IN_TEXT_MIN, 'max:'.Poll::WRITE_IN_TEXT_MAX],
         ];
     }
 
@@ -43,6 +43,7 @@ class StorePollVoteRequest extends FormRequest
             'option_ids.size' => 'Selecione apenas uma opção.',
             'answer_text.required' => 'Escreva sua sugestão.',
             'answer_text.max' => 'Use no máximo duas linhas curtas.',
+            'other_text.min' => 'Digite pelo menos '.Poll::WRITE_IN_TEXT_MIN.' letras.',
             'other_text.max' => 'Texto muito longo.',
         ];
     }

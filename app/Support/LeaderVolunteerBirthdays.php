@@ -61,6 +61,8 @@ class LeaderVolunteerBirthdays
     /**
      * Voluntários ativos da área (ou de toda a igreja, se `$allChurch`) com aniversário no mês.
      * Usa `volunteers.birth_date`, com fallback para `users.birth_date`.
+     * No escopo da igreja inteira, inclui também voluntários ativos com conta na igreja
+     * mesmo sem vínculo em `ministry_volunteer`.
      * O visualizador permanece na lista; `$viewerUserId` só impede "Dar parabéns" a si mesmo.
      *
      * @param  list<int>  $ministryIds
@@ -102,15 +104,29 @@ class LeaderVolunteerBirthdays
         /** @var Collection<int, Volunteer> $volunteers */
         $volunteers = Volunteer::query()
             ->where('active', true)
-            ->whereHas(
-                'ministries',
-                function ($q) use ($churchId, $ministryIds, $allChurch) {
-                    $q->where('ministries.church_id', $churchId);
-                    if (! $allChurch) {
-                        $q->whereIn('ministries.id', $ministryIds);
-                    }
-                },
-            )
+            ->where(function ($q) use ($churchId, $ministryIds, $allChurch) {
+                if ($allChurch) {
+                    // Toda a igreja: ministérios da igreja OU conta vinculada à igreja
+                    // (adm/voluntário sem ministry_volunteer ainda deve aparecer).
+                    $q->where(function ($inner) use ($churchId) {
+                        $inner->whereHas(
+                            'ministries',
+                            fn ($mq) => $mq->where('ministries.church_id', $churchId),
+                        )->orWhereHas(
+                            'user',
+                            fn ($uq) => $uq->where('church_id', $churchId),
+                        );
+                    });
+                } else {
+                    $q->whereHas(
+                        'ministries',
+                        function ($mq) use ($churchId, $ministryIds) {
+                            $mq->where('ministries.church_id', $churchId)
+                                ->whereIn('ministries.id', $ministryIds);
+                        },
+                    );
+                }
+            })
             ->where(function ($q) use ($month) {
                 $q->where(function ($inner) use ($month) {
                     $inner->whereNotNull('birth_date')

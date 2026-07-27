@@ -370,6 +370,115 @@ class LeaderVolunteerBirthdaysTest extends TestCase
             );
     }
 
+    public function test_admin_with_area_defaults_to_all_scope(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->create([
+            'church_id' => $church->id,
+            'name' => 'Área do Admin com Escopo',
+        ]);
+
+        $admin = User::factory()->create([
+            'church_id' => $church->id,
+            'is_ministry_leader' => true,
+            'is_volunteer' => false,
+        ]);
+        Role::findOrCreate('admin', 'web');
+        $admin->assignRole('admin');
+        $admin->ministries()->sync([$ministry->id]);
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.leader.birthdays'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/LeaderBirthdays')
+                ->where('canViewAllVolunteers', true)
+                ->where('scope', 'all')
+                ->where('hasAreaScope', true)
+            );
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.leader.birthdays', ['scope' => 'area']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/LeaderBirthdays')
+                ->where('scope', 'area')
+                ->where('hasAreaScope', true)
+            );
+    }
+
+    public function test_all_scope_includes_church_volunteer_without_ministry(): void
+    {
+        $this->seed();
+
+        \Illuminate\Support\Carbon::setTestNow(\Illuminate\Support\Carbon::parse('2026-05-10 12:00:00', 'America/Sao_Paulo'));
+
+        $church = Church::query()->firstOrFail();
+        $ministry = Ministry::query()->create([
+            'church_id' => $church->id,
+            'name' => 'Área Só de Outros',
+        ]);
+
+        $admin = User::factory()->create([
+            'church_id' => $church->id,
+            'name' => 'Admin Aniversariante Sem Área',
+            'birth_date' => '1976-05-01',
+            'is_ministry_leader' => true,
+            'is_volunteer' => true,
+        ]);
+        Role::findOrCreate('admin', 'web');
+        $admin->assignRole('admin');
+        $admin->ministries()->sync([$ministry->id]);
+        $admin->ensureVolunteerProfile();
+        $selfVolunteer = $admin->volunteerProfile()->firstOrFail();
+        $selfVolunteer->forceFill([
+            'name' => 'Admin Aniversariante Sem Área',
+            'email' => 'admin.sem.area.niver@example.com',
+            'active' => true,
+            'birth_date' => '1976-05-01',
+        ])->save();
+        $selfVolunteer->ministries()->sync([]);
+
+        $peer = Volunteer::query()->create([
+            'user_id' => null,
+            'name' => 'Colega Com Ministério',
+            'email' => 'colega.com.ministerio.niver@example.com',
+            'active' => true,
+            'birth_date' => '1990-05-20',
+        ]);
+        $peer->ministries()->attach($ministry->id);
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.leader.birthdays', [
+                'month' => 5,
+                'year' => 2026,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/LeaderBirthdays')
+                ->where('scope', 'all')
+                ->has('birthdays', 2)
+                ->where('birthdays', function ($birthdays) use ($admin) {
+                    $rows = collect($birthdays);
+                    $self = $rows->firstWhere('userId', $admin->id);
+
+                    return is_array($self)
+                        && $self['name'] === 'Admin Aniversariante Sem Área'
+                        && $self['birthDate'] === '1976-05-01'
+                        && $self['isSelf'] === true
+                        && $self['day'] === 1
+                        && $rows->contains(fn ($row) => ($row['name'] ?? null) === 'Colega Com Ministério');
+                })
+            );
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
     public function test_non_admin_cannot_force_all_scope_via_query(): void
     {
         $this->seed();

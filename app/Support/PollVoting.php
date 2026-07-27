@@ -30,13 +30,19 @@ final class PollVoting
 
     public static function hasVoted(Poll $poll, ?User $user, string $ip): bool
     {
+        return self::findVote($poll, $user, $ip) !== null;
+    }
+
+    public static function findVote(Poll $poll, ?User $user, string $ip): ?PollVote
+    {
         if ($user !== null) {
             return $poll->votes()
                 ->where(function ($q) use ($user) {
                     $q->where('voter_key', self::voterKey($user, ''))
                         ->orWhere('user_id', $user->id);
                 })
-                ->exists();
+                ->latest('id')
+                ->first();
         }
 
         return $poll->votes()
@@ -44,7 +50,8 @@ final class PollVoting
                 $q->where('voter_ip', $ip)
                     ->orWhere('voter_key', self::voterKey(null, $ip));
             })
-            ->exists();
+            ->latest('id')
+            ->first();
     }
 
     /**
@@ -68,12 +75,6 @@ final class PollVoting
         $user = $request->user();
         $ip = self::clientIp($request);
         $voterKey = self::voterKey($user, $ip);
-
-        if (self::hasVoted($poll, $user, $ip)) {
-            throw ValidationException::withMessages([
-                'option_ids' => 'Você já respondeu esta enquete.',
-            ]);
-        }
 
         $optionIds = collect($optionIds)
             ->map(fn ($id) => (int) $id)
@@ -103,20 +104,46 @@ final class PollVoting
             )->id;
         }
 
+        $existing = self::findVote($poll, $user, $ip);
+
         try {
-            DB::transaction(function () use ($poll, $user, $ip, $voterKey, $optionId) {
-                PollVote::query()->create([
-                    'poll_id' => $poll->id,
-                    'poll_option_id' => $optionId,
-                    'answer_text' => null,
-                    'user_id' => $user?->id,
-                    'voter_ip' => $ip,
-                    'voter_key' => $voterKey,
-                ]);
+            DB::transaction(function () use ($poll, $user, $ip, $voterKey, $optionId, $existing) {
+                $previousOptionId = $existing?->poll_option_id !== null
+                    ? (int) $existing->poll_option_id
+                    : null;
+
+                if ($existing !== null) {
+                    if ($previousOptionId === $optionId) {
+                        return;
+                    }
+
+                    $existing->update([
+                        'poll_option_id' => $optionId,
+                        'answer_text' => null,
+                        'voter_ip' => $ip,
+                        'voter_key' => $voterKey,
+                        'user_id' => $user?->id ?? $existing->user_id,
+                    ]);
+                } else {
+                    PollVote::query()->create([
+                        'poll_id' => $poll->id,
+                        'poll_option_id' => $optionId,
+                        'answer_text' => null,
+                        'user_id' => $user?->id,
+                        'voter_ip' => $ip,
+                        'voter_key' => $voterKey,
+                    ]);
+                }
+
+                if ($previousOptionId !== null && $previousOptionId !== $optionId) {
+                    self::deleteOrphanWriteInOption($poll, $previousOptionId);
+                }
             });
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             throw ValidationException::withMessages([
-                'option_ids' => 'Você já respondeu esta enquete.',
+                'option_ids' => 'Não foi possível registrar sua resposta. Tente de novo.',
             ]);
         }
 
@@ -159,27 +186,32 @@ final class PollVoting
         $user = $request->user();
         $ip = self::clientIp($request);
         $voterKey = self::voterKey($user, $ip);
-
-        if (self::hasVoted($poll, $user, $ip)) {
-            throw ValidationException::withMessages([
-                'answer_text' => 'Você já respondeu esta enquete.',
-            ]);
-        }
+        $existing = self::findVote($poll, $user, $ip);
 
         try {
-            DB::transaction(function () use ($poll, $user, $ip, $voterKey, $answer) {
-                PollVote::query()->create([
-                    'poll_id' => $poll->id,
-                    'poll_option_id' => null,
-                    'answer_text' => $answer,
-                    'user_id' => $user?->id,
-                    'voter_ip' => $ip,
-                    'voter_key' => $voterKey,
-                ]);
+            DB::transaction(function () use ($poll, $user, $ip, $voterKey, $answer, $existing) {
+                if ($existing !== null) {
+                    $existing->update([
+                        'poll_option_id' => null,
+                        'answer_text' => $answer,
+                        'voter_ip' => $ip,
+                        'voter_key' => $voterKey,
+                        'user_id' => $user?->id ?? $existing->user_id,
+                    ]);
+                } else {
+                    PollVote::query()->create([
+                        'poll_id' => $poll->id,
+                        'poll_option_id' => null,
+                        'answer_text' => $answer,
+                        'user_id' => $user?->id,
+                        'voter_ip' => $ip,
+                        'voter_key' => $voterKey,
+                    ]);
+                }
             });
         } catch (\Throwable $e) {
             throw ValidationException::withMessages([
-                'answer_text' => 'Você já respondeu esta enquete.',
+                'answer_text' => 'Não foi possível registrar sua sugestão. Tente de novo.',
             ]);
         }
 
@@ -199,6 +231,12 @@ final class PollVoting
             ]);
         }
 
+        if (mb_strlen($label) < Poll::WRITE_IN_TEXT_MIN) {
+            throw ValidationException::withMessages([
+                'other_text' => 'Digite pelo menos '.Poll::WRITE_IN_TEXT_MIN.' letras.',
+            ]);
+        }
+
         if (mb_strlen($label) > Poll::WRITE_IN_TEXT_MAX) {
             throw ValidationException::withMessages([
                 'other_text' => 'Texto muito longo (máximo '.Poll::WRITE_IN_TEXT_MAX.' caracteres).',
@@ -211,15 +249,22 @@ final class PollVoting
             ]);
         }
 
+        // Só letras/números/espaços/hífen/apóstrofo/vírgula — evita lixo.
+        if (! preg_match("/^[\p{L}\p{N}][\p{L}\p{N}\s'\-,.]*$/u", $label)) {
+            throw ValidationException::withMessages([
+                'other_text' => 'Use um nome válido (letras).',
+            ]);
+        }
+
         return DB::transaction(function () use ($poll, $label) {
-            $existing = $poll->options()
+            $candidates = $poll->options()
                 ->where('is_write_in', false)
                 ->get()
-                ->first(fn (PollOption $option) => mb_strtolower($option->label) === mb_strtolower($label)
-                    && ! $option->isWriteIn());
+                ->filter(fn (PollOption $option) => ! $option->isWriteIn());
 
-            if ($existing !== null) {
-                return $existing;
+            $match = self::findSimilarOption($candidates, $label);
+            if ($match !== null) {
+                return $match;
             }
 
             $writeIn = $poll->options()->where('is_write_in', true)->first()
@@ -234,6 +279,7 @@ final class PollVoting
                 'label' => $label,
                 'sort_order' => $maxOrder + 1,
                 'is_write_in' => false,
+                'created_via_write_in' => true,
             ]);
 
             if ($writeIn !== null) {
@@ -248,6 +294,87 @@ final class PollVoting
 
             return $created->fresh();
         });
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, PollOption>  $candidates
+     */
+    public static function findSimilarOption($candidates, string $label): ?PollOption
+    {
+        $needle = self::normalizeLabel($label);
+        if ($needle === '') {
+            return null;
+        }
+
+        $best = null;
+        $bestScore = 0.0;
+
+        foreach ($candidates as $option) {
+            $hay = self::normalizeLabel($option->label);
+            if ($hay === '') {
+                continue;
+            }
+
+            if ($hay === $needle) {
+                return $option;
+            }
+
+            // Um contém o outro (ex.: «Maria» vs «Maria Madalena») — só se o digitado for bem parecido.
+            similar_text($needle, $hay, $percent);
+            if ($percent > $bestScore) {
+                $bestScore = $percent;
+                $best = $option;
+            }
+        }
+
+        // Limiar alto para não misturar Elias/Eliseu (~72%).
+        if ($best !== null && $bestScore >= 88.0) {
+            return $best;
+        }
+
+        // Distância pequena em nomes curtos/médios (typo).
+        foreach ($candidates as $option) {
+            $hay = self::normalizeLabel($option->label);
+            if ($hay === '' || abs(mb_strlen($hay) - mb_strlen($needle)) > 2) {
+                continue;
+            }
+            if (levenshtein($needle, $hay) <= 1 && mb_strlen($needle) >= Poll::WRITE_IN_TEXT_MIN) {
+                return $option;
+            }
+        }
+
+        return null;
+    }
+
+    public static function normalizeLabel(string $label): string
+    {
+        $s = mb_strtolower(trim($label));
+        $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
+        $s = is_string($ascii) && $ascii !== '' ? $ascii : $s;
+
+        return preg_replace('/[^a-z0-9]+/i', '', $s) ?? '';
+    }
+
+    public static function deleteOrphanWriteInOption(Poll $poll, int $optionId): void
+    {
+        $option = $poll->options()->whereKey($optionId)->first();
+        if ($option === null || $option->isWriteIn()) {
+            return;
+        }
+
+        $isUserCreated = (bool) $option->created_via_write_in
+            || mb_strlen(trim($option->label)) < 2;
+
+        if (! $isUserCreated) {
+            return;
+        }
+
+        if ($option->votes()->exists()) {
+            return;
+        }
+
+        $option->delete();
+        self::sortChoiceOptionsAlphabetically($poll);
     }
 
     /** Ordena opções (exceto «Outros») em ordem alfabética pt_BR; «Outros» fica no fim. */

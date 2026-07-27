@@ -1,6 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import FlashMessages from '@/Components/FlashMessages';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
 import PollResultsCard from '@/Components/Polls/PollResultsCard';
 import type { PollResults } from '@/Components/Polls/pollTypes';
@@ -19,10 +20,12 @@ type PollShow = {
     question: string;
     allow_multiple: boolean;
     write_in_text_max?: number;
+    write_in_text_min?: number;
     status: string;
     status_label: string;
     is_open: boolean;
     has_voted: boolean;
+    can_change_vote?: boolean;
     options: PollOption[];
     selected_option_ids: number[];
     results: PollResults | null;
@@ -39,8 +42,10 @@ export default function PollVote({ poll, vote_url, display_url }: Props) {
     const [otherText, setOtherText] = useState('');
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [editing, setEditing] = useState(false);
 
     const writeInMax = poll.write_in_text_max ?? 60;
+    const writeInMin = poll.write_in_text_min ?? 3;
     const selectedOption = useMemo(
         () => poll.options.find((o) => o.id === selected) ?? null,
         [poll.options, selected],
@@ -53,9 +58,12 @@ export default function PollVote({ poll, vote_url, display_url }: Props) {
             setError('Selecione uma opção.');
             return;
         }
-        if (writingIn && otherText.trim() === '') {
-            setError('Escreva o nome do personagem.');
-            return;
+        if (writingIn) {
+            const typed = otherText.trim();
+            if (typed.length < writeInMin) {
+                setError(`Digite pelo menos ${writeInMin} letras.`);
+                return;
+            }
         }
         setProcessing(true);
         setError(null);
@@ -68,6 +76,10 @@ export default function PollVote({ poll, vote_url, display_url }: Props) {
             {
                 preserveScroll: true,
                 onFinish: () => setProcessing(false),
+                onSuccess: () => {
+                    setEditing(false);
+                    setOtherText('');
+                },
                 onError: (errs) => {
                     const e = errs as { option_ids?: string; other_text?: string };
                     setError(e.other_text ?? e.option_ids ?? 'Não foi possível enviar sua resposta.');
@@ -76,7 +88,7 @@ export default function PollVote({ poll, vote_url, display_url }: Props) {
         );
     };
 
-    const showResults = poll.has_voted && poll.results != null;
+    const showResults = poll.has_voted && poll.results != null && !editing;
 
     return (
         <MobileLayout>
@@ -102,6 +114,20 @@ export default function PollVote({ poll, vote_url, display_url }: Props) {
                             results={poll.results}
                             selectedOptionIds={poll.selected_option_ids}
                         />
+                        {poll.can_change_vote && poll.is_open ? (
+                            <SecondaryButton
+                                type="button"
+                                className="w-full cursor-pointer justify-center"
+                                onClick={() => {
+                                    setEditing(true);
+                                    setSelected(poll.selected_option_ids[0] ?? null);
+                                    setError(null);
+                                    setOtherText('');
+                                }}
+                            >
+                                Mudar minha resposta
+                            </SecondaryButton>
+                        ) : null}
                         {display_url && (
                             <a
                                 href={display_url}
@@ -117,7 +143,9 @@ export default function PollVote({ poll, vote_url, display_url }: Props) {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                             <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">{poll.question}</h2>
-                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Selecione uma opção</p>
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                {editing ? 'Escolha outra opção' : 'Selecione uma opção'}
+                            </p>
 
                             <ul className="mt-4 space-y-2">
                                 {poll.options.map((option) => {
@@ -164,8 +192,9 @@ export default function PollVote({ poll, vote_url, display_url }: Props) {
                                                             setOtherText(e.target.value);
                                                         }}
                                                         maxLength={writeInMax}
+                                                        minLength={writeInMin}
                                                         disabled={!poll.is_open}
-                                                        placeholder="Digite o nome…"
+                                                        placeholder={`Digite o nome (mín. ${writeInMin} letras)…`}
                                                         className="w-full"
                                                         autoFocus
                                                     />
@@ -182,18 +211,38 @@ export default function PollVote({ poll, vote_url, display_url }: Props) {
 
                         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-                        <PrimaryButton
-                            type="submit"
-                            className="w-full cursor-pointer justify-center"
-                            disabled={
-                                processing ||
-                                !poll.is_open ||
-                                selected == null ||
-                                (writingIn && otherText.trim().length === 0)
-                            }
-                        >
-                            {processing ? 'Enviando…' : 'Enviar voto'}
-                        </PrimaryButton>
+                        <div className="flex flex-col gap-2">
+                            <PrimaryButton
+                                type="submit"
+                                className="w-full cursor-pointer justify-center"
+                                disabled={
+                                    processing ||
+                                    !poll.is_open ||
+                                    selected == null ||
+                                    (writingIn && otherText.trim().length < writeInMin)
+                                }
+                            >
+                                {processing
+                                    ? 'Enviando…'
+                                    : editing
+                                      ? 'Salvar nova resposta'
+                                      : 'Enviar voto'}
+                            </PrimaryButton>
+                            {editing ? (
+                                <SecondaryButton
+                                    type="button"
+                                    className="w-full cursor-pointer justify-center"
+                                    onClick={() => {
+                                        setEditing(false);
+                                        setError(null);
+                                        setOtherText('');
+                                        setSelected(poll.selected_option_ids[0] ?? null);
+                                    }}
+                                >
+                                    Cancelar
+                                </SecondaryButton>
+                            ) : null}
+                        </div>
                     </form>
                 )}
             </div>
