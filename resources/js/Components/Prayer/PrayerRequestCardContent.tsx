@@ -1,6 +1,4 @@
-import Modal from '@/Components/Modal';
 import PrayerAmenButton from '@/Components/PrayerAmenButton';
-import SecondaryButton from '@/Components/SecondaryButton';
 import { prayerDisplayName, type PrayerDisplayItem } from '@/utils/prayerDisplayName';
 import { useLayoutEffect, useRef, useState } from 'react';
 
@@ -23,12 +21,16 @@ export default function PrayerRequestCardContent({
     showAmen = true,
     className = '',
 }: PrayerRequestCardContentProps) {
-    const [detailOpen, setDetailOpen] = useState(false);
+    const [expanded, setExpanded] = useState(false);
     const [isClamped, setIsClamped] = useState(false);
     const textRef = useRef<HTMLParagraphElement>(null);
     const displayName = prayerDisplayName(item);
 
     useLayoutEffect(() => {
+        if (expanded) {
+            return;
+        }
+
         const element = textRef.current;
         if (!element) {
             return;
@@ -51,7 +53,7 @@ export default function PrayerRequestCardContent({
             observer?.disconnect();
             window.removeEventListener('resize', updateClamped);
         };
-    }, [item.request, displayName, className]);
+    }, [item.request, displayName, className, expanded]);
 
     return (
         <>
@@ -60,17 +62,18 @@ export default function PrayerRequestCardContent({
             ) : null}
             <p
                 ref={textRef}
-                className={`text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap line-clamp-4 ${displayName ? 'mt-1' : ''} ${className}`}
+                className={`text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap ${expanded ? '' : 'line-clamp-4'} ${displayName ? 'mt-1' : ''} ${className}`}
             >
                 {item.request}
             </p>
-            {isClamped ? (
+            {isClamped || expanded ? (
                 <button
                     type="button"
-                    onClick={() => setDetailOpen(true)}
+                    onClick={() => setExpanded((current) => !current)}
                     className="mt-1.5 cursor-pointer text-sm font-medium text-brand-700 hover:text-brand-800 dark:text-brand-300 dark:hover:text-brand-200"
+                    aria-expanded={expanded}
                 >
-                    Ver pedido completo
+                    {expanded ? 'Ver menos' : 'Ver pedido completo'}
                 </button>
             ) : null}
             {showAmen ? (
@@ -78,22 +81,6 @@ export default function PrayerRequestCardContent({
                     <PrayerAmenButton prayerId={item.id} count={item.prayer_amen_count ?? 0} />
                 </div>
             ) : null}
-
-            <Modal show={detailOpen} onClose={() => setDetailOpen(false)}>
-                <div className="p-6">
-                    <h2 className="pr-10 text-lg font-semibold text-zinc-900 dark:text-white">
-                        {displayName ?? 'Pedido de oração'}
-                    </h2>
-                    <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                        {item.request}
-                    </p>
-                    {showAmen ? (
-                        <div className="mt-5">
-                            <PrayerAmenButton prayerId={item.id} count={item.prayer_amen_count ?? 0} />
-                        </div>
-                    ) : null}
-                </div>
-            </Modal>
         </>
     );
 }
