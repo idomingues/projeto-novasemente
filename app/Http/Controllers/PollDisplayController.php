@@ -25,7 +25,7 @@ class PollDisplayController extends Controller
 
         return response()->json([
             'question' => $poll->question,
-            'results' => PollPresenter::resultsPayload($poll, null, false),
+            'results' => PollPresenter::resultsPayload($poll),
             'display_bg_color' => $poll->display_bg_color ?: '#0f172a',
             'display_font' => $poll->display_font ?: 'sans',
             'display_chart' => $poll->display_chart ?: 'bar',

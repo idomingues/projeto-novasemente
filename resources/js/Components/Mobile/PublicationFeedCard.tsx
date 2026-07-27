@@ -164,6 +164,8 @@ type Props = {
     expanded?: boolean;
     onToggle?: () => void;
     showTypeTag?: boolean;
+    /** Na página Fotos fica false; no feed de publicações permanece true. */
+    commentsEnabled?: boolean;
     onEngagementChange?: (
         id: string,
         patch: { likes_count?: number; comments_count?: number; liked_by_me?: boolean },
@@ -180,6 +182,7 @@ export default function PublicationFeedCard({
     appUrl,
     expanded = false,
     onToggle,
+    commentsEnabled = true,
     onEngagementChange,
 }: Props) {
     const page = usePage().props as PageProps;
@@ -395,29 +398,31 @@ export default function PublicationFeedCard({
                                 </span>
                             ) : null}
                         </button>
-                        <button
-                            type="button"
-                            onClick={() => setCommentsOpen(true)}
-                            className="group inline-flex h-9 cursor-pointer items-center text-zinc-900 transition hover:bg-zinc-100/80 dark:text-white dark:hover:bg-zinc-800/80"
-                            aria-label={
-                                commentsCount > 0
-                                    ? `Comentários, ${commentsCount}`
-                                    : 'Comentários'
-                            }
-                        >
-                            <span className="inline-flex h-9 w-9 items-center justify-center">
-                                <ChatBubbleOvalLeftIcon
-                                    className="h-6 w-6 transition group-hover:scale-105"
-                                    aria-hidden
-                                    strokeWidth={1.7}
-                                />
-                            </span>
-                            {commentsCount > 0 ? (
-                                <span className="-ml-1 pr-1.5 text-[11px] font-semibold leading-none tabular-nums tracking-tight text-zinc-600 dark:text-zinc-300">
-                                    {formatCount(commentsCount)}
+                        {commentsEnabled ? (
+                            <button
+                                type="button"
+                                onClick={() => setCommentsOpen(true)}
+                                className="group inline-flex h-9 cursor-pointer items-center text-zinc-900 transition hover:bg-zinc-100/80 dark:text-white dark:hover:bg-zinc-800/80"
+                                aria-label={
+                                    commentsCount > 0
+                                        ? `Comentários, ${commentsCount}`
+                                        : 'Comentários'
+                                }
+                            >
+                                <span className="inline-flex h-9 w-9 items-center justify-center">
+                                    <ChatBubbleOvalLeftIcon
+                                        className="h-6 w-6 transition group-hover:scale-105"
+                                        aria-hidden
+                                        strokeWidth={1.7}
+                                    />
                                 </span>
-                            ) : null}
-                        </button>
+                                {commentsCount > 0 ? (
+                                    <span className="-ml-1 pr-1.5 text-[11px] font-semibold leading-none tabular-nums tracking-tight text-zinc-600 dark:text-zinc-300">
+                                        {formatCount(commentsCount)}
+                                    </span>
+                                ) : null}
+                            </button>
+                        ) : null}
                         <button
                             type="button"
                             onClick={() => void sharePublication()}
@@ -563,43 +568,51 @@ export default function PublicationFeedCard({
                         </div>
                     )}
 
-                    <div className="flex items-center justify-between gap-3 pt-0.5">
-                        <button
-                            type="button"
-                            onClick={() => setCommentsOpen(true)}
-                            className="cursor-pointer text-[13px] text-zinc-400 transition hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
-                        >
-                            {commentsCount > 0 ? 'Ver comentários' : 'Adicionar um comentário…'}
-                        </button>
-                        {canExpand ? (
-                            <button
-                                type="button"
-                                onClick={handleToggleExpand}
-                                aria-expanded={isExpanded}
-                                aria-label={isExpanded ? 'Recolher publicação' : 'Expandir publicação'}
-                                title={isExpanded ? 'Recolher' : 'Expandir'}
-                                className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm ring-1 ring-inset ring-white/10 transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
-                            >
-                                {isExpanded ? (
-                                    <ChevronUpIcon className="h-5 w-5" aria-hidden strokeWidth={2.2} />
-                                ) : (
-                                    <ChevronDownIcon className="h-5 w-5" aria-hidden strokeWidth={2.2} />
-                                )}
-                            </button>
-                        ) : null}
-                    </div>
+                    {commentsEnabled || canExpand ? (
+                        <div className="flex items-center justify-between gap-3 pt-0.5">
+                            {commentsEnabled ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setCommentsOpen(true)}
+                                    className="cursor-pointer text-[13px] text-zinc-400 transition hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                                >
+                                    {commentsCount > 0 ? 'Ver comentários' : 'Adicionar um comentário…'}
+                                </button>
+                            ) : (
+                                <span />
+                            )}
+                            {canExpand ? (
+                                <button
+                                    type="button"
+                                    onClick={handleToggleExpand}
+                                    aria-expanded={isExpanded}
+                                    aria-label={isExpanded ? 'Recolher publicação' : 'Expandir publicação'}
+                                    title={isExpanded ? 'Recolher' : 'Expandir'}
+                                    className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm ring-1 ring-inset ring-white/10 transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                                >
+                                    {isExpanded ? (
+                                        <ChevronUpIcon className="h-5 w-5" aria-hidden strokeWidth={2.2} />
+                                    ) : (
+                                        <ChevronDownIcon className="h-5 w-5" aria-hidden strokeWidth={2.2} />
+                                    )}
+                                </button>
+                            ) : null}
+                        </div>
+                    ) : null}
                 </div>
             </article>
 
-            <PublicationCommentsSheet
-                show={commentsOpen}
-                feedId={item.id}
-                onClose={() => setCommentsOpen(false)}
-                onCountChange={(count) => {
-                    setCommentsCount(count);
-                    onEngagementChange?.(item.id, { comments_count: count });
-                }}
-            />
+            {commentsEnabled ? (
+                <PublicationCommentsSheet
+                    show={commentsOpen}
+                    feedId={item.id}
+                    onClose={() => setCommentsOpen(false)}
+                    onCountChange={(count) => {
+                        setCommentsCount(count);
+                        onEngagementChange?.(item.id, { comments_count: count });
+                    }}
+                />
+            ) : null}
         </li>
     );
 }

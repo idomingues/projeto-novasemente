@@ -1,6 +1,6 @@
-import { CheckCircleIcon, StarIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import type { PollResults } from './pollTypes';
-import { voteCountLabel } from './pollTypes';
+import { percentLabel } from './pollTypes';
 
 type Props = {
     question: string;
@@ -27,8 +27,7 @@ export default function PollResultsCard({
             <ul className="mt-4 space-y-4">
                 {results.options.map((option) => {
                     const isSelected = selected.has(option.id);
-                    const width = option.votes_count > 0 ? Math.max(option.percent, 8) : 0;
-                    const voters = option.voters ?? [];
+                    const width = option.percent > 0 ? Math.max(option.percent, 8) : 0;
 
                     return (
                         <li key={option.id}>
@@ -51,11 +50,8 @@ export default function PollResultsCard({
                                         >
                                             {option.label}
                                         </span>
-                                        <span className="inline-flex shrink-0 items-center gap-1 text-sm tabular-nums text-zinc-600 dark:text-zinc-300">
-                                            {option.votes_count}
-                                            {option.votes_count > 0 && (
-                                                <StarIcon className="h-3.5 w-3.5 text-amber-400" />
-                                            )}
+                                        <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold tabular-nums text-zinc-600 dark:text-zinc-300">
+                                            {percentLabel(option.percent)}
                                         </span>
                                     </div>
                                     <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -64,69 +60,6 @@ export default function PollResultsCard({
                                             style={{ width: `${width}%` }}
                                         />
                                     </div>
-
-                                    <div className="mt-2 flex items-center justify-between gap-2">
-                                        <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-                                            {voteCountLabel(option.votes_count)}
-                                            {option.votes_count > 0 ? ` · ${option.percent}%` : ''}
-                                        </p>
-                                        {voters.length > 0 && (
-                                            <div className="flex -space-x-1.5">
-                                                {voters.slice(0, 6).map((voter, idx) =>
-                                                    voter.photo_url ? (
-                                                        <img
-                                                            key={`${voter.user_id ?? 'a'}-${voter.voted_at ?? idx}`}
-                                                            src={voter.photo_url}
-                                                            alt=""
-                                                            title={voter.name}
-                                                            className="h-5 w-5 rounded-full border border-white object-cover dark:border-zinc-900"
-                                                        />
-                                                    ) : (
-                                                        <span
-                                                            key={`${voter.user_id ?? 'a'}-${voter.voted_at ?? idx}`}
-                                                            title={voter.name}
-                                                            className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white bg-zinc-200 text-[9px] font-semibold text-zinc-600 dark:border-zinc-900 dark:bg-zinc-700 dark:text-zinc-200"
-                                                        >
-                                                            {voter.name.slice(0, 1).toUpperCase()}
-                                                        </span>
-                                                    ),
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {voters.length > 0 && (
-                                        <ul className="mt-2 divide-y divide-zinc-100 rounded-xl bg-zinc-50 px-3 dark:divide-zinc-800 dark:bg-zinc-800/50">
-                                            {voters.map((voter, idx) => (
-                                                <li
-                                                    key={`${option.id}-${voter.user_id ?? 'a'}-${voter.voted_at ?? idx}`}
-                                                    className="flex items-center gap-2.5 py-2"
-                                                >
-                                                    {voter.photo_url ? (
-                                                        <img
-                                                            src={voter.photo_url}
-                                                            alt=""
-                                                            className="h-7 w-7 rounded-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-zinc-200 text-xs font-semibold text-zinc-600 dark:bg-zinc-700 dark:text-zinc-200">
-                                                            {voter.name.slice(0, 1).toUpperCase()}
-                                                        </span>
-                                                    )}
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                                                            {voter.name}
-                                                        </p>
-                                                        {voter.voted_at_label && (
-                                                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                                                                {voter.voted_at_label}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
                                 </div>
                             </div>
                         </li>

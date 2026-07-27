@@ -76,6 +76,7 @@ export default function MissionWall({ albums }: Props) {
                                 key={item.id}
                                 item={item}
                                 appUrl={appUrl}
+                                commentsEnabled={false}
                                 expanded={false}
                                 onToggle={() => undefined}
                                 showTypeTag={false}

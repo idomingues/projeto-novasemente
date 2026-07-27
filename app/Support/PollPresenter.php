@@ -4,7 +4,6 @@ namespace App\Support;
 
 use App\Models\Poll;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 final class PollPresenter
@@ -40,7 +39,7 @@ final class PollPresenter
     {
         $poll->loadMissing([
             'options' => fn ($q) => $q->orderBy('sort_order')->orderBy('id'),
-            'options.votes' => fn ($q) => $q->orderBy('created_at')->with('user:id,name,photo_url'),
+            'options.votes',
         ]);
 
         $base = self::forAdminList($poll);
@@ -51,7 +50,7 @@ final class PollPresenter
                 'label' => $option->label,
                 'sort_order' => (int) $option->sort_order,
             ])->values()->all();
-        $base['results'] = $poll->showsResults() ? self::resultsPayload($poll, null, true) : null;
+        $base['results'] = $poll->showsResults() ? self::resultsPayload($poll) : null;
         $base['text_answers'] = $poll->isTextResponse() ? self::textAnswersPayload($poll) : [];
         $base['public_token'] = $poll->public_token;
         $base['public_url'] = $poll->public_token && $poll->showsResults()
@@ -91,7 +90,7 @@ final class PollPresenter
             'display_chart' => $poll->display_chart ?: 'bar',
             'display_logo' => $logoKey,
             'display_logo_url' => Poll::displayLogoPath($logoKey),
-            'results' => self::resultsPayload($poll, null, false),
+            'results' => self::resultsPayload($poll),
             'data_url' => route('polls.display.data', ['token' => $poll->public_token]),
         ];
     }
@@ -116,7 +115,7 @@ final class PollPresenter
         ];
 
         if ($hasVoted && $poll->showsResults()) {
-            $payload['results'] = self::resultsPayload($poll, null, false);
+            $payload['results'] = self::resultsPayload($poll);
         }
 
         return $payload;
@@ -134,9 +133,7 @@ final class PollPresenter
         $includeResults = $includeResults && $poll->showsResults();
 
         if ($includeResults) {
-            $poll->loadMissing([
-                'options.votes' => fn ($q) => $q->orderBy('created_at')->with('user:id,name,photo_url'),
-            ]);
+            $poll->loadMissing(['options.votes']);
         }
 
         $viewerId = $viewer?->id;
@@ -181,7 +178,7 @@ final class PollPresenter
                 ])->values()->all(),
             'selected_option_ids' => $selectedOptionIds,
             'my_answer_text' => $myAnswerText,
-            'results' => $includeResults ? self::resultsPayload($poll, $viewerId, true) : null,
+            'results' => $includeResults ? self::resultsPayload($poll) : null,
         ];
     }
 
@@ -190,18 +187,17 @@ final class PollPresenter
      */
     public static function forPublicVote(Poll $poll, ?User $viewer, bool $hasVoted, string $ip): array
     {
-        $mobile = self::forMobileShow($poll, $viewer, $hasVoted && $poll->showsResults(), $hasVoted);
-
-        return $mobile;
+        return self::forMobileShow($poll, $viewer, $hasVoted && $poll->showsResults(), $hasVoted);
     }
 
     /**
-     * @return list<array{id: int, answer_text: string, user_name: string|null, created_at: string|null}>
+     * Respostas em texto sem identificar quem enviou.
+     *
+     * @return list<array{id: int, answer_text: string, created_at: string|null}>
      */
     public static function textAnswersPayload(Poll $poll): array
     {
         return $poll->votes()
-            ->with('user:id,name')
             ->whereNotNull('answer_text')
             ->orderByDesc('id')
             ->limit(200)
@@ -209,7 +205,6 @@ final class PollPresenter
             ->map(fn ($vote) => [
                 'id' => (int) $vote->id,
                 'answer_text' => (string) $vote->answer_text,
-                'user_name' => $vote->user?->name,
                 'created_at' => $vote->created_at?->toIso8601String(),
             ])
             ->values()
@@ -217,13 +212,15 @@ final class PollPresenter
     }
 
     /**
+     * Resultados agregados apenas (porcentagem). Sem lista de votantes.
+     *
      * @return array{total_votes: int, options: list<array<string, mixed>>}
      */
-    public static function resultsPayload(Poll $poll, ?int $viewerId, bool $withVoters): array
+    public static function resultsPayload(Poll $poll): array
     {
         $poll->loadMissing([
             'options' => fn ($q) => $q->orderBy('sort_order')->orderBy('id'),
-            'options.votes' => fn ($q) => $q->orderBy('created_at')->with('user:id,name,photo_url'),
+            'options.votes',
         ]);
 
         /** @var Collection<int, \App\Models\PollOption> $options */
@@ -232,63 +229,17 @@ final class PollPresenter
 
         return [
             'total_votes' => (int) $totalVotes,
-            'options' => $options->map(function ($option) use ($totalVotes, $viewerId, $withVoters) {
-                $votes = $option->votes;
-                $count = $votes->count();
+            'options' => $options->map(function ($option) use ($totalVotes) {
+                $count = $option->votes->count();
                 $percent = $totalVotes > 0 ? (int) round(($count / $totalVotes) * 100) : 0;
 
-                $row = [
+                return [
                     'id' => $option->id,
                     'label' => $option->label,
                     'votes_count' => $count,
                     'percent' => $percent,
                 ];
-
-                if ($withVoters) {
-                    $row['voters'] = $votes->map(function ($vote) use ($viewerId) {
-                        $isYou = $viewerId !== null && (
-                            (int) $vote->user_id === (int) $viewerId
-                            || $vote->voter_key === 'u:'.$viewerId
-                        );
-
-                        $name = $isYou
-                            ? 'Você'
-                            : ($vote->user?->name ?? 'Anônimo');
-
-                        return [
-                            'user_id' => $vote->user_id !== null ? (int) $vote->user_id : null,
-                            'name' => $name,
-                            'photo_url' => $vote->user?->photo_url,
-                            'is_you' => $isYou,
-                            'voted_at' => $vote->created_at?->toIso8601String(),
-                            'voted_at_label' => self::relativeVoteLabel($vote->created_at),
-                        ];
-                    })->values()->all();
-                }
-
-                return $row;
             })->values()->all(),
         ];
-    }
-
-    public static function relativeVoteLabel(?Carbon $at): string
-    {
-        if ($at === null) {
-            return '';
-        }
-
-        $time = $at->timezone(config('app.timezone'))->format('H:i');
-        $today = now()->timezone(config('app.timezone'))->startOfDay();
-        $day = $at->timezone(config('app.timezone'))->copy()->startOfDay();
-
-        if ($day->equalTo($today)) {
-            return "hoje {$time}";
-        }
-
-        if ($day->equalTo($today->copy()->subDay())) {
-            return "ontem {$time}";
-        }
-
-        return $at->timezone(config('app.timezone'))->format('d/m/Y')." {$time}";
     }
 }

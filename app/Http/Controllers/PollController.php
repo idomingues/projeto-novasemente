@@ -35,7 +35,7 @@ class PollController extends Controller
             ->withCount(['options', 'votes'])
             ->with([
                 'options' => fn ($q) => $q->orderBy('sort_order')->orderBy('id'),
-                'options.votes' => fn ($q) => $q->orderBy('created_at')->with('user:id,name,photo_url'),
+                'options.votes',
             ])
             // Enquete de sugestão (texto livre) sempre por último.
             ->orderByRaw("CASE WHEN response_type = ? THEN 1 ELSE 0 END", [Poll::RESPONSE_TEXT])

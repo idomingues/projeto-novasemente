@@ -1373,7 +1373,6 @@ class MobileController extends Controller
 
         foreach ($albums as $i => $album) {
             $albums[$i]['likes_count'] = (int) ($engagement[$i]['likes_count'] ?? 0);
-            $albums[$i]['comments_count'] = (int) ($engagement[$i]['comments_count'] ?? 0);
             $albums[$i]['liked_by_me'] = (bool) ($engagement[$i]['liked_by_me'] ?? false);
         }
 

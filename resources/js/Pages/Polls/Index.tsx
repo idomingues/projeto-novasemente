@@ -48,7 +48,7 @@ type PollRow = {
     votes_count: number;
     options: PollOptionForm[];
     results: PollResults | null;
-    text_answers?: { id: number; answer_text: string; user_name: string | null; created_at: string | null }[];
+    text_answers?: { id: number; answer_text: string; created_at: string | null }[];
     created_at: string | null;
     public_token: string | null;
     public_url: string | null;
@@ -473,8 +473,9 @@ export default function Index({
                                         </span>
                                     </div>
                                     <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                        {poll.options_count} opções · {poll.votes_count}{' '}
-                                        {poll.votes_count === 1 ? 'voto' : 'votos'} · 1 por pessoa
+                                        {poll.response_type === 'text'
+                                            ? 'Texto livre · sem gráfico de resultado'
+                                            : `${poll.options_count} opções · resultado em % · 1 por pessoa`}
                                     </p>
                                     {poll.results && <PollCardResults results={poll.results} />}
                                 </button>
@@ -554,7 +555,7 @@ export default function Index({
                                 type="button"
                                 role="tab"
                                 aria-selected={modalTab === 'resultado'}
-                                className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                                className={`flex-1 cursor-pointer rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
                                     modalTab === 'resultado'
                                         ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-zinc-50'
                                         : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
@@ -562,11 +563,6 @@ export default function Index({
                                 onClick={() => setModalTab('resultado')}
                             >
                                 Resultado
-                                {editingPoll != null && editingPoll.votes_count > 0 ? (
-                                    <span className="inline-flex min-h-[1.15rem] min-w-[1.15rem] items-center justify-center rounded-full bg-emerald-100 px-1.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                                        {editingPoll.votes_count}
-                                    </span>
-                                ) : null}
                             </button>
                             <button
                                 type="button"
@@ -1312,9 +1308,6 @@ export default function Index({
                                             >
                                                 <p className="whitespace-pre-wrap text-sm text-zinc-800 dark:text-zinc-100">
                                                     {row.answer_text}
-                                                </p>
-                                                <p className="mt-1 text-[11px] text-zinc-500">
-                                                    {row.user_name ?? 'Anônimo'}
                                                 </p>
                                             </li>
                                         ))}

@@ -88,6 +88,7 @@ export default function MobilePhotoAlbums({ albums }: Props) {
                                 key={item.id}
                                 item={item}
                                 appUrl={appUrl}
+                                commentsEnabled={false}
                                 onEngagementChange={patchItem}
                             />
                         ))}

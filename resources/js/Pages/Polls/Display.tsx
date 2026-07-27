@@ -197,7 +197,8 @@ function PieChart({ results, dark, rising }: { results: PollResults; dark: boole
     });
 
     const hasVotes = results.total_votes > 0;
-    const animatedTotal = useAnimatedNumber(results.total_votes);
+    const leadingPercent = hasVotes ? Math.max(...results.options.map((o) => o.percent)) : 0;
+    const animatedLeading = useAnimatedNumber(leadingPercent);
 
     return (
         <div className="flex flex-col items-center gap-8 lg:flex-row lg:items-center lg:justify-center lg:gap-12">
@@ -228,7 +229,7 @@ function PieChart({ results, dark, rising }: { results: PollResults; dark: boole
                     textAnchor="middle"
                     style={{ fill: dark ? '#f8fafc' : '#0f172a', fontSize: 28, fontWeight: 700 }}
                 >
-                    {Math.round(animatedTotal)}
+                    {hasVotes ? `${Math.round(animatedLeading)}%` : '—'}
                 </text>
                 <text
                     x={cx}
@@ -236,7 +237,7 @@ function PieChart({ results, dark, rising }: { results: PollResults; dark: boole
                     textAnchor="middle"
                     style={{ fill: dark ? '#94a3b8' : '#64748b', fontSize: 12, fontWeight: 600 }}
                 >
-                    {results.total_votes === 1 ? 'voto' : 'votos'}
+                    {hasVotes ? 'líder' : 'sem dados'}
                 </text>
             </svg>
             <ul className="w-full max-w-sm space-y-3">
@@ -258,8 +259,8 @@ function PieChart({ results, dark, rising }: { results: PollResults; dark: boole
                                 {slice.label}
                             </span>
                         </span>
-                        <span className={`shrink-0 text-sm tabular-nums ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-                            <AnimatedCount value={slice.votes_count} /> · <AnimatedCount value={slice.percent} />%
+                        <span className={`shrink-0 text-sm font-semibold tabular-nums ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+                            <AnimatedCount value={slice.percent} />%
                         </span>
                     </li>
                 ))}
@@ -280,7 +281,7 @@ function BarRow({
     isRising: boolean;
 }) {
     const color = CHART_COLORS[index % CHART_COLORS.length];
-    const width = option.votes_count > 0 ? Math.max(option.percent, 6) : 0;
+    const width = option.percent > 0 ? Math.max(option.percent, 6) : 0;
     const animatedWidth = useAnimatedNumber(width, 1100);
 
     return (
@@ -294,14 +295,11 @@ function BarRow({
                     {option.label}
                 </span>
                 <span
-                    className={`text-base tabular-nums transition-transform duration-500 sm:text-lg ${
+                    className={`text-base font-semibold tabular-nums transition-transform duration-500 sm:text-lg ${
                         dark ? 'text-slate-300' : 'text-slate-600'
                     } ${isRising ? 'scale-110 font-bold' : ''}`}
                 >
-                    <AnimatedCount value={option.votes_count} className="inline-block min-w-[1.25ch] text-right" />{' '}
-                    <span className="text-sm opacity-70">
-                        (<AnimatedCount value={option.percent} />%)
-                    </span>
+                    <AnimatedCount value={option.percent} />%
                 </span>
             </div>
             <div className={`relative h-5 overflow-hidden rounded-full sm:h-6 ${dark ? 'bg-slate-700/70' : 'bg-slate-200'}`}>
@@ -332,7 +330,7 @@ function BarRow({
                     }`}
                     style={{ animation: 'poll-vote-pop 0.7s ease-out' }}
                 >
-                    +voto
+                    +
                 </span>
             )}
         </li>
@@ -360,17 +358,14 @@ function ColumnBar({
     index,
     dark,
     isRising,
-    maxVotes,
 }: {
     option: PollResultOption;
     index: number;
     dark: boolean;
     isRising: boolean;
-    maxVotes: number;
 }) {
     const color = CHART_COLORS[index % CHART_COLORS.length];
-    const ratio = maxVotes > 0 ? option.votes_count / maxVotes : 0;
-    const heightPct = option.votes_count > 0 ? Math.max(ratio * 100, 8) : 0;
+    const heightPct = option.percent > 0 ? Math.max(option.percent, 8) : 0;
     const animatedHeight = useAnimatedNumber(heightPct, 1100);
 
     return (
@@ -380,10 +375,7 @@ function ColumnBar({
                     isRising ? 'scale-110' : ''
                 }`}
             >
-                <AnimatedCount value={option.votes_count} />
-                <span className="ml-1 text-xs font-semibold opacity-60">
-                    <AnimatedCount value={option.percent} />%
-                </span>
+                <AnimatedCount value={option.percent} />%
             </div>
             <div
                 className={`relative flex h-48 w-full max-w-[4.5rem] items-end overflow-hidden rounded-2xl sm:h-64 sm:max-w-[5.5rem] ${
@@ -413,8 +405,6 @@ function ColumnBar({
 }
 
 function ColumnChart({ results, dark, rising }: { results: PollResults; dark: boolean; rising: Set<number> }) {
-    const maxVotes = Math.max(1, ...results.options.map((o) => o.votes_count));
-
     return (
         <ul className="mx-auto flex w-full max-w-4xl items-end justify-center gap-3 sm:gap-5">
             {results.options.map((option, index) => (
@@ -424,7 +414,6 @@ function ColumnChart({ results, dark, rising }: { results: PollResults; dark: bo
                     index={index}
                     dark={dark}
                     isRising={rising.has(option.id)}
-                    maxVotes={maxVotes}
                 />
             ))}
         </ul>
@@ -482,19 +471,12 @@ function RadialRing({
                 />
                 <text
                     x={size / 2}
-                    y={size / 2 - 4}
+                    y={size / 2}
                     textAnchor="middle"
+                    dominantBaseline="central"
                     style={{ fill: dark ? '#f8fafc' : '#0f172a', fontSize: 22, fontWeight: 700 }}
                 >
                     {Math.round(animatedPercent)}%
-                </text>
-                <text
-                    x={size / 2}
-                    y={size / 2 + 16}
-                    textAnchor="middle"
-                    style={{ fill: dark ? '#94a3b8' : '#64748b', fontSize: 11, fontWeight: 600 }}
-                >
-                    {option.votes_count} {option.votes_count === 1 ? 'voto' : 'votos'}
                 </text>
             </svg>
             <span className={`max-w-[9rem] truncate text-center text-sm font-semibold sm:text-base ${dark ? 'text-slate-100' : 'text-slate-900'}`}>
@@ -521,15 +503,14 @@ function RadialChart({ results, dark, rising }: { results: PollResults; dark: bo
 }
 
 function RankingChart({ results, dark, rising }: { results: PollResults; dark: boolean; rising: Set<number> }) {
-    const ranked = [...results.options].sort((a, b) => b.votes_count - a.votes_count || a.label.localeCompare(b.label));
-    const maxVotes = Math.max(1, ...ranked.map((o) => o.votes_count));
+    const ranked = [...results.options].sort((a, b) => b.percent - a.percent || a.label.localeCompare(b.label));
 
     return (
         <ol className="mx-auto w-full max-w-3xl space-y-3">
             {ranked.map((option, rank) => {
                 const color = CHART_COLORS[results.options.findIndex((o) => o.id === option.id) % CHART_COLORS.length];
                 const isRising = rising.has(option.id);
-                const width = option.votes_count > 0 ? Math.max((option.votes_count / maxVotes) * 100, 8) : 0;
+                const width = option.percent > 0 ? Math.max(option.percent, 8) : 0;
 
                 return (
                     <li
@@ -564,8 +545,8 @@ function RankingChart({ results, dark, rising }: { results: PollResults; dark: b
                                 <p className={`truncate text-lg font-bold sm:text-xl ${dark ? 'text-white' : 'text-slate-900'}`}>
                                     {option.label}
                                 </p>
-                                <p className={`text-sm tabular-nums ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                    <AnimatedCount value={option.votes_count} /> votos · <AnimatedCount value={option.percent} />%
+                                <p className={`text-sm font-semibold tabular-nums ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                    <AnimatedCount value={option.percent} />%
                                 </p>
                             </div>
                             {isRising && (
@@ -575,7 +556,7 @@ function RankingChart({ results, dark, rising }: { results: PollResults; dark: b
                                     }`}
                                     style={{ animation: 'poll-vote-pop 0.7s ease-out' }}
                                 >
-                                    +voto
+                                    +
                                 </span>
                             )}
                         </div>
@@ -639,8 +620,8 @@ function WaffleChart({ results, dark, rising }: { results: PollResults; dark: bo
                                     {option.label}
                                 </span>
                             </span>
-                            <span className={`shrink-0 text-sm tabular-nums ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                <AnimatedCount value={option.votes_count} /> · <AnimatedCount value={option.percent} />%
+                            <span className={`shrink-0 text-sm font-semibold tabular-nums ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                <AnimatedCount value={option.percent} />%
                             </span>
                         </li>
                     );
@@ -828,8 +809,7 @@ export default function PollDisplay({ poll: initial }: Props) {
                             style={{ animation: livePulse ? 'poll-live-dot 0.9s ease' : undefined }}
                             aria-hidden
                         />
-                        Ao vivo · <AnimatedCount value={poll.results.total_votes} />{' '}
-                        {poll.results.total_votes === 1 ? 'voto' : 'votos'} no total
+                        Ao vivo
                     </p>
                 </div>
             </div>
