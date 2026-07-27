@@ -49,6 +49,7 @@ final class PollPresenter
                 'id' => $option->id,
                 'label' => $option->label,
                 'sort_order' => (int) $option->sort_order,
+                'is_write_in' => $option->isWriteIn(),
             ])->values()->all();
         $base['results'] = $poll->showsResults() ? self::resultsPayload($poll) : null;
         $base['text_answers'] = $poll->isTextResponse() ? self::textAnswersPayload($poll) : [];
@@ -166,6 +167,7 @@ final class PollPresenter
             'response_type' => $poll->isTextResponse() ? Poll::RESPONSE_TEXT : Poll::RESPONSE_CHOICE,
             'shows_results' => $poll->showsResults(),
             'text_answer_max' => Poll::TEXT_ANSWER_MAX,
+            'write_in_text_max' => Poll::WRITE_IN_TEXT_MAX,
             'status' => $poll->status,
             'status_label' => Poll::STATUSES[$poll->status] ?? $poll->status,
             'is_open' => $poll->isOpen(),
@@ -175,6 +177,7 @@ final class PollPresenter
                 : $poll->options->map(fn ($option) => [
                     'id' => $option->id,
                     'label' => $option->label,
+                    'is_write_in' => $option->isWriteIn(),
                 ])->values()->all(),
             'selected_option_ids' => $selectedOptionIds,
             'my_answer_text' => $myAnswerText,
@@ -224,7 +227,7 @@ final class PollPresenter
         ]);
 
         /** @var Collection<int, \App\Models\PollOption> $options */
-        $options = $poll->options;
+        $options = $poll->options->filter(fn ($option) => ! $option->isWriteIn())->values();
         $totalVotes = $options->sum(fn ($option) => $option->votes->count());
 
         return [

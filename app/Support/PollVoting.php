@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Poll;
+use App\Models\PollOption;
 use App\Models\PollVote;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -88,11 +89,18 @@ final class PollVoting
         }
 
         $optionId = $optionIds[0];
-        $valid = $poll->options()->whereKey($optionId)->exists();
-        if (! $valid) {
+        $option = $poll->options()->whereKey($optionId)->first();
+        if ($option === null) {
             throw ValidationException::withMessages([
                 'option_ids' => 'Opção inválida para esta enquete.',
             ]);
+        }
+
+        if ($option->isWriteIn()) {
+            $optionId = self::resolveWriteInOption(
+                $poll,
+                (string) $request->input('other_text', ''),
+            )->id;
         }
 
         try {
@@ -176,5 +184,102 @@ final class PollVoting
         }
 
         return $answer;
+    }
+
+    /**
+     * Digitação em «Outros» vira (ou reutiliza) uma opção normal da enquete.
+     */
+    public static function resolveWriteInOption(Poll $poll, string $rawLabel): PollOption
+    {
+        $label = trim(preg_replace('/\s+/u', ' ', $rawLabel) ?? $rawLabel);
+
+        if ($label === '') {
+            throw ValidationException::withMessages([
+                'other_text' => 'Escreva o nome do personagem.',
+            ]);
+        }
+
+        if (mb_strlen($label) > Poll::WRITE_IN_TEXT_MAX) {
+            throw ValidationException::withMessages([
+                'other_text' => 'Texto muito longo (máximo '.Poll::WRITE_IN_TEXT_MAX.' caracteres).',
+            ]);
+        }
+
+        if (Poll::isWriteInLabel($label)) {
+            throw ValidationException::withMessages([
+                'other_text' => 'Escreva outro nome.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($poll, $label) {
+            $existing = $poll->options()
+                ->where('is_write_in', false)
+                ->get()
+                ->first(fn (PollOption $option) => mb_strtolower($option->label) === mb_strtolower($label)
+                    && ! $option->isWriteIn());
+
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            $writeIn = $poll->options()->where('is_write_in', true)->first()
+                ?? $poll->options()->get()->first(fn (PollOption $o) => $o->isWriteIn());
+
+            $maxOrder = (int) $poll->options()
+                ->where('is_write_in', false)
+                ->max('sort_order');
+
+            $created = PollOption::query()->create([
+                'poll_id' => $poll->id,
+                'label' => $label,
+                'sort_order' => $maxOrder + 1,
+                'is_write_in' => false,
+            ]);
+
+            if ($writeIn !== null) {
+                $writeIn->update([
+                    'sort_order' => $created->sort_order + 1,
+                    'is_write_in' => true,
+                    'label' => Poll::WRITE_IN_OPTION_LABEL,
+                ]);
+            }
+
+            self::sortChoiceOptionsAlphabetically($poll);
+
+            return $created->fresh();
+        });
+    }
+
+    /** Ordena opções (exceto «Outros») em ordem alfabética pt_BR; «Outros» fica no fim. */
+    public static function sortChoiceOptionsAlphabetically(Poll $poll): void
+    {
+        $options = $poll->options()->get();
+        $writeIn = $options->first(fn (PollOption $o) => $o->isWriteIn());
+        $regular = $options->filter(fn (PollOption $o) => ! $o->isWriteIn())->values();
+
+        $labels = $regular->pluck('label')->all();
+        if (class_exists(\Collator::class)) {
+            $collator = new \Collator('pt_BR');
+            usort($labels, static fn (string $a, string $b): int => $collator->compare($a, $b));
+        } else {
+            natcasesort($labels);
+            $labels = array_values($labels);
+        }
+
+        $byLabel = $regular->keyBy(fn (PollOption $o) => mb_strtolower($o->label));
+        foreach ($labels as $index => $label) {
+            $option = $byLabel->get(mb_strtolower($label));
+            if ($option !== null) {
+                $option->update(['sort_order' => $index]);
+            }
+        }
+
+        if ($writeIn !== null) {
+            $writeIn->update([
+                'sort_order' => count($labels),
+                'is_write_in' => true,
+                'label' => Poll::WRITE_IN_OPTION_LABEL,
+            ]);
+        }
     }
 }

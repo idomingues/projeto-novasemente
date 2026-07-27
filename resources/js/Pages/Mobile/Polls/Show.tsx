@@ -2,16 +2,18 @@ import MobileLayout from '@/Layouts/MobileLayout';
 import FlashMessages from '@/Components/FlashMessages';
 import PrimaryButton from '@/Components/PrimaryButton';
 import Textarea from '@/Components/Textarea';
+import TextInput from '@/Components/TextInput';
 import PollResultsCard from '@/Components/Polls/PollResultsCard';
 import type { PollResults } from '@/Components/Polls/pollTypes';
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useMemo, useState } from 'react';
 
 type PollOption = {
     id: number;
     label: string;
+    is_write_in?: boolean;
 };
 
 type PollShow = {
@@ -21,6 +23,7 @@ type PollShow = {
     response_type: 'choice' | 'text';
     shows_results: boolean;
     text_answer_max: number;
+    write_in_text_max?: number;
     status: string;
     status_label: string;
     is_open: boolean;
@@ -40,12 +43,24 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
     const isText = poll.response_type === 'text';
     const [selected, setSelected] = useState<number[]>([]);
     const [answerText, setAnswerText] = useState('');
+    const [otherText, setOtherText] = useState('');
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const writeInMax = poll.write_in_text_max ?? 60;
+    const selectedOption = useMemo(
+        () => poll.options.find((o) => selected.includes(o.id)) ?? null,
+        [poll.options, selected],
+    );
+    const writingIn = Boolean(selectedOption?.is_write_in);
 
     const toggleOption = (optionId: number) => {
         setError(null);
         setSelected([optionId]);
+        const opt = poll.options.find((o) => o.id === optionId);
+        if (!opt?.is_write_in) {
+            setOtherText('');
+        }
     };
 
     const handleSubmit: FormEventHandler = (e) => {
@@ -82,17 +97,24 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
             setError('Selecione pelo menos uma opção.');
             return;
         }
+        if (writingIn && otherText.trim() === '') {
+            setError('Escreva o nome do personagem.');
+            return;
+        }
         setProcessing(true);
         setError(null);
         router.post(
             route('mobile.polls.vote', poll.id),
-            { option_ids: selected },
+            {
+                option_ids: selected,
+                ...(writingIn ? { other_text: otherText.trim() } : {}),
+            },
             {
                 preserveScroll: true,
                 onFinish: () => setProcessing(false),
                 onError: (errs) => {
-                    const msg = (errs as { option_ids?: string }).option_ids;
-                    setError(msg ?? 'Não foi possível enviar sua resposta.');
+                    const e = errs as { option_ids?: string; other_text?: string };
+                    setError(e.other_text ?? e.option_ids ?? 'Não foi possível enviar sua resposta.');
                 },
             },
         );
@@ -206,6 +228,25 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
                                                         {option.label}
                                                     </span>
                                                 </button>
+                                                {isSelected && option.is_write_in ? (
+                                                    <div className="mt-2 pl-1">
+                                                        <TextInput
+                                                            value={otherText}
+                                                            onChange={(e) => {
+                                                                setError(null);
+                                                                setOtherText(e.target.value);
+                                                            }}
+                                                            maxLength={writeInMax}
+                                                            disabled={!poll.is_open}
+                                                            placeholder="Digite o nome…"
+                                                            className="w-full"
+                                                            autoFocus
+                                                        />
+                                                        <p className="mt-1 text-right text-[11px] text-zinc-400">
+                                                            {otherText.length}/{writeInMax}
+                                                        </p>
+                                                    </div>
+                                                ) : null}
                                             </li>
                                         );
                                     })}
@@ -221,7 +262,9 @@ export default function MobilePollsShow({ poll, otherOpenUnansweredCount = 0 }: 
                                 className="w-full cursor-pointer justify-center"
                                 disabled={
                                     processing ||
-                                    (isText ? answerText.trim().length === 0 : selected.length === 0)
+                                    (isText
+                                        ? answerText.trim().length === 0
+                                        : selected.length === 0 || (writingIn && otherText.trim().length === 0))
                                 }
                             >
                                 {processing ? 'Enviando…' : 'Enviar'}

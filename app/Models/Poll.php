@@ -61,6 +61,21 @@ class Poll extends Model
     /** ~2 linhas curtas no celular. */
     public const TEXT_ANSWER_MAX = 160;
 
+    /** Opção especial: digitação vira nova opção da enquete. */
+    public const WRITE_IN_OPTION_LABEL = 'Outros (Escrever)';
+
+    /** Nome curto digitado em «Outros». */
+    public const WRITE_IN_TEXT_MAX = 60;
+
+    public static function isWriteInLabel(?string $label): bool
+    {
+        if ($label === null || $label === '') {
+            return false;
+        }
+
+        return mb_strtolower(trim($label)) === mb_strtolower(self::WRITE_IN_OPTION_LABEL);
+    }
+
     public static function displayLogoPath(?string $key): ?string
     {
         if ($key === null || $key === '' || $key === 'none') {

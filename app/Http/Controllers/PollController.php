@@ -179,6 +179,7 @@ class PollController extends Controller
                     $option->update([
                         'label' => $label,
                         'sort_order' => $index,
+                        'is_write_in' => Poll::isWriteInLabel($label),
                     ]);
                     $keptIds[] = $option->id;
 
@@ -189,6 +190,7 @@ class PollController extends Controller
             $created = $poll->options()->create([
                 'label' => $label,
                 'sort_order' => $index,
+                'is_write_in' => Poll::isWriteInLabel($label),
             ]);
             $keptIds[] = $created->id;
         }

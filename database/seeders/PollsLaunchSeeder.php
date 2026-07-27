@@ -18,41 +18,88 @@ use Illuminate\Support\Facades\DB;
  */
 class PollsLaunchSeeder extends Seeder
 {
-    /** @var list<array{question: string, options: list<string>}> */
-    public const POLLS = [
-        [
-            'question' => 'Qual milagre de Jesus você gostaria de ter presenciado?',
-            'options' => [
-                'A ressurreição de Lázaro',
-                'Jesus acalmando a tempestade',
-                'A multiplicação dos pães',
-                'A cura do cego',
+    /**
+     * @return list<array{question: string, options: list<string>, response_type?: string}>
+     */
+    public static function pollsDefinition(): array
+    {
+        return [
+            [
+                'question' => 'Qual milagre de Jesus você gostaria de ter presenciado?',
+                'options' => [
+                    'A ressurreição de Lázaro',
+                    'Jesus acalmando a tempestade',
+                    'A multiplicação dos pães',
+                    'A cura do cego',
+                ],
             ],
-        ],
-        [
-            'question' => 'Se você pudesse conversar por cinco minutos com um personagem bíblico, quem escolheria?',
-            'options' => [
-                'Moisés',
-                'Davi',
-                'Ester',
-                'Paulo',
+            [
+                'question' => 'Se você pudesse conversar por cinco minutos com um personagem bíblico, quem escolheria?',
+                'options' => self::biblicalCharacterOptions(),
             ],
-        ],
-        [
-            'question' => 'Qual palavra representa melhor o que você precisa neste momento?',
-            'options' => [
-                'Esperança',
-                'Paz',
-                'Coragem',
-                'Direção',
+            [
+                'question' => 'Qual palavra representa melhor o que você precisa neste momento?',
+                'options' => [
+                    'Esperança',
+                    'Paz',
+                    'Coragem',
+                    'Direção',
+                ],
             ],
-        ],
-        [
-            'question' => 'O que você gostaria de encontrar em nosso App?',
-            'response_type' => Poll::RESPONSE_TEXT,
-            'options' => [],
-        ],
-    ];
+            [
+                'question' => 'O que você gostaria de encontrar em nosso App?',
+                'response_type' => Poll::RESPONSE_TEXT,
+                'options' => [],
+            ],
+        ];
+    }
+
+    /**
+     * Personagens em ordem alfabética (pt_BR) + «Outros (Escrever)» no fim.
+     *
+     * @return list<string>
+     */
+    public static function biblicalCharacterOptions(): array
+    {
+        $names = [
+            'Abraão',
+            'Adão',
+            'Calebe',
+            'Daniel',
+            'Elias',
+            'Eliseu',
+            'Enoque',
+            'Eva',
+            'Isaías',
+            'Jacó',
+            'João',
+            'Jó',
+            'José do Egito',
+            'Josué',
+            'Maria Madalena',
+            'Maria, mãe de Jesus',
+            'Noé',
+            'Pedro',
+            'Rute',
+            'Salomão',
+            'Samuel',
+            'Sansão',
+        ];
+
+        $names = array_values(array_unique($names));
+
+        if (class_exists(\Collator::class)) {
+            $collator = new \Collator('pt_BR');
+            usort($names, static fn (string $a, string $b): int => $collator->compare($a, $b));
+        } else {
+            natcasesort($names);
+            $names = array_values($names);
+        }
+
+        $names[] = Poll::WRITE_IN_OPTION_LABEL;
+
+        return $names;
+    }
 
     public function run(): void
     {
@@ -69,7 +116,9 @@ class PollsLaunchSeeder extends Seeder
             ->orderBy('id')
             ->value('id');
 
-        DB::transaction(function () use ($church, $creatorId, $replaceAll) {
+        $polls = self::pollsDefinition();
+
+        DB::transaction(function () use ($church, $creatorId, $replaceAll, $polls) {
             if ($replaceAll) {
                 $pollIds = Poll::query()->where('church_id', $church->id)->pluck('id');
                 if ($pollIds->isNotEmpty()) {
@@ -79,7 +128,7 @@ class PollsLaunchSeeder extends Seeder
                 }
             }
 
-            $questions = collect(self::POLLS)->pluck('question')->all();
+            $questions = collect($polls)->pluck('question')->all();
 
             $existingIds = Poll::query()
                 ->where('church_id', $church->id)
@@ -90,7 +139,7 @@ class PollsLaunchSeeder extends Seeder
                 PollVote::query()->whereIn('poll_id', $existingIds)->delete();
             }
 
-            foreach (self::POLLS as $item) {
+            foreach ($polls as $item) {
                 $poll = Poll::query()->firstOrNew([
                     'church_id' => $church->id,
                     'question' => $item['question'],
@@ -122,6 +171,7 @@ class PollsLaunchSeeder extends Seeder
                         'poll_id' => $poll->id,
                         'label' => $label,
                         'sort_order' => $i,
+                        'is_write_in' => Poll::isWriteInLabel($label),
                     ]);
                 }
             }
@@ -129,10 +179,12 @@ class PollsLaunchSeeder extends Seeder
 
         $this->command?->info("Enquetes de lançamento prontas (0 votos) — igreja #{$church->id} ({$church->name}).");
 
+        $questions = collect($polls)->pluck('question');
+
         foreach (
             Poll::query()
                 ->where('church_id', $church->id)
-                ->whereIn('question', collect(self::POLLS)->pluck('question'))
+                ->whereIn('question', $questions)
                 ->withCount('votes')
                 ->orderBy('id')
                 ->get() as $poll

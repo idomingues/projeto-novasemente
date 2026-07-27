@@ -1,21 +1,24 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import FlashMessages from '@/Components/FlashMessages';
 import PrimaryButton from '@/Components/PrimaryButton';
+import TextInput from '@/Components/TextInput';
 import PollResultsCard from '@/Components/Polls/PollResultsCard';
 import type { PollResults } from '@/Components/Polls/pollTypes';
 import { Head, router } from '@inertiajs/react';
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useMemo, useState } from 'react';
 
 type PollOption = {
     id: number;
     label: string;
+    is_write_in?: boolean;
 };
 
 type PollShow = {
     id: number;
     question: string;
     allow_multiple: boolean;
+    write_in_text_max?: number;
     status: string;
     status_label: string;
     is_open: boolean;
@@ -33,8 +36,16 @@ type Props = {
 
 export default function PollVote({ poll, vote_url, display_url }: Props) {
     const [selected, setSelected] = useState<number | null>(poll.selected_option_ids[0] ?? null);
+    const [otherText, setOtherText] = useState('');
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const writeInMax = poll.write_in_text_max ?? 60;
+    const selectedOption = useMemo(
+        () => poll.options.find((o) => o.id === selected) ?? null,
+        [poll.options, selected],
+    );
+    const writingIn = Boolean(selectedOption?.is_write_in);
 
     const handleSubmit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -42,17 +53,24 @@ export default function PollVote({ poll, vote_url, display_url }: Props) {
             setError('Selecione uma opção.');
             return;
         }
+        if (writingIn && otherText.trim() === '') {
+            setError('Escreva o nome do personagem.');
+            return;
+        }
         setProcessing(true);
         setError(null);
         router.post(
             vote_url,
-            { option_ids: [selected] },
+            {
+                option_ids: [selected],
+                ...(writingIn ? { other_text: otherText.trim() } : {}),
+            },
             {
                 preserveScroll: true,
                 onFinish: () => setProcessing(false),
                 onError: (errs) => {
-                    const msg = (errs as { option_ids?: string }).option_ids;
-                    setError(msg ?? 'Não foi possível enviar sua resposta.');
+                    const e = errs as { option_ids?: string; other_text?: string };
+                    setError(e.other_text ?? e.option_ids ?? 'Não foi possível enviar sua resposta.');
                 },
             },
         );
@@ -111,6 +129,9 @@ export default function PollVote({ poll, vote_url, display_url }: Props) {
                                                 onClick={() => {
                                                     setError(null);
                                                     setSelected(option.id);
+                                                    if (!option.is_write_in) {
+                                                        setOtherText('');
+                                                    }
                                                 }}
                                                 disabled={!poll.is_open}
                                                 className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
@@ -134,6 +155,25 @@ export default function PollVote({ poll, vote_url, display_url }: Props) {
                                                     {option.label}
                                                 </span>
                                             </button>
+                                            {isSelected && option.is_write_in ? (
+                                                <div className="mt-2 pl-1">
+                                                    <TextInput
+                                                        value={otherText}
+                                                        onChange={(e) => {
+                                                            setError(null);
+                                                            setOtherText(e.target.value);
+                                                        }}
+                                                        maxLength={writeInMax}
+                                                        disabled={!poll.is_open}
+                                                        placeholder="Digite o nome…"
+                                                        className="w-full"
+                                                        autoFocus
+                                                    />
+                                                    <p className="mt-1 text-right text-[11px] text-zinc-400">
+                                                        {otherText.length}/{writeInMax}
+                                                    </p>
+                                                </div>
+                                            ) : null}
                                         </li>
                                     );
                                 })}
@@ -145,7 +185,12 @@ export default function PollVote({ poll, vote_url, display_url }: Props) {
                         <PrimaryButton
                             type="submit"
                             className="w-full cursor-pointer justify-center"
-                            disabled={processing || !poll.is_open || selected == null}
+                            disabled={
+                                processing ||
+                                !poll.is_open ||
+                                selected == null ||
+                                (writingIn && otherText.trim().length === 0)
+                            }
                         >
                             {processing ? 'Enviando…' : 'Enviar voto'}
                         </PrimaryButton>

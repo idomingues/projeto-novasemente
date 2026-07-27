@@ -15,13 +15,20 @@ class PollOption extends Model
         'poll_id',
         'label',
         'sort_order',
+        'is_write_in',
     ];
 
     protected function casts(): array
     {
         return [
             'sort_order' => 'integer',
+            'is_write_in' => 'boolean',
         ];
+    }
+
+    public function isWriteIn(): bool
+    {
+        return (bool) $this->is_write_in || Poll::isWriteInLabel($this->label);
     }
 
     public function poll(): BelongsTo
