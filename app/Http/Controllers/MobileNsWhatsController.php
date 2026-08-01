@@ -258,7 +258,7 @@ class MobileNsWhatsController extends Controller
             'ministry_id' => ['nullable', 'integer'],
             'leader_user_id' => ['nullable', 'integer'],
             'recipient_user_id' => ['nullable', 'integer'],
-            'message' => ['required', 'string', 'min:3', 'max:5000'],
+            'message' => ['required', 'string', 'min:1', 'max:5000'],
             'use_fallback' => ['sometimes', 'boolean'],
         ]);
 
@@ -279,7 +279,7 @@ class MobileNsWhatsController extends Controller
 
         return redirect()->route('mobile.ns-whats.index', [
             'conversa' => $conversation->id,
-        ])->with('success', 'Conversa iniciada.');
+        ]);
     }
 
     public function show(Request $request, ChurchConversation $conversation): RedirectResponse|JsonResponse

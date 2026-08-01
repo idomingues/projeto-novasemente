@@ -15,6 +15,8 @@ type Props = {
     placeholder?: string;
     error?: string;
     disabled?: boolean;
+    /** Mínimo de caracteres para habilitar o envio (padrão 1). */
+    minLength?: number;
 };
 
 /** Ícone de enviar do WhatsApp (avião apontando à direita), centralizado no círculo. */
@@ -37,9 +39,11 @@ export default function NsWhatsChatComposer({
     placeholder = 'Mensagem',
     error,
     disabled = false,
+    minLength = 1,
 }: Props) {
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-    const canSend = value.trim().length > 0 && !processing && !disabled;
+    const trimmed = value.trim();
+    const canSend = trimmed.length >= minLength && !processing && !disabled;
 
     useEffect(() => {
         const el = textareaRef.current;
@@ -58,9 +62,9 @@ export default function NsWhatsChatComposer({
     };
 
     return (
-        <div className="shrink-0 bg-[#efeae2] px-2 py-1.5 dark:bg-zinc-950">
-            <form onSubmit={onSubmit} className="flex items-end gap-2">
-                <div className="flex min-h-[44px] min-w-0 flex-1 items-center rounded-[22px] bg-white px-3.5 py-2 shadow-sm dark:bg-zinc-800">
+        <div className="relative z-20 shrink-0 bg-[#efeae2] px-2.5 pb-2.5 pt-1.5 dark:bg-zinc-950">
+            <form onSubmit={onSubmit} className="flex items-end gap-2.5">
+                <div className="flex min-h-[48px] min-w-0 flex-1 items-center rounded-[24px] bg-white px-3.5 py-2.5 shadow-sm dark:bg-zinc-800">
                     <label className="sr-only" htmlFor="ns-whats-composer">
                         {placeholder}
                     </label>
@@ -73,7 +77,7 @@ export default function NsWhatsChatComposer({
                         rows={1}
                         disabled={disabled}
                         placeholder={placeholder}
-                        className="max-h-[120px] min-h-[24px] w-full resize-none border-0 bg-transparent p-0 text-[15px] leading-6 text-zinc-900 shadow-none outline-none ring-0 placeholder:text-zinc-400 focus:border-0 focus:outline-none focus:ring-0 disabled:cursor-not-allowed dark:text-zinc-100 dark:placeholder:text-zinc-500"
+                        className="max-h-[120px] min-h-[24px] w-full resize-none border-0 bg-transparent p-0 text-[16px] leading-6 text-zinc-900 shadow-none outline-none ring-0 placeholder:text-zinc-400 focus:border-0 focus:outline-none focus:ring-0 disabled:cursor-not-allowed dark:text-zinc-100 dark:placeholder:text-zinc-500"
                     />
                 </div>
                 <button
@@ -81,13 +85,13 @@ export default function NsWhatsChatComposer({
                     disabled={!canSend}
                     aria-label="Enviar"
                     title="Enviar"
-                    className={`inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full transition active:scale-95 disabled:cursor-not-allowed ${
+                    className={`inline-flex h-12 w-12 shrink-0 touch-manipulation cursor-pointer items-center justify-center rounded-full transition active:scale-95 disabled:cursor-not-allowed ${
                         canSend
                             ? 'bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200'
                             : 'bg-black/40 text-white dark:bg-white/40 dark:text-zinc-900'
                     }`}
                 >
-                    <WhatsAppSendIcon className="h-[22px] w-[22px]" />
+                    <WhatsAppSendIcon className="h-6 w-6" />
                 </button>
             </form>
             {error ? <InputError message={error} className="mt-1 px-1" /> : null}

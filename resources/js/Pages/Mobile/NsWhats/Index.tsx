@@ -165,6 +165,7 @@ export default function NsWhatsIndex({
     const [liveMessages, setLiveMessages] = useState<NsWhatsMessagePayload[]>(initialSelected?.messages ?? []);
     const [archiveMutating, setArchiveMutating] = useState(false);
     const threadEnd = useRef<HTMLDivElement | null>(null);
+    const openRequestSeq = useRef(0);
     const draftForm = useForm({
         ministry_id: (initialComposeDraft?.ministryId ?? '') as number | '',
         recipient_user_id: (initialComposeDraft?.recipientUserId ?? '') as number | '',
@@ -265,28 +266,53 @@ export default function NsWhatsIndex({
     };
 
     const openConversation = async (id: number) => {
-        if (loadingConversation) return;
         setComposeDraft(null);
         setComposing(false);
 
-        if (active?.id === id) {
+        if (active?.id === id && !loadingConversation) {
             syncConversaInUrl(id, { q: search, nova: false, arquivadas: viewingArchived });
             return;
         }
 
+        const requestId = ++openRequestSeq.current;
         setLoadingConversation(true);
+        // Abre de imediato o item escolhido (evita ficar na conversa anterior se o fetch atrasar).
+        const rosterHit = roster.find((c) => c.id === id);
+        setActive(
+            rosterHit
+                ? { ...rosterHit, messages: rosterHit.messages ?? [] }
+                : ({
+                      id,
+                      headerTitle: '…',
+                      headerSubtitle: '',
+                      status: '',
+                      statusLabel: '',
+                      unreadCount: 0,
+                      lastPreview: '',
+                      messages: [],
+                  } as Conversation),
+        );
+        setLiveMessages(rosterHit?.messages ?? []);
+        setComposerText('');
+        setComposerError(undefined);
+        syncConversaInUrl(id, { q: search, nova: false, arquivadas: viewingArchived });
+
         const result = await loadNsWhatsConversation(route('mobile.ns-whats.show', id));
+        if (requestId !== openRequestSeq.current) {
+            return;
+        }
         setLoadingConversation(false);
 
         if (!result.ok) {
+            setActive(null);
+            setLiveMessages([]);
+            syncConversaInUrl(null, { q: search, nova: false, arquivadas: viewingArchived });
             return;
         }
 
         const conversation = result.conversation as Conversation;
         setActive(conversation);
         setLiveMessages(conversation.messages ?? []);
-        setComposerText('');
-        setComposerError(undefined);
         setRoster((prev) =>
             prev.map((c) =>
                 c.id === id
@@ -300,7 +326,10 @@ export default function NsWhatsIndex({
                     : c,
             ),
         );
-        syncConversaInUrl(id, { q: search, nova: false, arquivadas: viewingArchived });
+    };
+
+    const findExistingWithRecipient = (recipientUserId: number): Conversation | undefined => {
+        return roster.find((c) => c.counterpartUserId === recipientUserId);
     };
 
     const backToList = () => {
@@ -417,13 +446,39 @@ export default function NsWhatsIndex({
 
     const sendDraft: FormEventHandler = (e) => {
         e.preventDefault();
-        if (!composeDraft || draftForm.data.message.trim().length < 3) return;
+        if (!composeDraft || draftForm.data.message.trim().length < 1 || draftForm.processing) return;
         draftForm.post(storeUrl, {
+            preserveScroll: true,
             onSuccess: () => {
                 setComposeDraft(null);
+                setComposing(false);
                 draftForm.reset();
             },
         });
+    };
+
+    const selectComposeTarget = (draft: DraftTarget) => {
+        if (typeof draft.recipientUserId === 'number' && draft.recipientUserId > 0) {
+            const existing = findExistingWithRecipient(draft.recipientUserId);
+            if (existing) {
+                setComposeDraft(null);
+                setComposing(false);
+                void openConversation(existing.id);
+                // Sincroniza Inertia (tira ?nova=1) sem competir com o fetch da conversa.
+                router.get(
+                    route('mobile.ns-whats.index'),
+                    { q: search || undefined, conversa: existing.id },
+                    {
+                        preserveState: true,
+                        preserveScroll: true,
+                        only: ['composing', 'selectedMinistry', 'leaders', 'members', 'peopleMatches', 'peopleSearch'],
+                    },
+                );
+                return;
+            }
+        }
+        setComposeDraft(draft);
+        draftForm.setData('message', '');
     };
 
     const archivedRow =
@@ -578,9 +633,8 @@ export default function NsWhatsIndex({
                                                     ) : null}
                                                     <button
                                                         type="button"
-                                                        onClick={() => openConversation(c.id)}
-                                                        disabled={loadingConversation}
-                                                        className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition disabled:cursor-wait disabled:opacity-60 ${
+                                                        onClick={() => void openConversation(c.id)}
+                                                        className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition ${
                                                             isActive
                                                                 ? 'border border-emerald-500 bg-emerald-50 dark:border-emerald-600 dark:bg-emerald-950/40'
                                                                 : isPinned
@@ -681,10 +735,7 @@ export default function NsWhatsIndex({
                             peopleSearch={peopleSearch}
                             fallbackMinistryConfigured={fallbackMinistryConfigured}
                             search={search}
-                            onSelectTarget={(draft) => {
-                                setComposeDraft(draft);
-                                draftForm.setData('message', '');
-                            }}
+                            onSelectTarget={selectComposeTarget}
                             onClearTarget={() => setComposeDraft(null)}
                             onClose={closeCompose}
                             selectedRecipientId={composeDraft?.useFallback ? null : (composeDraft?.recipientUserId ?? null)}
@@ -700,7 +751,10 @@ export default function NsWhatsIndex({
                 >
                     {active ? (
                         <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-                            <div className="relative flex shrink-0 items-center gap-1.5 border-b border-zinc-200/80 bg-[#f0f2f5] px-2 py-1.5 dark:border-zinc-800 dark:bg-zinc-900 sm:px-2.5">
+                            <div
+                                className="relative flex shrink-0 items-center gap-1.5 border-b border-zinc-200/80 bg-[#f0f2f5] px-2 py-1.5 dark:border-zinc-800 dark:bg-zinc-900 sm:px-2.5"
+                                aria-busy={loadingConversation || undefined}
+                            >
                                 <button
                                     type="button"
                                     onClick={backToList}
@@ -710,12 +764,16 @@ export default function NsWhatsIndex({
                                     <ArrowLeftIcon className="h-4 w-4" />
                                 </button>
                                 <UserListAvatar name={active.headerTitle} photoUrl={active.headerPhotoUrl} size="sm" />
-                                <div className="min-w-0 flex-1">
+                                <div className={`min-w-0 flex-1 ${loadingConversation ? 'opacity-70' : ''}`}>
                                     <div className="truncate text-[14px] font-semibold leading-tight text-zinc-900 dark:text-white">
                                         {active.headerTitle}
                                     </div>
                                     <div className="mt-0.5 min-w-0">
-                                        {active.headerSubtitle ? (
+                                        {loadingConversation ? (
+                                            <span className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                                                Abrindo conversa…
+                                            </span>
+                                        ) : active.headerSubtitle ? (
                                             <span className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
                                                 {active.headerSubtitle}
                                             </span>

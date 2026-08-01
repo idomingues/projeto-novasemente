@@ -12,9 +12,15 @@ return [
     |
     */
 
-    'name' => env('BRAND_NAME', env('APP_NAME', 'Nova Semente')),
+    // Preferir BRAND_NAME; se APP_NAME ainda for o placeholder "Laravel", usa Nova Semente.
+    'name' => env('BRAND_NAME') ?: (
+        ($appName = env('APP_NAME')) && strcasecmp((string) $appName, 'Laravel') !== 0
+            ? $appName
+            : 'Nova Semente'
+    ),
 
-    'tagline' => env('BRAND_TAGLINE', 'Comunidade Adventista'),
+    // Vazio por padrão: o cabeçalho dos e-mails mostra só logo + nome.
+    'tagline' => env('BRAND_TAGLINE', ''),
 
     'logo_url' => env('BRAND_LOGO_URL'),
 

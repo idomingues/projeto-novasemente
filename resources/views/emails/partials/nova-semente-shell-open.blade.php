@@ -16,20 +16,13 @@
                         <td style="padding:0 8px 16px;">
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                                 <tr>
-                                    <td style="vertical-align:middle;width:52px;">
-                                        <a href="{{ $brandAppUrl }}" style="text-decoration:none;">
-                                            <img src="{{ $brandLogoUrl }}" width="48" height="48" alt="{{ $brandName }}" style="display:block;border-radius:999px;border:2px solid {{ $brandColors['border'] ?? '#e4e4e7' }};">
-                                        </a>
-                                    </td>
-                                    <td style="vertical-align:middle;padding-left:12px;">
-                                        <div style="font-size:15px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:{{ $brandColors['text'] ?? '#18181b' }};">
-                                            {{ $brandName }}
-                                        </div>
-                                        @if($brandTagline !== '')
-                                            <div style="font-size:12px;color:{{ $brandColors['text_muted'] ?? '#52525b' }};margin-top:2px;">
-                                                {{ $brandTagline }}
+                                    <td align="center" style="text-align:center;">
+                                        <a href="{{ $brandAppUrl }}" style="display:inline-block;text-decoration:none;">
+                                            <img src="{{ $brandLogoUrl }}" width="48" height="48" alt="{{ $brandName }}" style="display:block;margin:0 auto;border-radius:999px;border:2px solid {{ $brandColors['border'] ?? '#e4e4e7' }};">
+                                            <div style="margin-top:10px;font-size:15px;font-weight:700;color:{{ $brandColors['text'] ?? '#18181b' }};line-height:1.25;">
+                                                {{ $brandName }}
                                             </div>
-                                        @endif
+                                        </a>
                                     </td>
                                 </tr>
                             </table>

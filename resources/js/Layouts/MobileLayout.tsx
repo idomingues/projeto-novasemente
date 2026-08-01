@@ -12,18 +12,25 @@ type MobileLayoutProps = PropsWithChildren<{
     modalOverlayOpen?: boolean;
     /** Página full-bleed (ex.: chat): sem pt-6 extra, main sem scroll externo. */
     flush?: boolean;
+    /**
+     * Esconde a Topbar global — útil no NS Conecta, que já tem header próprio.
+     * Em `flush`, o padrão é ocultar (evita dois headers empilhados).
+     */
+    hideTopbar?: boolean;
 }>;
 
 export default function MobileLayout({
     children,
     modalOverlayOpen = false,
     flush = false,
+    hideTopbar,
 }: MobileLayoutProps) {
     const { props, url } = usePage();
     const auth = (props as { auth?: { user?: { name: string }; canAccessAdminMenu?: boolean } }).auth;
     const isAuthenticated = !!auth?.user;
     const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
     const [menuOpen, setMenuOpen] = useState(false);
+    const topbarHidden = modalOverlayOpen || (hideTopbar ?? flush);
 
     useEffect(() => {
         setMenuOpen(false);
@@ -33,7 +40,9 @@ export default function MobileLayout({
         const mainPad = modalOverlayOpen
             ? 'overflow-hidden p-0'
             : flush
-              ? 'overflow-hidden px-0 pb-0 pt-[calc(4rem+env(safe-area-inset-top,0px))] md:px-0 md:pb-0 md:pt-[calc(6rem+env(safe-area-inset-top,0px))]'
+              ? topbarHidden
+                  ? 'overflow-hidden px-0 pb-0 pt-[env(safe-area-inset-top,0px)] md:px-0 md:pb-0'
+                  : 'overflow-hidden px-0 pb-0 pt-[calc(4rem+env(safe-area-inset-top,0px))] md:px-0 md:pb-0 md:pt-[calc(6rem+env(safe-area-inset-top,0px))]'
               : 'overflow-y-auto overflow-x-hidden px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(6rem+env(safe-area-inset-top,0px))] sm:px-6 md:px-8';
 
         return (
@@ -42,7 +51,7 @@ export default function MobileLayout({
                     flush ? 'bg-[#efeae2] dark:bg-zinc-950' : 'bg-zinc-50 dark:bg-zinc-950'
                 }`}
             >
-                {canAccessAdminMenu && !modalOverlayOpen ? (
+                {canAccessAdminMenu && !topbarHidden ? (
                     <Sidebar
                         mobileOpen={menuOpen}
                         onMobileClose={() => setMenuOpen(false)}
@@ -51,7 +60,7 @@ export default function MobileLayout({
                 ) : null}
 
                 <div className="flex h-full min-h-0 flex-col overflow-hidden">
-                    {!modalOverlayOpen ? (
+                    {!topbarHidden ? (
                         <Topbar onMenuClick={canAccessAdminMenu ? () => setMenuOpen(true) : undefined} />
                     ) : null}
 

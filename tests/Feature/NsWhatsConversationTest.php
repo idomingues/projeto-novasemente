@@ -641,6 +641,50 @@ class NsWhatsConversationTest extends TestCase
             ->count());
     }
 
+    public function test_member_can_start_conversation_with_short_first_message_without_flash(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+
+        $this->actingAs($member)
+            ->post(route('mobile.ns-whats.store'), [
+                'ministry_id' => $ministry->id,
+                'recipient_user_id' => $leader->id,
+                'message' => 'Oi',
+            ])
+            ->assertRedirect(route('mobile.ns-whats.index', ['conversa' => ChurchConversation::query()->value('id')]))
+            ->assertSessionMissing('success');
+
+        $this->assertDatabaseHas('church_conversation_messages', [
+            'author_user_id' => $member->id,
+            'body' => 'Oi',
+        ]);
+    }
+
+    public function test_new_message_to_same_person_reuses_thread_across_ministries(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+        $otherMinistry = Ministry::query()->create(['church_id' => $churchId, 'name' => 'Comunicação']);
+        $leader->ministries()->syncWithoutDetaching([$otherMinistry->id]);
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.store'), [
+            'ministry_id' => $ministry->id,
+            'recipient_user_id' => $leader->id,
+            'message' => 'Primeira conversa no Louvor.',
+        ])->assertRedirect();
+
+        $conversationId = (int) ChurchConversation::query()->value('id');
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.store'), [
+            'ministry_id' => $otherMinistry->id,
+            'recipient_user_id' => $leader->id,
+            'message' => 'Continuando pelo outro depto.',
+        ])->assertRedirect(route('mobile.ns-whats.index', ['conversa' => $conversationId]));
+
+        $this->assertSame(1, ChurchConversation::query()->count());
+        $this->assertSame(2, ChurchConversationMessage::query()->where('conversation_id', $conversationId)->count());
+        $this->assertSame($otherMinistry->id, (int) ChurchConversation::query()->findOrFail($conversationId)->current_ministry_id);
+    }
+
     public function test_member_can_archive_and_unarchive_conversation_like_whatsapp(): void
     {
         [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();

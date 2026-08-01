@@ -60,7 +60,7 @@ Se aparecer sucesso, teste em `https://app.novasemente.com.br/forgot-password`.
 
 ## 5. Marca nos e-mails
 
-No `.env` de produção, use `APP_NAME="Nova Semente"` (evita aparecer «Laravel» no rodapé). Opcional: `BRAND_TAGLINE`, `BRAND_LOGO_URL`, `BRAND_APP_URL`. O logo padrão é `/logo-ns.png` na URL do app.
+No `.env` de produção, use `APP_NAME="Nova Semente"` (evita aparecer «Laravel» no cabeçalho). Opcional: `BRAND_NAME`, `BRAND_LOGO_URL`, `BRAND_APP_URL`. O logo padrão é `/logo-ns.png` na URL do app. O cabeçalho dos e-mails mostra só logo + nome.
 
 ## 6. Fila (e-mails em segundo plano)
 

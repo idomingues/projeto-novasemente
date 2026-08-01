@@ -42,9 +42,9 @@ class CreateConversation
         }
 
         $message = trim((string) $data['message']);
-        if (mb_strlen($message) < 3) {
+        if (mb_strlen($message) < 1) {
             throw ValidationException::withMessages([
-                'message' => ['Escreva uma mensagem com pelo menos 3 caracteres.'],
+                'message' => ['Escreva uma mensagem.'],
             ]);
         }
 
@@ -55,14 +55,18 @@ class CreateConversation
         $conversation = DB::transaction(function () use ($member, $churchId, $ministry, $recipientUserId, $message, $subject, &$wasExisting) {
             $existing = null;
             if ($recipientUserId !== null) {
+                // Uma conversa por destinatário (qualquer departamento) — evita “nova” cair em thread errada
+                // ou criar duplicata quando a pessoa serve em vários departamentos.
                 $existing = ChurchConversation::query()
                     ->where('church_id', $churchId)
                     ->where('member_user_id', $member->id)
-                    ->where('current_ministry_id', $ministry->id)
                     ->where(function ($q) use ($recipientUserId) {
                         $q->where('assignee_user_id', $recipientUserId)
                             ->orWhere('preferred_leader_user_id', $recipientUserId);
                     })
+                    ->orderByRaw('CASE WHEN current_ministry_id = ? THEN 0 ELSE 1 END', [(int) $ministry->id])
+                    ->orderByDesc('last_activity_at')
+                    ->orderByDesc('id')
                     ->lockForUpdate()
                     ->first();
             }
@@ -73,6 +77,7 @@ class CreateConversation
                 $conversation = $existing;
                 $conversation->update([
                     'subject' => $subject,
+                    'current_ministry_id' => $ministry->id,
                     'preferred_leader_user_id' => $recipientUserId,
                     'assignee_user_id' => $recipientUserId,
                     'status' => ChurchConversation::STATUS_AWAITING_DEPARTMENT,
