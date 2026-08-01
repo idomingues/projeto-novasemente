@@ -65,7 +65,13 @@ function personCountLabel(leaders: number, members: number): string {
 }
 
 function roleLabel(role?: string): string {
-    return role === 'leader' ? 'Líder' : 'Voluntário';
+    if (role === 'leader') {
+        return 'Líder';
+    }
+    if (role === 'contact') {
+        return 'Membro';
+    }
+    return 'Voluntário';
 }
 
 export default function NsWhatsNewChatPanel({

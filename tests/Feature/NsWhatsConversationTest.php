@@ -473,6 +473,61 @@ class NsWhatsConversationTest extends TestCase
                 ->where('peopleMatches.0.ministry_name', 'Louvor'));
     }
 
+    public function test_compose_search_finds_admin_and_volunteer_without_ministry(): void
+    {
+        [$churchId, $member, $ministry] = array_slice($this->seedNsWhats(), 0, 3);
+
+        Church::query()->whereKey($churchId)->update([
+            'conversation_fallback_ministry_id' => $ministry->id,
+        ]);
+
+        $admin = User::factory()->create([
+            'church_id' => $churchId,
+            'name' => 'Jair Roberto Raya Sanchez',
+            'is_volunteer' => false,
+            'is_ministry_leader' => false,
+        ]);
+        $admin->assignRole('admin');
+
+        $volunteerNoDept = User::factory()->create([
+            'church_id' => $churchId,
+            'name' => 'Voluntário Sem Depto',
+            'is_volunteer' => true,
+        ]);
+        $volunteerNoDept->assignRole('membro');
+        $volunteerNoDept->ensureVolunteerProfile();
+        $volunteerNoDept->volunteerProfile()->firstOrFail()->forceFill(['active' => true])->save();
+        $this->assertSame(0, $volunteerNoDept->volunteerProfile()->firstOrFail()->ministries()->count());
+
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index', ['nova' => 1, 'pessoa' => 'Jair Roberto']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/Index')
+                ->has('peopleMatches', 1)
+                ->where('peopleMatches.0.id', $admin->id)
+                ->where('peopleMatches.0.role', 'contact'));
+
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index', ['nova' => 1, 'pessoa' => 'Sem Depto']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('peopleMatches', 1)
+                ->where('peopleMatches.0.id', $volunteerNoDept->id)
+                ->where('peopleMatches.0.role', 'member'));
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.store'), [
+            'ministry_id' => $ministry->id,
+            'recipient_user_id' => $admin->id,
+            'message' => 'Oi, Jair!',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('church_conversations', [
+            'member_user_id' => $member->id,
+            'assignee_user_id' => $admin->id,
+        ]);
+    }
+
     public function test_compose_search_dedupes_person_across_ministries(): void
     {
         [$churchId, $member] = array_slice($this->seedNsWhats(), 0, 2);

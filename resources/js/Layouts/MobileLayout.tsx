@@ -25,30 +25,33 @@ export default function MobileLayout({
     flush = false,
     hideTopbar,
 }: MobileLayoutProps) {
-    const { props, url } = usePage();
+    const { props, url, component } = usePage();
     const auth = (props as { auth?: { user?: { name: string }; canAccessAdminMenu?: boolean } }).auth;
     const isAuthenticated = !!auth?.user;
     const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
     const [menuOpen, setMenuOpen] = useState(false);
-    const topbarHidden = modalOverlayOpen || (hideTopbar ?? flush);
+    // NS Conecta: única área do app em que a Topbar global some (header próprio por cima).
+    const isNsConecta = typeof component === 'string' && component.startsWith('Mobile/NsWhats/');
+    const topbarHidden = modalOverlayOpen || isNsConecta || (hideTopbar ?? flush);
 
     useEffect(() => {
         setMenuOpen(false);
     }, [url]);
 
     if (isAuthenticated) {
+        const immersive = topbarHidden && (flush || isNsConecta);
         const mainPad = modalOverlayOpen
             ? 'overflow-hidden p-0'
-            : flush
-              ? topbarHidden
-                  ? 'overflow-hidden px-0 pb-0 pt-[env(safe-area-inset-top,0px)] md:px-0 md:pb-0'
-                  : 'overflow-hidden px-0 pb-0 pt-[calc(4rem+env(safe-area-inset-top,0px))] md:px-0 md:pb-0 md:pt-[calc(6rem+env(safe-area-inset-top,0px))]'
-              : 'overflow-y-auto overflow-x-hidden px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(6rem+env(safe-area-inset-top,0px))] sm:px-6 md:px-8';
+            : immersive
+              ? 'overflow-hidden px-0 pb-0 pt-[env(safe-area-inset-top,0px)] md:px-0 md:pb-0'
+              : flush
+                ? 'overflow-hidden px-0 pb-0 pt-[calc(4rem+env(safe-area-inset-top,0px))] md:px-0 md:pb-0 md:pt-[calc(6rem+env(safe-area-inset-top,0px))]'
+                : 'overflow-y-auto overflow-x-hidden px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-[calc(5rem+env(safe-area-inset-top,0px))] md:pt-[calc(6rem+env(safe-area-inset-top,0px))] sm:px-6 md:px-8';
 
         return (
             <div
-                className={`ns-app-shell fixed inset-0 z-0 flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col overflow-hidden text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black ${
-                    flush ? 'bg-[#efeae2] dark:bg-zinc-950' : 'bg-zinc-50 dark:bg-zinc-950'
+                className={`ns-app-shell fixed inset-0 flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col overflow-hidden text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black ${
+                    immersive ? 'z-50 bg-white dark:bg-zinc-950' : flush ? 'z-0 bg-[#efeae2] dark:bg-zinc-950' : 'z-0 bg-zinc-50 dark:bg-zinc-950'
                 }`}
             >
                 {canAccessAdminMenu && !topbarHidden ? (
@@ -59,19 +62,19 @@ export default function MobileLayout({
                     />
                 ) : null}
 
-                <div className="flex h-full min-h-0 flex-col overflow-hidden">
+                <div className="relative z-10 flex h-full min-h-0 flex-col overflow-hidden">
                     {!topbarHidden ? (
                         <Topbar onMenuClick={canAccessAdminMenu ? () => setMenuOpen(true) : undefined} />
                     ) : null}
 
                     <main
                         className={`min-h-0 flex-1 overscroll-y-none overscroll-x-none md:[scrollbar-gutter:stable] ${mainPad} ${
-                            flush ? 'bg-[#efeae2] dark:bg-zinc-950' : ''
+                            flush || isNsConecta ? 'bg-[#efeae2] dark:bg-zinc-950' : ''
                         }`}
                     >
                         <div
                             className={
-                                flush || modalOverlayOpen
+                                flush || immersive || modalOverlayOpen
                                     ? 'mx-auto flex h-full min-h-0 w-full min-w-0 max-w-7xl flex-col xl:max-w-[90rem]'
                                     : 'mx-auto w-full min-w-0 max-w-7xl pt-6 pb-2 xl:max-w-[90rem]'
                             }
@@ -80,7 +83,7 @@ export default function MobileLayout({
                         </div>
                     </main>
 
-                    {!modalOverlayOpen ? <MobileBottomNav borderless={flush} /> : null}
+                    {!modalOverlayOpen ? <MobileBottomNav borderless={flush || isNsConecta} /> : null}
 
                     <FlashMessages />
                     <InboxNotificationPoller />
@@ -91,7 +94,7 @@ export default function MobileLayout({
 
     return (
         <div className="ns-app-shell fixed inset-0 z-0 flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col overflow-hidden bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
-            {!modalOverlayOpen ? <GuestAppBar /> : null}
+            {!modalOverlayOpen && !isNsConecta ? <GuestAppBar /> : null}
 
             <main
                 className={`min-h-0 flex-1 overscroll-y-none overscroll-x-none md:[scrollbar-gutter:stable] md:px-8 ${

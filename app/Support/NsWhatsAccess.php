@@ -299,7 +299,8 @@ final class NsWhatsAccess
     }
 
     /**
-     * Busca líderes e voluntários por nome (uma entrada por pessoa).
+     * Busca pessoas com conta na igreja por nome (uma entrada por pessoa).
+     * Inclui líderes, voluntários (com ou sem departamento) e demais membros/admins.
      * Se a pessoa atua em vários departamentos, `ministry_name` lista todos separados por vírgula.
      *
      * @return list<array{id: int, name: string, photo_url: string|null, role: string, ministry_id: int, ministry_name: string}>
@@ -312,18 +313,18 @@ final class NsWhatsAccess
         }
 
         $like = '%'.$term.'%';
+        [$fallbackMinistryId, $fallbackMinistryName] = self::searchFallbackMinistry($churchId);
 
-        /** @var array<int, array{id: int, name: string, photo_url: string|null, is_leader: bool, ministries: array<int, string>}> $byUser */
+        /** @var array<int, array{id: int, name: string, photo_url: string|null, is_leader: bool, is_volunteer: bool, ministries: array<int, string>}> $byUser */
         $byUser = [];
 
-        $addMinistry = static function (
+        $ensureUser = static function (
             array &$byUser,
             int $userId,
             string $name,
             ?string $photoUrl,
-            int $ministryId,
-            string $ministryName,
-            bool $asLeader,
+            bool $asLeader = false,
+            bool $asVolunteer = false,
         ): void {
             if (! isset($byUser[$userId])) {
                 $byUser[$userId] = [
@@ -331,54 +332,93 @@ final class NsWhatsAccess
                     'name' => $name,
                     'photo_url' => $photoUrl,
                     'is_leader' => false,
+                    'is_volunteer' => false,
                     'ministries' => [],
                 ];
             }
             if ($asLeader) {
                 $byUser[$userId]['is_leader'] = true;
             }
+            if ($asVolunteer) {
+                $byUser[$userId]['is_volunteer'] = true;
+            }
+            if ($name !== '' && ($byUser[$userId]['name'] === '' || $byUser[$userId]['name'] === 'Sem nome')) {
+                $byUser[$userId]['name'] = $name;
+            }
+            if ($photoUrl && ! $byUser[$userId]['photo_url']) {
+                $byUser[$userId]['photo_url'] = $photoUrl;
+            }
+        };
+
+        $addMinistry = static function (
+            array &$byUser,
+            int $userId,
+            int $ministryId,
+            string $ministryName,
+        ): void {
+            if ($ministryId < 1 || ! isset($byUser[$userId])) {
+                return;
+            }
             if (! isset($byUser[$userId]['ministries'][$ministryId])) {
                 $byUser[$userId]['ministries'][$ministryId] = $ministryName;
             }
         };
 
-        $leaders = User::query()
+        $users = User::query()
             ->where('church_id', $churchId)
-            ->where(function ($roleQ) {
-                $roleQ->where('is_ministry_leader', true);
-            })
             ->where('name', 'like', $like)
             ->when($exclude, fn ($q) => $q->where('users.id', '!=', $exclude->id))
-            ->whereHas('ministries', fn ($mq) => $mq->where('ministries.church_id', $churchId))
-            ->with(['ministries' => fn ($mq) => $mq->where('ministries.church_id', $churchId)->orderBy('name')])
+            ->with([
+                'ministries' => fn ($mq) => $mq->where('ministries.church_id', $churchId)->orderBy('name'),
+                'volunteerProfile' => fn ($vq) => $vq->with([
+                    'ministries' => fn ($mq) => $mq->where('ministries.church_id', $churchId)->orderBy('name'),
+                ]),
+            ])
             ->orderBy('name')
             ->limit($limit)
-            ->get(['id', 'name', 'photo_url']);
+            ->get(['id', 'name', 'photo_url', 'is_ministry_leader', 'is_volunteer']);
 
-        foreach ($leaders as $leader) {
-            foreach ($leader->ministries as $ministry) {
-                $addMinistry(
-                    $byUser,
-                    (int) $leader->id,
-                    (string) $leader->name,
-                    $leader->photo_url,
-                    (int) $ministry->id,
-                    (string) $ministry->name,
-                    true,
-                );
+        foreach ($users as $user) {
+            $userId = (int) $user->id;
+            $isLeader = (bool) $user->is_ministry_leader || $user->ministries->isNotEmpty();
+            $volunteer = $user->volunteerProfile;
+            $isVolunteer = (bool) $user->is_volunteer
+                || ($volunteer !== null && (bool) $volunteer->active);
+
+            $ensureUser(
+                $byUser,
+                $userId,
+                (string) $user->name,
+                $user->photo_url,
+                $isLeader,
+                $isVolunteer,
+            );
+
+            foreach ($user->ministries as $ministry) {
+                $addMinistry($byUser, $userId, (int) $ministry->id, (string) $ministry->name);
+                $byUser[$userId]['is_leader'] = true;
+            }
+
+            if ($volunteer !== null) {
+                foreach ($volunteer->ministries as $ministry) {
+                    $addMinistry($byUser, $userId, (int) $ministry->id, (string) $ministry->name);
+                    $byUser[$userId]['is_volunteer'] = true;
+                }
             }
         }
 
+        // Voluntários cujo nome no cadastro de voluntário bate, mesmo se o nome da conta for outro.
         $volunteers = Volunteer::query()
             ->where('active', true)
             ->whereNotNull('user_id')
-            ->when($exclude, fn ($q) => $q->where('user_id', '!=', $exclude->id))
-            ->whereHas('user', function ($uq) use ($churchId, $like) {
-                $uq->where('church_id', $churchId)->where('name', 'like', $like);
+            ->where(function ($q) use ($like) {
+                $q->where('name', 'like', $like)
+                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', $like));
             })
-            ->whereHas('ministries', fn ($mq) => $mq->where('ministries.church_id', $churchId))
+            ->when($exclude, fn ($q) => $q->where('user_id', '!=', $exclude->id))
+            ->whereHas('user', fn ($uq) => $uq->where('church_id', $churchId))
             ->with([
-                'user:id,name,photo_url',
+                'user:id,name,photo_url,is_ministry_leader,is_volunteer',
                 'ministries' => fn ($mq) => $mq->where('ministries.church_id', $churchId)->orderBy('name'),
             ])
             ->orderBy('name')
@@ -386,17 +426,21 @@ final class NsWhatsAccess
             ->get();
 
         foreach ($volunteers as $volunteer) {
-            $userId = (int) $volunteer->user_id;
+            $user = $volunteer->user;
+            if ($user === null) {
+                continue;
+            }
+            $userId = (int) $user->id;
+            $ensureUser(
+                $byUser,
+                $userId,
+                (string) ($user->name ?: $volunteer->display_name),
+                $user->photo_url,
+                (bool) $user->is_ministry_leader,
+                true,
+            );
             foreach ($volunteer->ministries as $ministry) {
-                $addMinistry(
-                    $byUser,
-                    $userId,
-                    (string) ($volunteer->user?->name ?: $volunteer->display_name),
-                    $volunteer->user?->photo_url,
-                    (int) $ministry->id,
-                    (string) $ministry->name,
-                    false,
-                );
+                $addMinistry($byUser, $userId, (int) $ministry->id, (string) $ministry->name);
             }
         }
 
@@ -406,15 +450,29 @@ final class NsWhatsAccess
             asort($ministries, SORT_NATURAL | SORT_FLAG_CASE);
             $ministryIds = array_keys($ministries);
             $ministryNames = array_values($ministries);
+
             if ($ministryIds === []) {
-                continue;
+                if ($fallbackMinistryId < 1) {
+                    continue;
+                }
+                $ministryIds = [$fallbackMinistryId];
+                $ministryNames = [$row['is_volunteer'] || $row['is_leader'] ? $fallbackMinistryName : 'Membro da igreja'];
+            }
+
+            $role = 'member';
+            if ($row['is_leader']) {
+                $role = 'leader';
+            } elseif ($row['is_volunteer']) {
+                $role = 'member';
+            } else {
+                $role = 'contact';
             }
 
             $results[] = [
                 'id' => $row['id'],
                 'name' => $row['name'],
                 'photo_url' => $row['photo_url'],
-                'role' => $row['is_leader'] ? 'leader' : 'member',
+                'role' => $role,
                 'ministry_id' => (int) $ministryIds[0],
                 'ministry_name' => implode(', ', $ministryNames),
             ];
@@ -428,13 +486,45 @@ final class NsWhatsAccess
         return array_slice(array_values($results), 0, $limit);
     }
 
+    /**
+     * @return array{0: int, 1: string}
+     */
+    private static function searchFallbackMinistry(int $churchId): array
+    {
+        $fallbackId = (int) (Church::query()->whereKey($churchId)->value('conversation_fallback_ministry_id') ?? 0);
+        if ($fallbackId > 0) {
+            $name = (string) (Ministry::query()->whereKey($fallbackId)->value('name') ?? 'Fila geral');
+
+            return [$fallbackId, $name];
+        }
+
+        $first = Ministry::query()
+            ->where('church_id', $churchId)
+            ->orderBy('name')
+            ->first(['id', 'name']);
+
+        if ($first === null) {
+            return [0, 'Contato'];
+        }
+
+        return [(int) $first->id, (string) $first->name];
+    }
+
     public static function isValidRecipient(int $userId, int $churchId, int $ministryId, User $from): bool
     {
         if ($userId === (int) $from->id) {
             return false;
         }
 
-        return collect(self::recipientsForMinistry($churchId, $ministryId, $from))
-            ->contains(fn (array $r) => (int) $r['id'] === $userId);
+        if (collect(self::recipientsForMinistry($churchId, $ministryId, $from))
+            ->contains(fn (array $r) => (int) $r['id'] === $userId)) {
+            return true;
+        }
+
+        // Qualquer conta da mesma igreja (admin, membro, voluntário sem depto, etc.).
+        return User::query()
+            ->where('church_id', $churchId)
+            ->whereKey($userId)
+            ->exists();
     }
 }

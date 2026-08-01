@@ -194,10 +194,17 @@ export default function NsWhatsIndex({
     }, [initialComposing]);
 
     useEffect(() => {
+        // Só sincroniza quando o servidor manda uma conversa. Não zerar `active` local
+        // quando `selected` vem null (ex.: visita parcial sem a prop na lista `only`).
+        if (!initialSelected) {
+            return;
+        }
         setActive(initialSelected);
-        setLiveMessages(initialSelected?.messages ?? []);
+        setLiveMessages(initialSelected.messages ?? []);
         setComposerText('');
         setComposerError(undefined);
+        setComposeDraft(null);
+        setComposing(false);
     }, [initialSelected?.id]);
 
     useEffect(() => {
@@ -328,8 +335,27 @@ export default function NsWhatsIndex({
         );
     };
 
-    const findExistingWithRecipient = (recipientUserId: number): Conversation | undefined => {
-        return roster.find((c) => c.counterpartUserId === recipientUserId);
+    const findExistingWithRecipient = (
+        recipientUserId: number,
+        recipientName?: string,
+    ): Conversation | undefined => {
+        const targetId = Number(recipientUserId);
+        if (Number.isFinite(targetId) && targetId > 0) {
+            const byId = roster.find((c) => Number(c.counterpartUserId) === targetId);
+            if (byId) {
+                return byId;
+            }
+        }
+
+        const name = recipientName?.trim().toLowerCase();
+        if (!name) {
+            return undefined;
+        }
+
+        // Fallback: mesma pessoa na lista (ex.: prop counterpart ausente no payload antigo).
+        return roster.find(
+            (c) => c.viewerRole === 'member' && c.headerTitle.trim().toLowerCase() === name,
+        );
     };
 
     const backToList = () => {
@@ -458,20 +484,41 @@ export default function NsWhatsIndex({
     };
 
     const selectComposeTarget = (draft: DraftTarget) => {
-        if (typeof draft.recipientUserId === 'number' && draft.recipientUserId > 0) {
-            const existing = findExistingWithRecipient(draft.recipientUserId);
+        const recipientId =
+            typeof draft.recipientUserId === 'number'
+                ? draft.recipientUserId
+                : Number(draft.recipientUserId);
+
+        if (Number.isFinite(recipientId) && recipientId > 0) {
+            const existing = findExistingWithRecipient(recipientId, draft.title);
             if (existing) {
+                // Abre a thread existente de imediato (sem rascunho) e confirma via Inertia.
                 setComposeDraft(null);
                 setComposing(false);
-                void openConversation(existing.id);
-                // Sincroniza Inertia (tira ?nova=1) sem competir com o fetch da conversa.
+                setActive({ ...existing, messages: existing.messages ?? [] });
+                setLiveMessages(existing.messages ?? []);
+                setComposerText('');
+                setComposerError(undefined);
+                syncConversaInUrl(existing.id, { q: search, nova: false, arquivadas: viewingArchived });
+
                 router.get(
                     route('mobile.ns-whats.index'),
                     { q: search || undefined, conversa: existing.id },
                     {
                         preserveState: true,
                         preserveScroll: true,
-                        only: ['composing', 'selectedMinistry', 'leaders', 'members', 'peopleMatches', 'peopleSearch'],
+                        only: [
+                            'conversations',
+                            'selected',
+                            'composing',
+                            'viewingArchived',
+                            'archivedCount',
+                            'selectedMinistry',
+                            'leaders',
+                            'members',
+                            'peopleMatches',
+                            'peopleSearch',
+                        ],
                     },
                 );
                 return;
@@ -502,7 +549,7 @@ export default function NsWhatsIndex({
     const showArchivedEmpty = viewingArchived && roster.length === 0;
 
     return (
-        <MobileLayout flush>
+        <MobileLayout flush hideTopbar>
             <Head title="NS Conecta" />
             <div className="relative flex h-full min-h-0 overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:rounded-none md:border-0">
                 <NsWhatsIntroOverlay />
