@@ -95,7 +95,7 @@ class CampaignDonationNotifier
         foreach ($recipients as $entry) {
             $this->pushInbox(
                 $entry['user'],
-                $this->buildTitle($entry['treasurer'], $entry['creator']),
+                $this->buildTitle($entry['treasurer'], $entry['creator'], $campaignTitle),
                 $this->buildBody($entry['treasurer'], $entry['creator'], $amount, $donorName, $campaignTitle),
                 $this->resolveRouteName($entry['treasurer']),
             );
@@ -118,16 +118,16 @@ class CampaignDonationNotifier
         })->values();
     }
 
-    private function buildTitle(bool $treasurer, bool $creator): string
+    private function buildTitle(bool $treasurer, bool $creator, string $campaignTitle): string
     {
         if ($treasurer && $creator) {
-            return 'Nova contribuição na campanha';
+            return 'Nova contribuição — '.$campaignTitle;
         }
         if ($treasurer) {
-            return 'Nova contribuição registrada';
+            return 'Nova contribuição — '.$campaignTitle;
         }
 
-        return 'Contribuição na sua campanha';
+        return 'Contribuição na sua campanha — '.$campaignTitle;
     }
 
     private function buildBody(

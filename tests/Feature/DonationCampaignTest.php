@@ -894,12 +894,12 @@ class DonationCampaignTest extends TestCase
 
         $this->assertDatabaseHas('user_inbox_notifications', [
             'user_id' => $treasurer->id,
-            'title' => 'Nova contribuição registrada',
+            'title' => 'Nova contribuição — Reforma do telhado',
         ]);
 
         $this->assertDatabaseHas('user_inbox_notifications', [
             'user_id' => $creator->id,
-            'title' => 'Contribuição na sua campanha',
+            'title' => 'Contribuição na sua campanha — Reforma do telhado',
         ]);
 
         $treasurerNotification = UserInboxNotification::query()

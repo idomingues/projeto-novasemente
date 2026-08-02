@@ -1,20 +1,16 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import DonationProgressBar from '@/Components/Donations/DonationProgressBar';
-import DonationTransparencyNotice, {
-    type DonationTransparencyInfo,
-} from '@/Components/Donations/DonationTransparencyNotice';
+import type { DonationTransparencyInfo } from '@/Components/Donations/DonationTransparencyNotice';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import Modal from '@/Components/Modal';
-import { buildPixCopyPaste, parseMoneyInput } from '@/lib/pixPayload';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import {
     ArrowLeftIcon,
-    ArrowTopRightOnSquareIcon,
-    BoltIcon,
+    CheckIcon,
     DocumentDuplicateIcon,
     PlayCircleIcon,
     XMarkIcon,
@@ -81,16 +77,6 @@ interface Props {
     };
 }
 
-const SEVENME_LOGO_SRC = '/images/7me-logo.png';
-
-function donationLinkHost(url: string): string {
-    try {
-        return new URL(url).host;
-    } catch {
-        return '';
-    }
-}
-
 function formatCampaignDate(value: string): string {
     return new Date(`${value}T12:00:00`).toLocaleDateString('pt-BR');
 }
@@ -110,7 +96,52 @@ function campaignStartsInFuture(startsAt: string | null): boolean {
     return new Date(`${startsAt}T12:00:00`).getTime() > today.getTime();
 }
 
-export default function MobileDonationShow({ campaign, recentDonations, donationUrl, transparency, pix, localOffer }: Props) {
+function ProcessSteps({ current }: { current: 1 | 2 | 3 }) {
+    const steps = [
+        { n: 1 as const, label: 'PIX' },
+        { n: 2 as const, label: 'Comprovante' },
+        { n: 3 as const, label: 'Confirmar' },
+    ];
+
+    return (
+        <ol className="flex items-center gap-1.5 sm:gap-2" aria-label="Passos da doação">
+            {steps.map((step, index) => {
+                const done = current > step.n;
+                const active = current === step.n;
+                return (
+                    <li key={step.n} className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+                        {index > 0 && (
+                            <span
+                                className={`h-px min-w-2 flex-1 ${done || active ? 'bg-zinc-300 dark:bg-zinc-600' : 'bg-zinc-200 dark:bg-zinc-800'}`}
+                                aria-hidden
+                            />
+                        )}
+                        <span
+                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                                done || active
+                                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+                                    : 'bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500'
+                            }`}
+                        >
+                            {done ? <CheckIcon className="h-3.5 w-3.5" strokeWidth={2.5} /> : step.n}
+                        </span>
+                        <span
+                            className={`hidden truncate text-xs font-medium sm:inline ${
+                                active || done
+                                    ? 'text-zinc-900 dark:text-zinc-100'
+                                    : 'text-zinc-400 dark:text-zinc-500'
+                            }`}
+                        >
+                            {step.label}
+                        </span>
+                    </li>
+                );
+            })}
+        </ol>
+    );
+}
+
+export default function MobileDonationShow({ campaign, recentDonations, transparency, pix, localOffer }: Props) {
     const page = usePage();
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
     const flash = (page.props as { flash?: { success?: string; error?: string } }).flash;
@@ -118,16 +149,13 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
     const isLoggedIn = Boolean(auth?.user);
 
     const [donateOpen, setDonateOpen] = useState(false);
-    const [amountRaw, setAmountRaw] = useState('');
-    const [pixPayload, setPixPayload] = useState<string | null>(null);
-    const [amountError, setAmountError] = useState<string | null>(null);
-    const [payloadCopied, setPayloadCopied] = useState(false);
     const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
     const [confirmStep, setConfirmStep] = useState(false);
     const [suggestedAmount, setSuggestedAmount] = useState<number | null>(null);
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+    const [pixCopied, setPixCopied] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         amount: '',
@@ -142,9 +170,8 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
         is_anonymous: false,
     });
 
-    const pixKeyForOffer = pix.pix_key?.trim() || localOffer.pixKey;
-    const donationHost = donationUrl ? donationLinkHost(donationUrl) : '';
-    const hasDonationUrl = campaign.type === 'money' && Boolean(donationUrl);
+    const pixKey = pix.pix_key?.trim() || localOffer.pixKey;
+    const processStep: 1 | 2 | 3 = confirmStep ? 3 : 2;
     const availabilityMessage = !campaign.accepting_donations
         ? campaign.status === 'active' && campaign.starts_at && campaignStartsInFuture(campaign.starts_at)
             ? `Esta campanha começa em ${formatCampaignDate(campaign.starts_at)}.`
@@ -153,32 +180,11 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
               : 'Esta campanha não está aceitando doações no momento.'
         : null;
 
-    const generatePix = () => {
-        setAmountError(null);
-        setPixPayload(null);
-        const amount = parseMoneyInput(amountRaw);
-        if (amount === null) {
-            setAmountError('Informe um valor válido (ex.: 50 ou 50,20).');
-            return;
-        }
-        const payload = buildPixCopyPaste({
-            pixKey: pixKeyForOffer,
-            amount,
-            merchantName: localOffer.merchantName,
-            merchantCity: localOffer.merchantCity,
-        });
-        if (!payload) {
-            setAmountError('Não foi possível gerar o código PIX.');
-            return;
-        }
-        setPixPayload(payload);
-    };
-
-    const copyPayload = () => {
-        if (!pixPayload) return;
-        navigator.clipboard.writeText(pixPayload).then(() => {
-            setPayloadCopied(true);
-            setTimeout(() => setPayloadCopied(false), 2500);
+    const copyPix = () => {
+        if (!pixKey) return;
+        navigator.clipboard.writeText(pixKey).then(() => {
+            setPixCopied(true);
+            setTimeout(() => setPixCopied(false), 2000);
         });
     };
 
@@ -231,8 +237,6 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                 reset();
                 setReceiptPreview(null);
                 setSuggestedAmount(null);
-                setPixPayload(null);
-                setAmountRaw('');
             },
         });
     };
@@ -254,8 +258,7 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
         setReceiptPreview(null);
         setSuggestedAmount(null);
         setUploadError(null);
-        setPixPayload(null);
-        setAmountRaw('');
+        setPixCopied(false);
         setDonateOpen(true);
     };
 
@@ -392,12 +395,9 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                 )}
 
                 {campaign.accepting_donations && (
-                    <>
-                        {campaign.type === 'money' && <DonationTransparencyNotice info={transparency} variant="compact" />}
-                        <PrimaryButton type="button" onClick={openDonateModal} className="w-full">
-                            {campaign.type === 'items' ? 'Registrar compromisso de doação' : 'Fazer doação'}
-                        </PrimaryButton>
-                    </>
+                    <PrimaryButton type="button" onClick={openDonateModal} className="w-full">
+                        {campaign.type === 'items' ? 'Registrar compromisso de doação' : 'Fazer doação'}
+                    </PrimaryButton>
                 )}
 
                 {campaign.thanks_is_published && (
@@ -423,101 +423,6 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                             </div>
                         )}
                     </section>
-                )}
-
-                {campaign.type === 'money' && hasDonationUrl && donationUrl && (
-                    <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                        <div className="border-b border-zinc-100 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/80 sm:p-5">
-                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                                <div className="flex shrink-0 items-center justify-center sm:justify-start">
-                                    <img
-                                        src={SEVENME_LOGO_SRC}
-                                        alt="7me"
-                                        className="h-9 w-auto max-w-[160px] object-contain object-left"
-                                        width={160}
-                                        height={36}
-                                    />
-                                </div>
-                                <div className="min-w-0 flex-1 text-center sm:text-left">
-                                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Doar pelo 7me</h2>
-                                    <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                                        Se você já prefere usar o 7me, abra o link oficial abaixo para concluir sua doação.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="space-y-3 p-4 sm:p-5">
-                            <a
-                                href={donationUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="group flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-zinc-800 active:scale-[0.99] dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
-                            >
-                                <span>Abrir 7me para doar</span>
-                                <ArrowTopRightOnSquareIcon className="h-4 w-4 opacity-80 group-hover:opacity-100" />
-                            </a>
-                            {donationHost && (
-                                <p className="text-center text-xs text-zinc-500 dark:text-zinc-500">
-                                    Destino: {donationHost} (nova aba)
-                                </p>
-                            )}
-                        </div>
-                    </section>
-                )}
-
-                {campaign.type === 'money' && (
-                    <div className="rounded-2xl border border-brand-200/90 bg-gradient-to-br from-brand-50 to-white p-4 dark:border-brand-900/55 dark:from-brand-950/45 dark:to-zinc-900">
-                    <h2 className="mb-2 flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
-                        <BoltIcon className="h-5 w-5 text-brand-600" />
-                        PIX para doação
-                    </h2>
-                    <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-                        Gere o código PIX Copia e Cola ou use a chave abaixo. Depois envie o comprovante pelo botão &quot;Fazer doação&quot;.
-                    </p>
-                    <p className="mb-3 break-all text-xs text-zinc-500">
-                        Chave: <span className="font-mono text-zinc-700 dark:text-zinc-300">{pixKeyForOffer}</span>
-                    </p>
-                    <div className="space-y-3">
-                        <div>
-                            <InputLabel htmlFor="pix_amount" value="Valor (R$)" />
-                            <TextInput
-                                id="pix_amount"
-                                type="text"
-                                inputMode="decimal"
-                                placeholder="Ex.: 100 ou 100,50"
-                                value={amountRaw}
-                                onChange={(e) => {
-                                    setAmountRaw(e.target.value);
-                                    setPixPayload(null);
-                                    setAmountError(null);
-                                }}
-                                className="mt-1 w-full max-w-xs"
-                            />
-                            {amountError && <p className="mt-1 text-sm text-red-600">{amountError}</p>}
-                        </div>
-                        <SecondaryButton type="button" onClick={generatePix}>
-                            Gerar código PIX
-                        </SecondaryButton>
-                        {pixPayload && (
-                            <div className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
-                                <textarea
-                                    readOnly
-                                    value={pixPayload}
-                                    rows={3}
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-mono dark:border-zinc-700 dark:bg-zinc-950"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={copyPayload}
-                                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white"
-                                >
-                                    <DocumentDuplicateIcon className="h-4 w-4" />
-                                    {payloadCopied ? 'Copiado!' : 'Copiar código'}
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                    </div>
                 )}
 
                 {recentDonations.length > 0 && (
@@ -550,46 +455,92 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
 
             <Modal show={donateOpen} onClose={() => setDonateOpen(false)} maxWidth="md">
                 {campaign.type === 'money' ? (
-                    <form onSubmit={submitDonation} className="space-y-4 p-6">
-                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Confirmar doação</h3>
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                            1. Faça o PIX · 2. Envie o comprovante · 3. Confirme o valor
-                        </p>
+                    <form onSubmit={submitDonation} className="space-y-5 p-6">
+                        <div className="space-y-3">
+                            <div>
+                                <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                                    Doar
+                                </p>
+                                <h3 className="mt-1 text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">
+                                    {campaign.title}
+                                </h3>
+                            </div>
+                            <ProcessSteps current={processStep} />
+                        </div>
 
                         {!confirmStep ? (
-                            <div className="space-y-3">
-                                <DonationTransparencyNotice info={transparency} variant="compact" />
-                                <InputLabel value="Comprovante (foto)" />
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                    Envie uma foto nítida do comprovante PIX. Ela será guardada apenas para conferência pela
-                                    equipe financeira — não aparece publicamente no app.
-                                </p>
-                                <input
-                                    type="file"
-                                    accept={GALLERY_IMAGE_ACCEPT}
-                                    disabled={uploading}
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) void handleReceiptUpload(file);
-                                    }}
-                                    className="block w-full text-sm"
-                                />
-                                {uploading && <p className="text-sm text-zinc-500">Lendo comprovante...</p>}
-                                {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
+                            <div className="space-y-5">
+                                <section className="space-y-3">
+                                    <div>
+                                        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                                            1. Faça o PIX
+                                        </p>
+                                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                                            Copie a chave e pague no app do seu banco.
+                                        </p>
+                                    </div>
+                                    <div className="rounded-2xl bg-zinc-50 px-3.5 py-3 dark:bg-zinc-950/50">
+                                        <p className="break-all font-mono text-sm text-zinc-900 dark:text-zinc-100">{pixKey}</p>
+                                        <button
+                                            type="button"
+                                            onClick={copyPix}
+                                            className="mt-3 inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-zinc-900 transition hover:text-zinc-600 dark:text-white dark:hover:text-zinc-300"
+                                        >
+                                            {pixCopied ? (
+                                                <>
+                                                    <CheckIcon className="h-4 w-4" strokeWidth={2.25} />
+                                                    Copiado
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <DocumentDuplicateIcon className="h-4 w-4" />
+                                                    Copiar chave
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </section>
+
+                                <section className="space-y-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
+                                    <div>
+                                        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                                            2. Envie o comprovante
+                                        </p>
+                                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                                            Foto nítida do comprovante PIX. Fica só para conferência interna.
+                                        </p>
+                                    </div>
+                                    <input
+                                        type="file"
+                                        accept={GALLERY_IMAGE_ACCEPT}
+                                        disabled={uploading}
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) void handleReceiptUpload(file);
+                                        }}
+                                        className="block w-full cursor-pointer text-sm file:mr-3 file:cursor-pointer file:rounded-xl file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white dark:file:bg-white dark:file:text-zinc-900"
+                                    />
+                                    {uploading && <p className="text-sm text-zinc-500">Lendo comprovante...</p>}
+                                    {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
+                                </section>
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                <DonationTransparencyNotice
-                                    info={transparency}
-                                    isAnonymous={data.is_anonymous}
-                                    sendEmailConfirmation={data.send_email_confirmation}
-                                />
+                                <div>
+                                    <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                                        3. Confirme o valor
+                                    </p>
+                                </div>
                                 {receiptPreview && (
-                                    <img src={receiptPreview} alt="Comprovante" className="max-h-48 rounded-xl border object-contain" />
+                                    <img
+                                        src={receiptPreview}
+                                        alt="Comprovante"
+                                        className="max-h-48 rounded-2xl object-contain ring-1 ring-zinc-200 dark:ring-zinc-700"
+                                    />
                                 )}
                                 {suggestedAmount !== null ? (
                                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                                        Valor detectado no comprovante:{' '}
+                                        Valor detectado:{' '}
                                         <strong className="text-zinc-900 dark:text-white">
                                             {suggestedAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                         </strong>
@@ -614,46 +565,39 @@ export default function MobileDonationShow({ campaign, recentDonations, donation
                                     />
                                     <InputError message={errors.amount} />
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                                <div className="space-y-3">
+                                    <label className="flex cursor-pointer items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                                         <input
                                             type="checkbox"
-                                            className="mt-0.5"
+                                            className="mt-0.5 cursor-pointer"
                                             checked={data.is_anonymous}
                                             onChange={(e) => setData('is_anonymous', e.target.checked)}
                                         />
                                         <span>
                                             <span className="font-medium">Não exibir meu nome na lista pública</span>
                                             <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
-                                                Aparecerá como «Anônimo» na campanha. A equipe financeira ainda identifica
-                                                sua doação internamente.
+                                                Aparecerá como «Anônimo». A equipe financeira ainda identifica a doação.
                                             </span>
                                         </span>
                                     </label>
-                                </div>
-                                {transparency.donor_email && (
-                                    <div className="space-y-1">
-                                        <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                                    {transparency.donor_email && (
+                                        <label className="flex cursor-pointer items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                                             <input
                                                 type="checkbox"
-                                                className="mt-0.5"
+                                                className="mt-0.5 cursor-pointer"
                                                 checked={data.send_email_confirmation}
                                                 onChange={(e) => setData('send_email_confirmation', e.target.checked)}
                                             />
                                             <span>
-                                                <span className="font-medium">Quero receber confirmação por e-mail</span>
+                                                <span className="font-medium">Receber confirmação por e-mail</span>
                                                 <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
-                                                    Enviaremos um resumo para{' '}
-                                                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                                                        {transparency.donor_email}
-                                                    </span>{' '}
-                                                    somente se você marcar esta opção.
+                                                    Enviaremos um resumo para {transparency.donor_email}.
                                                 </span>
                                             </span>
                                         </label>
-                                    </div>
-                                )}
-                                <div className="flex justify-end gap-2">
+                                    )}
+                                </div>
+                                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                                     <SecondaryButton type="button" onClick={() => setConfirmStep(false)}>
                                         Trocar comprovante
                                     </SecondaryButton>

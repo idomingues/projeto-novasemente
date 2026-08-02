@@ -95,7 +95,7 @@ class CharityDonationNotifier
         foreach ($recipients as $entry) {
             $this->pushInbox(
                 $entry['user'],
-                $this->buildTitle($entry['treasurer'], $entry['creator']),
+                $this->buildTitle($entry['treasurer'], $entry['creator'], $campaignTitle),
                 $this->buildBody($entry['treasurer'], $entry['creator'], $amount, $donorName, $campaignTitle),
                 $this->resolveRouteName($entry['treasurer']),
             );
@@ -118,16 +118,16 @@ class CharityDonationNotifier
         })->values();
     }
 
-    private function buildTitle(bool $treasurer, bool $creator): string
+    private function buildTitle(bool $treasurer, bool $creator, string $campaignTitle): string
     {
         if ($treasurer && $creator) {
-            return 'Nova doação na campanha';
+            return 'Nova doação — '.$campaignTitle;
         }
         if ($treasurer) {
-            return 'Nova doação registrada';
+            return 'Nova doação — '.$campaignTitle;
         }
 
-        return 'Doação na sua campanha';
+        return 'Doação na sua campanha — '.$campaignTitle;
     }
 
     private function buildBody(

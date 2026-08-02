@@ -4,9 +4,11 @@
     $amount = number_format((float) $donation->amount, 2, ',', '.');
 @endphp
 <x-mail::message>
-# Nova contribuição registrada
+# Nova contribuição na campanha
 
-Foi confirmada uma contribuição na campanha **{{ $campaign?->title }}**.
+**Campanha:** {{ $campaign?->title }}
+
+Foi confirmada uma contribuição nesta campanha.
 
 **Valor:** R$ {{ $amount }}
 

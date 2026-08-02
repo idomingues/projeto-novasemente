@@ -21,7 +21,7 @@ class CharityDonationTreasurerMail extends Mailable implements ShouldQueue
         $campaign = $this->donation->campaign;
         $amount = number_format((float) $this->donation->amount, 2, ',', '.');
 
-        return $this->subject("Nova doação: R$ {$amount} — {$campaign?->title}")
+        return $this->subject("Campanha «{$campaign?->title}»: nova doação de R$ {$amount}")
             ->markdown('emails.charity-campaign-donation-treasurer', [
                 'donation' => $this->donation,
                 'dashboardUrl' => route('finance.charity-donations.index', absolute: true),
