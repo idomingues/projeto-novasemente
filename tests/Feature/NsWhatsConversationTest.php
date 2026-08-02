@@ -438,6 +438,71 @@ class NsWhatsConversationTest extends TestCase
         ])->assertRedirect();
     }
 
+    public function test_inbox_search_returns_conversations_then_contacts(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.store'), [
+            'ministry_id' => $ministry->id,
+            'recipient_user_id' => $leader->id,
+            'message' => 'Oi líder Louvor',
+        ])->assertRedirect();
+
+        $teamMember = User::factory()->create([
+            'church_id' => $churchId,
+            'name' => 'Ivan Contato Busca',
+        ]);
+        $teamMember->assignRole('membro');
+        $teamMember->ensureVolunteerProfile();
+        $teamMember->volunteerProfile()->firstOrFail()->ministries()->attach($ministry->id);
+
+        // Conversa bate pelo nome do líder (assignee) + contatos incluem Ivan.
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index', ['q' => 'Líder']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/Index')
+                ->where('search', 'Líder')
+                ->where('composing', false)
+                ->has('conversations', 1)
+                ->where('conversations.0.headerTitle', 'Líder Louvor')
+                ->has('peopleMatches')
+                ->where('peopleMatches.0.id', $leader->id));
+
+        $this->actingAs($member)
+            ->get(route('mobile.ns-whats.index', ['q' => 'Ivan Contato']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/Index')
+                ->where('search', 'Ivan Contato')
+                ->has('conversations', 0)
+                ->has('peopleMatches', 1)
+                ->where('peopleMatches.0.id', $teamMember->id)
+                ->where('peopleMatches.0.role', 'member'));
+    }
+
+    public function test_inbox_search_matches_member_name_for_leader_roster(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.store'), [
+            'ministry_id' => $ministry->id,
+            'recipient_user_id' => $leader->id,
+            'message' => 'Preciso de ajuda',
+        ])->assertRedirect();
+
+        $conversation = ChurchConversation::query()->firstOrFail();
+
+        $this->actingAs($leader)
+            ->get(route('mobile.ns-whats.index', ['q' => $member->name]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/Index')
+                ->has('conversations', 1)
+                ->where('conversations.0.id', $conversation->id)
+                ->where('conversations.0.headerTitle', $member->name));
+    }
+
     public function test_compose_search_finds_leaders_and_volunteers(): void
     {
         [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();

@@ -20,13 +20,20 @@ import NsWhatsNewChatPanel, {
     type ComposePerson,
     type DraftTarget,
 } from '@/Components/NsWhats/NsWhatsNewChatPanel';
-import { FormEventHandler, useEffect, useRef, useState } from 'react';
+import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 import {
     loadNsWhatsConversation,
     mutateNsWhatsConversation,
     sendNsWhatsMessage,
     type NsWhatsMessagePayload,
 } from '@/utils/nsWhatsSendMessage';
+import ListSearchHint from '@/Components/ListSearchHint';
+import {
+    isListSearchBelowMinimum,
+    LIST_SEARCH_DEBOUNCE_MS,
+    LIST_SEARCH_MIN_LENGTH,
+    serverSearchTerm,
+} from '@/utils/listSearch';
 
 type Message = {
     id: number;
@@ -99,6 +106,16 @@ function formatWhen(iso?: string | null): string {
 /** Espaço só para o indicador home / safe-area — sem bottom nav no NS Conecta. */
 const bottomSafeClearance = 'pb-[env(safe-area-inset-bottom,0px)]';
 
+function contactRoleLabel(role?: string): string {
+    if (role === 'leader') {
+        return 'Líder';
+    }
+    if (role === 'contact') {
+        return 'Membro';
+    }
+    return 'Voluntário';
+}
+
 function syncConversaInUrl(
     conversaId: number | null,
     extras?: { q?: string; nova?: boolean; arquivadas?: boolean },
@@ -145,6 +162,7 @@ export default function NsWhatsIndex({
     fallbackMinistryConfigured,
 }: Props) {
     const [search, setSearch] = useState(initialSearch);
+    const [searchLoading, setSearchLoading] = useState(false);
     const [composeDraft, setComposeDraft] = useState<DraftTarget | null>(() => {
         if (!initialComposeDraft) {
             return null;
@@ -165,6 +183,7 @@ export default function NsWhatsIndex({
     const [archiveMutating, setArchiveMutating] = useState(false);
     const threadEnd = useRef<HTMLDivElement | null>(null);
     const openRequestSeq = useRef(0);
+    const lastRequestedSearch = useRef(initialSearch);
     const draftForm = useForm({
         ministry_id: (initialComposeDraft?.ministryId ?? '') as number | '',
         recipient_user_id: (initialComposeDraft?.recipientUserId ?? '') as number | '',
@@ -175,6 +194,15 @@ export default function NsWhatsIndex({
     const selectedId = active?.id ?? null;
     const showComposeDraft = Boolean(composeDraft) && !selectedId;
     const mobileShowList = !selectedId && !showComposeDraft;
+    const committedSearch = (initialSearch || '').trim();
+    const isSearchMode = committedSearch.length >= LIST_SEARCH_MIN_LENGTH;
+    const showSearchHint = isListSearchBelowMinimum(search);
+
+    useEffect(() => {
+        setSearch(initialSearch);
+        lastRequestedSearch.current = initialSearch;
+        setSearchLoading(false);
+    }, [initialSearch]);
 
     useEffect(() => {
         setRoster(initialConversations);
@@ -224,23 +252,60 @@ export default function NsWhatsIndex({
         composeDraft?.useFallback,
     ]);
 
-    const applySearch = () => {
-        router.get(
-            route('mobile.ns-whats.index'),
-            {
-                q: search || undefined,
-                arquivadas: viewingArchived ? 1 : undefined,
-                nova: composing ? 1 : undefined,
-                ministry: selectedMinistry?.id,
-            },
-            {
-                preserveState: true,
-                only: viewingArchived
-                    ? ['conversations', 'viewingArchived', 'archivedCount', 'search', 'selected']
-                    : undefined,
-            },
-        );
-    };
+    /** Busca estilo WhatsApp: debounce na lista (Conversas + Contatos). */
+    useEffect(() => {
+        if (composing) {
+            return;
+        }
+
+        const term = serverSearchTerm(search) ?? '';
+        const previous = lastRequestedSearch.current || '';
+        if (term === previous) {
+            return;
+        }
+
+        const handle = window.setTimeout(() => {
+            lastRequestedSearch.current = term;
+            setSearchLoading(true);
+            syncConversaInUrl(selectedId, {
+                q: term,
+                arquivadas: viewingArchived,
+                nova: false,
+            });
+            router.get(
+                route('mobile.ns-whats.index'),
+                {
+                    q: term || undefined,
+                    arquivadas: viewingArchived ? 1 : undefined,
+                    conversa: selectedId || undefined,
+                },
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    only: [
+                        'conversations',
+                        'viewingArchived',
+                        'archivedCount',
+                        'search',
+                        'peopleMatches',
+                        'peopleSearch',
+                        'selected',
+                    ],
+                    onFinish: () => setSearchLoading(false),
+                },
+            );
+        }, LIST_SEARCH_DEBOUNCE_MS);
+
+        return () => window.clearTimeout(handle);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [search, composing, viewingArchived]);
+
+    const contactMatches = useMemo(() => {
+        if (!isSearchMode) {
+            return [];
+        }
+        return peopleMatches;
+    }, [isSearchMode, peopleMatches]);
 
     const openArchivedList = () => {
         setComposeDraft(null);
@@ -544,8 +609,133 @@ export default function NsWhatsIndex({
             </button>
         ) : null;
 
-    const showMainEmpty = !viewingArchived && roster.length === 0 && archivedCount === 0;
-    const showArchivedEmpty = viewingArchived && roster.length === 0;
+    const showMainEmpty = !viewingArchived && !isSearchMode && roster.length === 0 && archivedCount === 0;
+    const showArchivedEmpty = viewingArchived && !isSearchMode && roster.length === 0;
+    const showSearchEmpty =
+        isSearchMode && !searchLoading && roster.length === 0 && contactMatches.length === 0;
+
+    const selectContactFromSearch = (person: ComposePeopleMatch) => {
+        selectComposeTarget({
+            ministryId: person.ministry_id,
+            ministryName: person.ministry_name,
+            recipientUserId: person.id,
+            title: person.name,
+            subtitle: `${contactRoleLabel(person.role)} · ${person.ministry_name}`,
+            photoUrl: person.photo_url,
+        });
+    };
+
+    const renderConversationRow = (c: Conversation, index: number) => {
+        const isActive = selectedId === c.id;
+        const isPinned = Boolean(c.pinnedLeader);
+        const isTeam = c.viewerRole === 'staff';
+        const prev = index > 0 ? roster[index - 1] : null;
+        const next = index < roster.length - 1 ? roster[index + 1] : null;
+        const prevPinned = Boolean(prev?.pinnedLeader);
+        const nextPinned = Boolean(next?.pinnedLeader);
+        const prevTeam = prev?.viewerRole === 'staff';
+        const nextTeam = next?.viewerRole === 'staff';
+        const showPinnedDivider =
+            !isSearchMode && isPinned && !nextPinned && roster.some((row) => !row.pinnedLeader);
+        const showTeamDivider =
+            !isSearchMode &&
+            isTeam &&
+            !nextTeam &&
+            !nextPinned &&
+            roster.slice(index + 1).some((row) => row.viewerRole !== 'staff' && !row.pinnedLeader);
+        const ministryLabel = c.ministryName?.trim() || '';
+        const preview = isSearchMode
+            ? c.lastPreview || ministryLabel
+            : isTeam
+              ? `Voluntário - ${ministryLabel || 'Departamentos'}`
+              : isPinned
+                ? `Líder - ${ministryLabel || 'Departamentos'}`
+                : ministryLabel;
+        const showWhen = isSearchMode || !isPinned;
+        return (
+            <li key={c.id}>
+                {!isSearchMode && isPinned && !prevPinned ? (
+                    <p className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
+                        Seus líderes
+                    </p>
+                ) : null}
+                {!isSearchMode && isTeam && !prevTeam && !isPinned ? (
+                    <p className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
+                        Seu Time
+                    </p>
+                ) : null}
+                <button
+                    type="button"
+                    onClick={() => void openConversation(c.id)}
+                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition ${
+                        isActive
+                            ? 'border border-emerald-500 bg-emerald-50 dark:border-emerald-600 dark:bg-emerald-950/40'
+                            : isPinned && !isSearchMode
+                              ? 'border border-transparent bg-zinc-50/80 hover:bg-zinc-100/90 dark:bg-zinc-900/50 dark:hover:bg-zinc-900/80'
+                              : isTeam && !isSearchMode
+                                ? 'border border-transparent bg-zinc-50/60 hover:bg-zinc-100/90 dark:bg-zinc-900/40 dark:hover:bg-zinc-900/80'
+                                : 'border border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900/80'
+                    }`}
+                >
+                    <UserListAvatar
+                        name={c.headerTitle}
+                        photoUrl={c.headerPhotoUrl}
+                        size="md"
+                        previewOnClick={false}
+                    />
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="flex min-w-0 items-center gap-1 truncate text-[14px] font-semibold text-zinc-900 dark:text-white">
+                                {!isSearchMode && isPinned ? (
+                                    <BookmarkIcon
+                                        className="h-3.5 w-3.5 shrink-0 text-emerald-600/80 dark:text-emerald-400/80"
+                                        aria-hidden
+                                        strokeWidth={2}
+                                    />
+                                ) : null}
+                                <span className="truncate">
+                                    {c.headerTitle}
+                                    {!isSearchMode && isTeam ? (
+                                        <span className="ml-1.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                                            · Recebida
+                                        </span>
+                                    ) : null}
+                                </span>
+                            </span>
+                            {showWhen ? (
+                                <span
+                                    className={`shrink-0 text-[11px] ${
+                                        c.unreadCount > 0
+                                            ? 'font-medium text-[#00a884]'
+                                            : 'text-zinc-400 dark:text-zinc-500'
+                                    }`}
+                                >
+                                    {formatWhen(c.lastActivityAt)}
+                                </span>
+                            ) : null}
+                        </div>
+                        <div className="mt-0.5 flex items-center justify-between gap-2">
+                            <p className="min-w-0 flex-1 truncate text-[12px] text-zinc-500 dark:text-zinc-400">
+                                {preview}
+                            </p>
+                            {c.unreadCount > 0 ? (
+                                <span className="inline-flex min-w-[1.1rem] shrink-0 items-center justify-center rounded-full bg-[#00a884] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                                    {c.unreadCount}
+                                </span>
+                            ) : null}
+                        </div>
+                    </div>
+                </button>
+                {showPinnedDivider || showTeamDivider ? (
+                    <div
+                        className="mx-2.5 my-2.5 border-t border-zinc-200/90 dark:border-zinc-800"
+                        role="separator"
+                        aria-label="Outras conversas"
+                    />
+                ) : null}
+            </li>
+        );
+    };
 
     return (
         <MobileLayout flush hideTopbar hideBottomNav>
@@ -611,11 +801,15 @@ export default function NsWhatsIndex({
                                     <TextInput
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && applySearch()}
                                         placeholder="Pesquisar"
+                                        aria-label="Pesquisar conversas e contatos"
                                         className="w-full rounded-full border-0 bg-zinc-100 py-1.5 pl-9 pr-3 text-[13px] shadow-none placeholder:text-zinc-400 focus:ring-0 dark:bg-zinc-900 dark:placeholder:text-zinc-500"
                                     />
                                 </label>
+                                <ListSearchHint show={showSearchHint} className="mt-1.5 px-1" />
+                                {searchLoading ? (
+                                    <p className="mt-1.5 px-1 text-[11px] text-zinc-400 dark:text-zinc-500">Buscando…</p>
+                                ) : null}
                             </div>
 
                             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
@@ -649,120 +843,68 @@ export default function NsWhatsIndex({
                                         </p>
                                     </div>
                                 ) : null}
-                                {roster.length > 0 ? (
+                                {showSearchEmpty ? (
+                                    <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
+                                        <p className="text-[15px] font-semibold text-zinc-800 dark:text-zinc-100">
+                                            Nenhum resultado
+                                        </p>
+                                        <p className="mt-2 max-w-[18rem] text-[13px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+                                            Não encontramos conversas nem contatos para «{committedSearch}».
+                                        </p>
+                                    </div>
+                                ) : null}
+                                {isSearchMode && (roster.length > 0 || contactMatches.length > 0) ? (
+                                    <div className="shrink-0 space-y-4 px-2 py-1.5">
+                                        {roster.length > 0 ? (
+                                            <div>
+                                                <p className="px-2.5 pb-1.5 pt-1 text-[15px] font-semibold text-zinc-900 dark:text-white">
+                                                    Conversas
+                                                </p>
+                                                <ul className="space-y-0.5">{roster.map((c, index) => renderConversationRow(c, index))}</ul>
+                                            </div>
+                                        ) : null}
+                                        {contactMatches.length > 0 ? (
+                                            <div>
+                                                <p className="px-2.5 pb-1.5 pt-1 text-[15px] font-semibold text-zinc-900 dark:text-white">
+                                                    Contatos
+                                                </p>
+                                                <ul className="space-y-0.5">
+                                                    {contactMatches.map((person) => (
+                                                        <li key={`contact-${person.id}-${person.ministry_id}`}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => selectContactFromSearch(person)}
+                                                                className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-transparent px-2.5 py-2.5 text-left transition hover:bg-zinc-50 dark:hover:bg-zinc-900/80"
+                                                            >
+                                                                <UserListAvatar
+                                                                    name={person.name}
+                                                                    photoUrl={person.photo_url}
+                                                                    size="md"
+                                                                    previewOnClick={false}
+                                                                />
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="truncate text-[14px] font-semibold text-zinc-900 dark:text-white">
+                                                                        {person.name}
+                                                                    </div>
+                                                                    <p className="mt-0.5 truncate text-[12px] text-zinc-500 dark:text-zinc-400">
+                                                                        {contactRoleLabel(person.role)} · {person.ministry_name}
+                                                                    </p>
+                                                                </div>
+                                                            </button>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                                {!isSearchMode && roster.length > 0 ? (
                                     <ul className="shrink-0 space-y-1 px-2 py-1.5">
-                                        {roster.map((c, index) => {
-                                            const isActive = selectedId === c.id;
-                                            const isPinned = Boolean(c.pinnedLeader);
-                                            const isTeam = c.viewerRole === 'staff';
-                                            const prev = index > 0 ? roster[index - 1] : null;
-                                            const next = index < roster.length - 1 ? roster[index + 1] : null;
-                                            const prevPinned = Boolean(prev?.pinnedLeader);
-                                            const nextPinned = Boolean(next?.pinnedLeader);
-                                            const prevTeam = prev?.viewerRole === 'staff';
-                                            const nextTeam = next?.viewerRole === 'staff';
-                                            const showPinnedDivider =
-                                                isPinned && !nextPinned && roster.some((row) => !row.pinnedLeader);
-                                            const showTeamDivider =
-                                                isTeam &&
-                                                !nextTeam &&
-                                                !nextPinned &&
-                                                roster.slice(index + 1).some((row) => row.viewerRole !== 'staff' && !row.pinnedLeader);
-                                            const ministryLabel = c.ministryName?.trim() || '';
-                                            const preview = isTeam
-                                                ? `Voluntário - ${ministryLabel || 'Departamentos'}`
-                                                : isPinned
-                                                  ? `Líder - ${ministryLabel || 'Departamentos'}`
-                                                  : ministryLabel;
-                                            const showWhen = !isPinned;
-                                            return (
-                                                <li key={c.id}>
-                                                    {isPinned && !prevPinned ? (
-                                                        <p className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
-                                                            Seus líderes
-                                                        </p>
-                                                    ) : null}
-                                                    {isTeam && !prevTeam && !isPinned ? (
-                                                        <p className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400 dark:text-zinc-500">
-                                                            Seu Time
-                                                        </p>
-                                                    ) : null}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => void openConversation(c.id)}
-                                                        className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition ${
-                                                            isActive
-                                                                ? 'border border-emerald-500 bg-emerald-50 dark:border-emerald-600 dark:bg-emerald-950/40'
-                                                                : isPinned
-                                                                  ? 'border border-transparent bg-zinc-50/80 hover:bg-zinc-100/90 dark:bg-zinc-900/50 dark:hover:bg-zinc-900/80'
-                                                                  : isTeam
-                                                                    ? 'border border-transparent bg-zinc-50/60 hover:bg-zinc-100/90 dark:bg-zinc-900/40 dark:hover:bg-zinc-900/80'
-                                                                    : 'border border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900/80'
-                                                        }`}
-                                                    >
-                                                        <UserListAvatar
-                                                            name={c.headerTitle}
-                                                            photoUrl={c.headerPhotoUrl}
-                                                            size="md"
-                                                            previewOnClick={false}
-                                                        />
-                                                        <div className="min-w-0 flex-1">
-                                                            <div className="flex items-center justify-between gap-2">
-                                                                <span className="flex min-w-0 items-center gap-1 truncate text-[14px] font-semibold text-zinc-900 dark:text-white">
-                                                                    {isPinned ? (
-                                                                        <BookmarkIcon
-                                                                            className="h-3.5 w-3.5 shrink-0 text-emerald-600/80 dark:text-emerald-400/80"
-                                                                            aria-hidden
-                                                                            strokeWidth={2}
-                                                                        />
-                                                                    ) : null}
-                                                                    <span className="truncate">
-                                                                        {c.headerTitle}
-                                                                        {isTeam ? (
-                                                                            <span className="ml-1.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
-                                                                                · Recebida
-                                                                            </span>
-                                                                        ) : null}
-                                                                    </span>
-                                                                </span>
-                                                                {showWhen ? (
-                                                                    <span
-                                                                        className={`shrink-0 text-[11px] ${
-                                                                            c.unreadCount > 0
-                                                                                ? 'font-medium text-[#00a884]'
-                                                                                : 'text-zinc-400 dark:text-zinc-500'
-                                                                        }`}
-                                                                    >
-                                                                        {formatWhen(c.lastActivityAt)}
-                                                                    </span>
-                                                                ) : null}
-                                                            </div>
-                                                            <div className="mt-0.5 flex items-center justify-between gap-2">
-                                                                <p className="min-w-0 flex-1 truncate text-[12px] text-zinc-500 dark:text-zinc-400">
-                                                                    {preview}
-                                                                </p>
-                                                                {c.unreadCount > 0 ? (
-                                                                    <span className="inline-flex min-w-[1.1rem] shrink-0 items-center justify-center rounded-full bg-[#00a884] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
-                                                                        {c.unreadCount}
-                                                                    </span>
-                                                                ) : null}
-                                                            </div>
-                                                        </div>
-                                                    </button>
-                                                    {showPinnedDivider || showTeamDivider ? (
-                                                        <div
-                                                            className="mx-2.5 my-2.5 border-t border-zinc-200/90 dark:border-zinc-800"
-                                                            role="separator"
-                                                            aria-label="Outras conversas"
-                                                        />
-                                                    ) : null}
-                                                </li>
-                                            );
-                                        })}
+                                        {roster.map((c, index) => renderConversationRow(c, index))}
                                     </ul>
                                 ) : null}
-                                {archivedRow}
-                                {roster.length > 0 && !viewingArchived ? (
+                                {!isSearchMode ? archivedRow : null}
+                                {!isSearchMode && roster.length > 0 && !viewingArchived ? (
                                     <div className="flex min-h-[8rem] flex-1 flex-col items-center justify-center gap-3 px-6 py-8">
                                         <p className="max-w-[17rem] text-center text-[13px] leading-relaxed text-zinc-400 dark:text-zinc-500">
                                             Fale com um departamento, líder ou voluntário

@@ -100,6 +100,8 @@ class MobileNsWhatsController extends Controller
                 $q->where('subject', 'like', $like)
                     ->orWhereHas('currentMinistry', fn ($mq) => $mq->where('name', 'like', $like))
                     ->orWhereHas('assignee', fn ($aq) => $aq->where('name', 'like', $like))
+                    ->orWhereHas('member', fn ($mq) => $mq->where('name', 'like', $like))
+                    ->orWhereHas('preferredLeader', fn ($pq) => $pq->where('name', 'like', $like))
                     ->orWhereHas('messages', fn ($mq) => $mq
                         ->where('kind', ChurchConversationMessage::KIND_PUBLIC)
                         ->where('body', 'like', $like));
@@ -187,8 +189,15 @@ class MobileNsWhatsController extends Controller
         }
 
         $pessoa = trim((string) $request->query('pessoa', ''));
+        // Contatos: no compose usa `pessoa`; na lista principal reutiliza `q` (estilo WhatsApp).
+        $peopleTerm = '';
         if ($composing && ! $ministryId && mb_strlen($pessoa) >= 2) {
-            $peopleMatches = NsWhatsAccess::searchPeople($churchId, $pessoa, $user);
+            $peopleTerm = $pessoa;
+        } elseif (! $composing && mb_strlen($search) >= 2) {
+            $peopleTerm = $search;
+        }
+        if ($peopleTerm !== '') {
+            $peopleMatches = NsWhatsAccess::searchPeople($churchId, $peopleTerm, $user);
         }
 
         if ($composing && $selectedMinistry && $recipientId) {
