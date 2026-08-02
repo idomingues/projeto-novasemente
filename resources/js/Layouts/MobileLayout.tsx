@@ -17,6 +17,8 @@ type MobileLayoutProps = PropsWithChildren<{
      * Em `flush`, o padrão é ocultar (evita dois headers empilhados).
      */
     hideTopbar?: boolean;
+    /** Esconde a bottom nav (ex.: chat imersivo do NS Conecta). */
+    hideBottomNav?: boolean;
 }>;
 
 export default function MobileLayout({
@@ -24,15 +26,17 @@ export default function MobileLayout({
     modalOverlayOpen = false,
     flush = false,
     hideTopbar,
+    hideBottomNav,
 }: MobileLayoutProps) {
     const { props, url, component } = usePage();
     const auth = (props as { auth?: { user?: { name: string }; canAccessAdminMenu?: boolean } }).auth;
     const isAuthenticated = !!auth?.user;
     const canAccessAdminMenu = auth?.canAccessAdminMenu === true;
     const [menuOpen, setMenuOpen] = useState(false);
-    // NS Conecta: única área do app em que a Topbar global some (header próprio por cima).
+    // NS Conecta: única área do app em modo imersivo (sem Topbar nem bottom nav).
     const isNsConecta = typeof component === 'string' && component.startsWith('Mobile/NsWhats/');
     const topbarHidden = modalOverlayOpen || isNsConecta || (hideTopbar ?? flush);
+    const bottomNavHidden = modalOverlayOpen || isNsConecta || hideBottomNav === true;
 
     useEffect(() => {
         setMenuOpen(false);
@@ -83,7 +87,7 @@ export default function MobileLayout({
                         </div>
                     </main>
 
-                    {!modalOverlayOpen ? <MobileBottomNav borderless={flush || isNsConecta} /> : null}
+                    {!bottomNavHidden ? <MobileBottomNav borderless={flush || isNsConecta} /> : null}
 
                     <FlashMessages />
                     <InboxNotificationPoller />
@@ -93,22 +97,26 @@ export default function MobileLayout({
     }
 
     return (
-        <div className="ns-app-shell fixed inset-0 z-0 flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col overflow-hidden bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans">
+        <div
+            className={`ns-app-shell fixed inset-0 flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col overflow-hidden bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans ${
+                isNsConecta ? 'z-50' : 'z-0'
+            }`}
+        >
             {!modalOverlayOpen && !isNsConecta ? <GuestAppBar /> : null}
 
             <main
                 className={`min-h-0 flex-1 overscroll-y-none overscroll-x-none md:[scrollbar-gutter:stable] md:px-8 ${
-                    modalOverlayOpen
-                        ? 'overflow-hidden p-0'
+                    modalOverlayOpen || isNsConecta
+                        ? 'overflow-hidden p-0 pt-[env(safe-area-inset-top,0px)]'
                         : 'overflow-y-auto overflow-x-hidden px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] pt-[calc(3.5rem+env(safe-area-inset-top,0px)+1.5rem)] md:pt-[calc(4rem+env(safe-area-inset-top,0px)+1.5rem)] lg:pt-24'
                 }`}
             >
-                <div className={`max-w-7xl lg:max-w-[90rem] mx-auto w-full ${modalOverlayOpen ? 'min-h-0 h-full' : 'pb-2'}`}>
+                <div className={`max-w-7xl lg:max-w-[90rem] mx-auto w-full ${modalOverlayOpen || isNsConecta ? 'min-h-0 h-full' : 'pb-2'}`}>
                     {children}
                 </div>
             </main>
 
-            {!modalOverlayOpen ? <MobileBottomNav /> : null}
+            {!modalOverlayOpen && !isNsConecta ? <MobileBottomNav /> : null}
 
             <FlashMessages />
         </div>

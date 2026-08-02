@@ -11,9 +11,9 @@ import {
     HeartIcon as HeartOutlineIcon,
     MusicalNoteIcon,
     NewspaperIcon,
+    PaperAirplaneIcon,
     PhotoIcon,
     PlayCircleIcon,
-    ShareIcon,
     SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
@@ -235,13 +235,22 @@ export default function PublicationFeedCard({
     const photoDateTitle = formatPhotoDateTitle(item.published_at);
 
     const isPolls = item.type === 'polls';
-    const coverAspectClass = isNews ? '' : isPhotos ? 'aspect-[4/5]' : isPolls ? 'aspect-[16/9]' : 'aspect-square';
-    const placeholderAspectClass = isPhotos ? 'aspect-[4/5]' : isPolls ? 'aspect-[16/9]' : 'aspect-square';
-    const coverImageClass = isNews
-        ? 'block h-auto w-full object-contain'
+    // Mobile: proporção por tipo. sm+ (iPad/PC): capa quadrada para cards alinhados no grid.
+    const coverAspectClass = isNews
+        ? 'sm:aspect-square'
+        : isPhotos
+          ? 'aspect-[4/5] sm:aspect-square'
+          : isPolls
+            ? 'aspect-[16/9] sm:aspect-square'
+            : 'aspect-square';
+    const placeholderAspectClass = isPhotos
+        ? 'aspect-[4/5] sm:aspect-square'
         : isPolls
-          ? 'h-full w-full object-cover object-center'
-          : 'h-full w-full object-cover object-center';
+          ? 'aspect-[16/9] sm:aspect-square'
+          : 'aspect-square';
+    const coverImageClass = isNews
+        ? 'block h-auto w-full object-contain sm:h-full sm:object-cover sm:object-center'
+        : 'h-full w-full object-cover object-center';
 
     const goLogin = () => {
         window.location.href = route('login');
@@ -358,11 +367,11 @@ export default function PublicationFeedCard({
     );
 
     return (
-        <li className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)] dark:border-zinc-800 dark:bg-zinc-900">
-            <article>
-                <div className="w-full">{media}</div>
+        <li className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)] dark:border-zinc-800 dark:bg-zinc-900 sm:h-full">
+            <article className="flex min-h-0 flex-1 flex-col">
+                <div className="w-full shrink-0">{media}</div>
 
-                <div className="space-y-2 p-4">
+                <div className="flex flex-1 flex-col space-y-2 p-4">
                     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                         <PublicationFeedTypeTag type={item.type} label={item.type_label} />
                         {!isPhotos && whenLabel ? (
@@ -372,7 +381,7 @@ export default function PublicationFeedCard({
                         ) : null}
                     </div>
 
-                    <div className="flex items-center">
+                    <div className="flex shrink-0 items-center">
                         <button
                             type="button"
                             onClick={() => void toggleLike()}
@@ -431,7 +440,7 @@ export default function PublicationFeedCard({
                             title={shareHint ?? 'Compartilhar'}
                         >
                             <span className="inline-flex h-9 w-9 items-center justify-center">
-                                <ShareIcon
+                                <PaperAirplaneIcon
                                     className="h-6 w-6 transition group-hover:scale-105"
                                     aria-hidden
                                     strokeWidth={1.7}
@@ -446,12 +455,12 @@ export default function PublicationFeedCard({
                     </div>
 
                     {isPhotos ? (
-                        <div className="space-y-1.5 pt-0.5">
-                            <p className="text-[1.375rem] font-semibold leading-tight tracking-tight text-zinc-900 dark:text-white lg:text-base xl:text-[15px]">
+                        <div className="min-h-0 flex-1 space-y-1.5 pt-0.5">
+                            <p className="line-clamp-2 text-[1.375rem] font-semibold leading-tight tracking-tight text-zinc-900 dark:text-white lg:text-base xl:text-[15px]">
                                 {photoDateTitle || item.title}
                             </p>
                             {photographerLabel ? (
-                                <p className="text-[13px] font-medium tracking-[0.04em] text-zinc-500 dark:text-zinc-400">
+                                <p className="line-clamp-1 text-[13px] font-medium tracking-[0.04em] text-zinc-500 dark:text-zinc-400">
                                     Fotógrafa:{' '}
                                     <span className="font-semibold tracking-normal text-zinc-800 dark:text-zinc-100">
                                         {photographerLabel}
@@ -463,8 +472,8 @@ export default function PublicationFeedCard({
                             ) : null}
                         </div>
                     ) : isPolls ? (
-                        <div className="space-y-3">
-                            <h2 className="text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-white">
+                        <div className="min-h-0 flex-1 space-y-3">
+                            <h2 className="line-clamp-3 text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-white sm:line-clamp-2">
                                 {item.title}
                             </h2>
                             {item.href ? (
@@ -478,8 +487,8 @@ export default function PublicationFeedCard({
                             ) : null}
                         </div>
                     ) : (
-                        <div className="space-y-1.5">
-                            <h2 className="text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-white">
+                        <div className="min-h-0 flex-1 space-y-1.5">
+                            <h2 className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-white">
                                 {item.title}
                             </h2>
 
@@ -487,23 +496,23 @@ export default function PublicationFeedCard({
                                 EXPANDABLE_TYPES.has(item.type) || fullPlain.length <= SHORT_BODY_LIMIT ? (
                                     item.body_is_html ? (
                                         <div
-                                            className="max-w-full break-words text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300 [&_*]:max-w-full [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_p]:mb-3 [&_p:last-child]:mb-0"
+                                            className="max-w-full break-words text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300 sm:line-clamp-3 [&_*]:max-w-full [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_p]:mb-3 [&_p:last-child]:mb-0"
                                             dangerouslySetInnerHTML={{ __html: fullText }}
                                         />
                                     ) : (
-                                        <p className="whitespace-pre-wrap break-words text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                        <p className="whitespace-pre-wrap break-words text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300 sm:line-clamp-3 sm:whitespace-normal">
                                             {fullPlain}
                                         </p>
                                     )
                                 ) : previewPlain ? (
-                                    <p className="line-clamp-2 text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                    <p className="line-clamp-2 text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300 sm:line-clamp-3">
                                         {previewPlain}
                                     </p>
                                 ) : null
                             ) : null}
 
                             {canExpand && !isExpanded && previewPlain ? (
-                                <p className="line-clamp-2 text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                <p className="line-clamp-2 text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300 sm:line-clamp-3">
                                     {previewPlain}
                                 </p>
                             ) : null}
@@ -523,11 +532,11 @@ export default function PublicationFeedCard({
                                             {fullText ? (
                                                 item.body_is_html ? (
                                                     <div
-                                                        className="max-w-full break-words text-[13.5px] leading-relaxed text-zinc-700 dark:text-zinc-300 [&_*]:max-w-full [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_p]:mb-3 [&_p:last-child]:mb-0"
+                                                        className="max-w-full break-words text-[13.5px] leading-relaxed text-zinc-700 dark:text-zinc-300 sm:max-h-40 sm:overflow-y-auto [&_*]:max-w-full [&_a]:text-primary-600 dark:[&_a]:text-primary-400 [&_a]:underline [&_p]:mb-3 [&_p:last-child]:mb-0"
                                                         dangerouslySetInnerHTML={{ __html: fullText }}
                                                     />
                                                 ) : (
-                                                    <p className="whitespace-pre-wrap break-words text-[13.5px] leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                                    <p className="whitespace-pre-wrap break-words text-[13.5px] leading-relaxed text-zinc-700 dark:text-zinc-300 sm:max-h-40 sm:overflow-y-auto">
                                                         {fullText}
                                                     </p>
                                                 )
@@ -569,7 +578,7 @@ export default function PublicationFeedCard({
                     )}
 
                     {commentsEnabled || canExpand ? (
-                        <div className="flex items-center justify-between gap-3 pt-0.5">
+                        <div className="mt-auto flex items-center justify-between gap-3 pt-0.5">
                             {commentsEnabled ? (
                                 <button
                                     type="button"

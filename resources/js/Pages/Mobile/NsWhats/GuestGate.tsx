@@ -12,7 +12,7 @@ export default function NsWhatsGuestGate({ registerUrl, redirectAfterLogin, cont
     const loginHref = `${route('login')}?redirect=${encodeURIComponent(redirectAfterLogin)}`;
 
     return (
-        <MobileLayout flush hideTopbar>
+        <MobileLayout flush hideTopbar hideBottomNav>
             <Head title="NS Conecta" />
             <div className="space-y-6">
                 <div className="flex items-start gap-3">

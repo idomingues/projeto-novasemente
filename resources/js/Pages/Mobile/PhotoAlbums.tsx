@@ -82,7 +82,7 @@ export default function MobilePhotoAlbums({ albums }: Props) {
                         </p>
                     </div>
                 ) : (
-                    <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:items-stretch lg:grid-cols-3 xl:grid-cols-4">
                         {feedItems.map((item) => (
                             <PublicationFeedCard
                                 key={item.id}

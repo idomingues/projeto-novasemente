@@ -112,9 +112,9 @@ export default function LeaderShow({ conversation, peerLeaders, otherMinistries,
     };
 
     return (
-        <MobileLayout flush hideTopbar>
+        <MobileLayout flush hideTopbar hideBottomNav>
             <Head title={`NS Conecta — ${conversation.headerTitle}`} />
-            <div className={`mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:border-x pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))]`}>
+            <div className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col overflow-hidden border-zinc-200 bg-white pb-[env(safe-area-inset-bottom,0px)] dark:border-zinc-800 dark:bg-zinc-950 md:border-x">
                 <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-200/80 bg-[#f0f2f5] px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
                     <div className="min-w-0 flex-1">
                         <Link href={indexUrl} className="inline-flex cursor-pointer text-sm font-medium text-[#00a884]">

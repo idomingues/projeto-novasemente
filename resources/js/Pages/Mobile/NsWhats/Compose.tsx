@@ -150,7 +150,7 @@ export default function NsWhatsCompose({
         const MinistryIcon = getMinistryIconByKey(selectedMinistry.icon ?? null);
 
         return (
-            <MobileLayout flush hideTopbar>
+            <MobileLayout flush hideTopbar hideBottomNav>
                 <Head title={`NS Conecta — ${selectedMinistry.name}`} />
                 <div className="mx-auto max-w-lg space-y-4">
                     <Link href={route('mobile.ns-whats.compose')} className="inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-primary-600">
@@ -321,7 +321,7 @@ export default function NsWhatsCompose({
     }
 
     return (
-        <MobileLayout flush hideTopbar>
+        <MobileLayout flush hideTopbar hideBottomNav>
             <Head title="Com quem você deseja falar?" />
             <div className="mx-auto max-w-2xl space-y-4">
                 <Link href={indexUrl} className="inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-primary-600">

@@ -35,7 +35,7 @@ export default function LeaderIndex({ filter, search: initialSearch, conversatio
     const [search, setSearch] = useState(initialSearch);
 
     return (
-        <MobileLayout flush hideTopbar>
+        <MobileLayout flush hideTopbar hideBottomNav>
             <Head title="Fila do departamento" />
             <div className="space-y-4">
                 <div>

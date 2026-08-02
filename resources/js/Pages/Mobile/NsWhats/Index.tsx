@@ -96,9 +96,8 @@ function formatWhen(iso?: string | null): string {
     }
 }
 
-/** Espaço para a barra inferior fixa — coluna e composer descem até o menu. */
-const bottomNavClearance =
-    'pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))]';
+/** Espaço só para o indicador home / safe-area — sem bottom nav no NS Conecta. */
+const bottomSafeClearance = 'pb-[env(safe-area-inset-bottom,0px)]';
 
 function syncConversaInUrl(
     conversaId: number | null,
@@ -549,12 +548,12 @@ export default function NsWhatsIndex({
     const showArchivedEmpty = viewingArchived && roster.length === 0;
 
     return (
-        <MobileLayout flush hideTopbar>
+        <MobileLayout flush hideTopbar hideBottomNav>
             <Head title="NS Conecta" />
             <div className="relative flex h-full min-h-0 overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:rounded-none md:border-0">
                 <NsWhatsIntroOverlay />
                 <aside
-                    className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:w-[20rem] md:shrink-0 md:border-r lg:w-[22rem] ${bottomNavClearance} ${
+                    className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:w-[20rem] md:shrink-0 md:border-r lg:w-[22rem] ${bottomSafeClearance} ${
                         mobileShowList ? 'flex' : 'hidden md:flex'
                     }`}
                 >
@@ -576,9 +575,19 @@ export default function NsWhatsIndex({
                                         </h1>
                                     </>
                                 ) : (
-                                    <h1 className="text-[20px] font-bold leading-none tracking-tight text-zinc-900 dark:text-white">
-                                        NS Conecta
-                                    </h1>
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => router.get(route('mobile.home'))}
+                                            className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                            aria-label="Voltar para a Home"
+                                        >
+                                            <ArrowLeftIcon className="h-5 w-5" strokeWidth={2} />
+                                        </button>
+                                        <h1 className="min-w-0 flex-1 text-[20px] font-bold leading-none tracking-tight text-zinc-900 dark:text-white">
+                                            NS Conecta
+                                        </h1>
+                                    </>
                                 )}
                                 {!viewingArchived ? (
                                     <div className="flex items-center gap-1.5">
@@ -792,7 +801,7 @@ export default function NsWhatsIndex({
                 </aside>
 
                 <section
-                    className={`h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${bottomNavClearance} ${
+                    className={`h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${bottomSafeClearance} ${
                         active || showComposeDraft ? 'flex' : 'hidden md:flex'
                     }`}
                 >

@@ -5,7 +5,7 @@ import {
     ArrowDownTrayIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
-    ShareIcon,
+    PaperAirplaneIcon,
     XMarkIcon,
     ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
@@ -210,7 +210,7 @@ export default function MobilePhotos({
                             title="Compartilhar álbum"
                             aria-label="Compartilhar álbum"
                         >
-                            <ShareIcon className="h-5 w-5" aria-hidden />
+                            <PaperAirplaneIcon className="h-5 w-5" aria-hidden />
                         </button>
                         <a
                             href={folderUrl}
@@ -266,7 +266,7 @@ export default function MobilePhotos({
                                             title="Compartilhar foto"
                                             aria-label="Compartilhar foto"
                                         >
-                                            <ShareIcon className="h-5 w-5" />
+                                            <PaperAirplaneIcon className="h-5 w-5" />
                                             Compartilhar
                                         </button>
                                         <a
