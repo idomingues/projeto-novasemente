@@ -6,6 +6,7 @@ use App\Models\DonationCampaign;
 use App\Models\DonationCampaignPhoto;
 use App\Models\User;
 use App\Services\CampaignThanksNotifier;
+use App\Support\ConstrucaoIgrejaStoryDefaults;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -46,6 +47,195 @@ class DonationCampaignMediaController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Vídeo da campanha atualizado.');
+    }
+
+    public function updateCaixaFixoStory(Request $request, DonationCampaign $donationCampaign): RedirectResponse
+    {
+        $this->assertCanManage($request->user());
+
+        $request->merge([
+            'monthly_total' => $this->normalizeMoneyInput($request->input('monthly_total')),
+        ]);
+
+        $costItemsInput = $request->input('cost_items', []);
+        if (is_array($costItemsInput)) {
+            foreach ($costItemsInput as $index => $item) {
+                if (is_array($item) && array_key_exists('amount', $item)) {
+                    $costItemsInput[$index]['amount'] = $this->normalizeMoneyInput($item['amount']);
+                }
+            }
+            $request->merge(['cost_items' => $costItemsInput]);
+        }
+
+        $annualLinesInput = $request->input('annual_lines', []);
+        if (is_array($annualLinesInput)) {
+            foreach ($annualLinesInput as $index => $line) {
+                if (is_array($line) && array_key_exists('amount', $line)) {
+                    $annualLinesInput[$index]['amount'] = $this->normalizeSignedMoneyInput($line['amount']);
+                }
+            }
+            $request->merge(['annual_lines' => $annualLinesInput]);
+        }
+
+        $data = $request->validate([
+            'monthly_total' => ['required', 'numeric', 'min:0.01', 'max:9999999999.99'],
+            'annual_year' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'cost_items' => ['required', 'array', 'min:1'],
+            'cost_items.*.label' => ['required', 'string', 'max:255'],
+            'cost_items.*.amount' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
+            'cost_items.*.tone' => ['required', 'string', 'max:32'],
+            'cost_items.*.compact' => ['sometimes', 'boolean'],
+            'annual_lines' => ['required', 'array', 'min:1'],
+            'annual_lines.*.label' => ['required', 'string', 'max:255'],
+            'annual_lines.*.amount' => ['required', 'numeric', 'min:-9999999999.99', 'max:9999999999.99'],
+            'annual_lines.*.tone' => ['required', 'string', 'max:32'],
+            'annual_lines.*.emphasize' => ['sometimes', 'boolean'],
+            'annual_lines.*.flow' => ['nullable', 'in:in,out'],
+        ]);
+
+        $monthlyTotal = round((float) $data['monthly_total'], 2);
+
+        $costItems = [];
+        foreach ($data['cost_items'] as $item) {
+            $amount = round((float) $item['amount'], 2);
+            $row = [
+                'label' => $item['label'],
+                'amount' => $amount,
+                'percent' => $monthlyTotal > 0 ? round(($amount / $monthlyTotal) * 100, 2) : 0.0,
+                'tone' => $item['tone'],
+            ];
+            if (! empty($item['compact'])) {
+                $row['compact'] = true;
+            }
+            $costItems[] = $row;
+        }
+
+        $annualLines = [];
+        foreach ($data['annual_lines'] as $line) {
+            $row = [
+                'label' => $line['label'],
+                'amount' => round((float) $line['amount'], 2),
+                'tone' => $line['tone'],
+            ];
+            if (! empty($line['emphasize'])) {
+                $row['emphasize'] = true;
+            }
+            if (isset($line['flow']) && in_array($line['flow'], ['in', 'out'], true)) {
+                $row['flow'] = $line['flow'];
+            }
+            $annualLines[] = $row;
+        }
+
+        $donationCampaign->update([
+            'caixa_fixo_story' => [
+                'monthly_total' => $monthlyTotal,
+                'cost_items' => $costItems,
+                'annual_year' => (int) $data['annual_year'],
+                'annual_lines' => $annualLines,
+            ],
+            'show_caixa_fixo_story' => true,
+            'show_construcao_story' => false,
+        ]);
+
+        return redirect()->back()->with('success', 'Valores do Caixa Fixo salvos.');
+    }
+
+    public function updateConstrucaoStory(Request $request, DonationCampaign $donationCampaign): RedirectResponse
+    {
+        $this->assertCanManage($request->user());
+
+        $request->merge([
+            'raised_amount' => $this->normalizeMoneyInput($request->input('raised_amount')),
+        ]);
+
+        $data = $request->validate([
+            'launch_date' => ['required', 'date'],
+            'as_of_date' => ['required', 'date', 'after_or_equal:launch_date'],
+            'raised_amount' => ['required', 'numeric', 'min:0.01', 'max:9999999999.99'],
+            'eyebrow' => ['nullable', 'string', 'max:120'],
+            'title' => ['nullable', 'string', 'max:255'],
+            'paragraphs' => ['nullable', 'array'],
+            'paragraphs.*' => ['nullable', 'string', 'max:2000'],
+            'highlights' => ['nullable', 'array'],
+            'highlights.*' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $defaults = ConstrucaoIgrejaStoryDefaults::story();
+
+        $paragraphs = isset($data['paragraphs']) && is_array($data['paragraphs'])
+            ? array_values(array_filter(array_map(fn ($p) => is_string($p) ? trim($p) : '', $data['paragraphs'])))
+            : [];
+        if ($paragraphs === []) {
+            $paragraphs = $defaults['paragraphs'];
+        }
+
+        $highlights = isset($data['highlights']) && is_array($data['highlights'])
+            ? array_values(array_filter(array_map(fn ($h) => is_string($h) ? trim($h) : '', $data['highlights'])))
+            : [];
+        if ($highlights === []) {
+            $highlights = $defaults['highlights'];
+        }
+
+        $donationCampaign->update([
+            'construcao_story' => [
+                'launch_date' => $data['launch_date'],
+                'as_of_date' => $data['as_of_date'],
+                'raised_amount' => round((float) $data['raised_amount'], 2),
+                'eyebrow' => filled($data['eyebrow'] ?? null) ? trim((string) $data['eyebrow']) : $defaults['eyebrow'],
+                'title' => filled($data['title'] ?? null) ? trim((string) $data['title']) : $defaults['title'],
+                'paragraphs' => $paragraphs,
+                'highlights' => $highlights,
+            ],
+            'show_construcao_story' => true,
+            'show_caixa_fixo_story' => false,
+        ]);
+
+        return redirect()->back()->with('success', 'Valores da Construção salvos.');
+    }
+
+    private function normalizeMoneyInput(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $normalized = trim(str_replace('R$', '', $value));
+        if ($normalized === '') {
+            return $value;
+        }
+
+        if (str_contains($normalized, ',')) {
+            $normalized = str_replace('.', '', $normalized);
+            $normalized = str_replace(',', '.', $normalized);
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeSignedMoneyInput(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $normalized = trim(str_replace(['R$', ' '], '', $value));
+        if ($normalized === '') {
+            return $value;
+        }
+
+        $negative = str_starts_with($normalized, '-') || str_starts_with($normalized, '−');
+        $normalized = ltrim($normalized, "-−");
+
+        if (str_contains($normalized, ',')) {
+            $normalized = str_replace('.', '', $normalized);
+            $normalized = str_replace(',', '.', $normalized);
+        }
+
+        if ($normalized === '' || ! is_numeric($normalized)) {
+            return $value;
+        }
+
+        return $negative ? '-'.$normalized : $normalized;
     }
 
     public function storePhoto(Request $request, DonationCampaign $donationCampaign): RedirectResponse

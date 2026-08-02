@@ -216,3 +216,23 @@ export function parseMoneyInput(raw: string): number | null {
     }
     return Math.round(n * 100) / 100;
 }
+
+/** Interpreta valor monetário com sinal (permite zero e negativo). */
+export function parseSignedMoneyInput(raw: string): number | null {
+    const t = raw.trim().replace(/\s/g, '').replace(/^R\$/i, '');
+    if (!t) {
+        return null;
+    }
+    const negative = t.startsWith('-') || t.startsWith('−');
+    const body = t.replace(/^[-−]/, '');
+    if (!body) {
+        return null;
+    }
+    const normalized = body.includes(',') ? body.replace(/\./g, '').replace(',', '.') : body;
+    const n = Number.parseFloat(normalized);
+    if (!Number.isFinite(n) || n < 0) {
+        return null;
+    }
+    const value = Math.round(n * 100) / 100;
+    return negative ? -value : value;
+}

@@ -81,6 +81,36 @@ export const CAIXA_FIXO_ANNUAL_LINES: AnnualLine[] = [
     { label: 'Saldo atual', amount: 58_998.81, tone: 'brand', emphasize: true },
 ];
 
+export type CaixaFixoStoryFinancial = {
+    monthly_total: number;
+    cost_items: CostItem[];
+    annual_year: number;
+    annual_lines: AnnualLine[];
+};
+
+export function defaultCaixaFixoStoryFinancial(): CaixaFixoStoryFinancial {
+    return {
+        monthly_total: CAIXA_FIXO_MONTHLY_TOTAL,
+        cost_items: CAIXA_FIXO_COST_ITEMS.map((item) => ({ ...item })),
+        annual_year: CAIXA_FIXO_ANNUAL_YEAR,
+        annual_lines: CAIXA_FIXO_ANNUAL_LINES.map((line) => ({ ...line })),
+    };
+}
+
+/** Valor de ofertas (entrada) da história — usado na barra de progresso. */
+export function caixaFixoProgressRaised(story: CaixaFixoStoryFinancial | null | undefined): number | null {
+    if (!story?.annual_lines?.length) {
+        return null;
+    }
+    const line =
+        story.annual_lines.find((item) => item.flow === 'in') ??
+        story.annual_lines.find((item) => /ofertas/i.test(item.label));
+    if (!line) {
+        return null;
+    }
+    return Math.abs(line.amount);
+}
+
 export const CAIXA_FIXO_CLOSING = {
     title: 'Uma missão que pertence a todos nós',
     paragraphs: [

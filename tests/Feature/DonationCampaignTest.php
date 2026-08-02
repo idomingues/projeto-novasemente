@@ -846,6 +846,203 @@ class DonationCampaignTest extends TestCase
             );
     }
 
+    public function test_admin_can_update_caixa_fixo_story_values(): void
+    {
+        $this->ensureCampaignPermissions();
+        [$user, $church] = $this->adminWithChurch();
+
+        $campaign = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Caixa Fixo da Igreja',
+            'goal_amount' => 177948.95,
+            'starts_at' => '2026-01-01',
+            'status' => 'active',
+            'show_caixa_fixo_story' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $payload = [
+            'monthly_total' => '180.000,00',
+            'annual_year' => 2026,
+            'cost_items' => [
+                [
+                    'label' => 'Parcela da Construção (AP)',
+                    'amount' => '50.000,00',
+                    'tone' => 'sky',
+                    'compact' => false,
+                ],
+                [
+                    'label' => 'Gás',
+                    'amount' => '100,00',
+                    'tone' => 'red',
+                    'compact' => true,
+                ],
+            ],
+            'annual_lines' => [
+                [
+                    'label' => 'Saldo inicial',
+                    'amount' => '400.000,00',
+                    'tone' => 'emerald',
+                    'emphasize' => false,
+                    'flow' => null,
+                ],
+                [
+                    'label' => 'Despesas 2026',
+                    'amount' => '-800.000,00',
+                    'tone' => 'amber',
+                    'emphasize' => false,
+                    'flow' => 'out',
+                ],
+                [
+                    'label' => 'Saldo atual',
+                    'amount' => '50.000,00',
+                    'tone' => 'brand',
+                    'emphasize' => true,
+                    'flow' => null,
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->patch(route('donation-campaigns.caixa-fixo.update', $campaign), $payload);
+
+        $response->assertRedirect();
+        $campaign->refresh();
+
+        $this->assertNotNull($campaign->caixa_fixo_story);
+        $this->assertEquals(180000.0, (float) $campaign->caixa_fixo_story['monthly_total']);
+        $this->assertEquals(50000.0, (float) $campaign->caixa_fixo_story['cost_items'][0]['amount']);
+        $this->assertEquals(27.78, (float) $campaign->caixa_fixo_story['cost_items'][0]['percent']);
+        $this->assertEquals(-800000.0, (float) $campaign->caixa_fixo_story['annual_lines'][1]['amount']);
+
+        $this->get(route('mobile.campaigns.show', $campaign))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/DonationCampaigns/Show')
+                ->where('campaign.caixa_fixo_story.monthly_total', 180000)
+                ->where('campaign.caixa_fixo_story.cost_items.0.amount', 50000)
+            );
+    }
+
+    public function test_admin_can_enable_and_update_construcao_story(): void
+    {
+        $this->ensureCampaignPermissions();
+        [$user, $church] = $this->adminWithChurch();
+
+        $campaign = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Construção da Igreja',
+            'goal_amount' => 10000000,
+            'starts_at' => '2023-11-01',
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->put(route('donation-campaigns.update', $campaign), [
+                'title' => 'Construção da Igreja',
+                'description' => 'Campanha da construção.',
+                'goal_amount' => '10.000.000,00',
+                'starts_at' => '2023-11-01',
+                'status' => 'active',
+                'allow_over_goal' => true,
+                'show_caixa_fixo_story' => false,
+                'show_construcao_story' => true,
+            ]);
+
+        $response->assertRedirect(route('donation-campaigns.index'));
+        $campaign->refresh();
+        $this->assertTrue($campaign->show_construcao_story);
+        $this->assertFalse($campaign->show_caixa_fixo_story);
+
+        $payload = [
+            'launch_date' => '2023-11-01',
+            'as_of_date' => '2026-08-02',
+            'raised_amount' => '6.000.000,00',
+            'eyebrow' => 'Campanha da construção',
+            'title' => 'Uma casa construída com fidelidade',
+            'paragraphs' => ['Parágrafo de apoio da construção.'],
+            'highlights' => ['Destaque um', 'Destaque dois'],
+        ];
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->patch(route('donation-campaigns.construcao.update', $campaign), $payload)
+            ->assertRedirect();
+
+        $campaign->refresh();
+        $this->assertEquals(6000000.0, (float) $campaign->construcao_story['raised_amount']);
+        $this->assertSame('2026-08-02', $campaign->construcao_story['as_of_date']);
+        $this->assertTrue($campaign->show_construcao_story);
+        $this->assertFalse($campaign->show_caixa_fixo_story);
+
+        $this->get(route('mobile.campaigns.show', $campaign))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/DonationCampaigns/Show')
+                ->where('campaign.show_construcao_story', true)
+                ->where('campaign.construcao_story.raised_amount', 6000000)
+                ->where('campaign.construcao_story.as_of_date', '2026-08-02')
+            );
+    }
+
+    public function test_campaigns_with_story_cannot_be_deleted(): void
+    {
+        $this->ensureCampaignPermissions();
+        [$user, $church] = $this->adminWithChurch();
+
+        $caixaFixo = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Caixa Fixo da Igreja',
+            'goal_amount' => 177948.95,
+            'starts_at' => '2026-01-01',
+            'status' => 'active',
+            'show_caixa_fixo_story' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $construcao = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Construção da Igreja',
+            'goal_amount' => 10000000,
+            'starts_at' => '2023-11-01',
+            'status' => 'active',
+            'show_construcao_story' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $plain = DonationCampaign::create([
+            'church_id' => $church->id,
+            'title' => 'Campanha comum',
+            'goal_amount' => 1000,
+            'starts_at' => '2026-01-01',
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->delete(route('donation-campaigns.destroy', $caixaFixo))
+            ->assertRedirect(route('donation-campaigns.index'));
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->delete(route('donation-campaigns.destroy', $construcao))
+            ->assertRedirect(route('donation-campaigns.index'));
+
+        $this->assertDatabaseHas('donation_campaigns', ['id' => $caixaFixo->id]);
+        $this->assertDatabaseHas('donation_campaigns', ['id' => $construcao->id]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->delete(route('donation-campaigns.destroy', $plain))
+            ->assertRedirect(route('donation-campaigns.index'));
+
+        $this->assertDatabaseMissing('donation_campaigns', ['id' => $plain->id]);
+    }
+
     public function test_donation_notifies_treasurer_and_campaign_creator_in_app(): void
     {
         Mail::fake();

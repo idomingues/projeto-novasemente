@@ -811,6 +811,12 @@ Route::middleware('auth')->group(function () {
     Route::patch('/campanhas/{donationCampaign}/historia', [DonationCampaignMediaController::class, 'updateStory'])
         ->name('donation-campaigns.story.update')
         ->middleware('permission:campaigns.manage|finance.view');
+    Route::patch('/campanhas/{donationCampaign}/caixa-fixo', [DonationCampaignMediaController::class, 'updateCaixaFixoStory'])
+        ->name('donation-campaigns.caixa-fixo.update')
+        ->middleware('permission:campaigns.manage|finance.view');
+    Route::patch('/campanhas/{donationCampaign}/construcao', [DonationCampaignMediaController::class, 'updateConstrucaoStory'])
+        ->name('donation-campaigns.construcao.update')
+        ->middleware('permission:campaigns.manage|finance.view');
     Route::post('/campanhas/{donationCampaign}/fotos', [DonationCampaignMediaController::class, 'storePhoto'])
         ->name('donation-campaigns.photos.store')
         ->middleware('permission:campaigns.manage|finance.view');

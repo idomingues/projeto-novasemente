@@ -1,7 +1,12 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import CaixaFixoIgrejaStory from '@/Components/Donations/CaixaFixoIgrejaStory';
+import ConstrucaoIgrejaStory from '@/Components/Donations/ConstrucaoIgrejaStory';
 import DonationProgressBar from '@/Components/Donations/DonationProgressBar';
 import type { DonationTransparencyInfo } from '@/Components/Donations/DonationTransparencyNotice';
+import type { CaixaFixoStoryFinancial } from '@/data/caixaFixoIgrejaStory';
+import { caixaFixoProgressRaised } from '@/data/caixaFixoIgrejaStory';
+import type { ConstrucaoIgrejaStoryData } from '@/data/construcaoIgrejaStory';
+import { construcaoProgressRaised } from '@/data/construcaoIgrejaStory';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputLabel from '@/Components/InputLabel';
@@ -37,6 +42,9 @@ interface Campaign {
     cover_image_url: string | null;
     accepting_donations: boolean;
     show_caixa_fixo_story?: boolean;
+    caixa_fixo_story?: CaixaFixoStoryFinancial | null;
+    show_construcao_story?: boolean;
+    construcao_story?: ConstrucaoIgrejaStoryData | null;
     story_video_url: string | null;
     story_youtube_embed_url: string | null;
     story_photos: CampaignPhoto[];
@@ -273,29 +281,41 @@ export default function MobileDonationCampaignShow({
                     </div>
                 )}
 
-                {campaign.cover_image_url && !campaign.show_caixa_fixo_story ? (
+                {campaign.cover_image_url && !campaign.show_caixa_fixo_story && !campaign.show_construcao_story ? (
                     <img src={campaign.cover_image_url} alt="" className="h-96 w-full rounded-2xl object-cover" />
                 ) : null}
 
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
-                        {campaign.title}
-                    </h1>
-                    {(campaign.starts_at || campaign.ends_at) && (
-                        <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                            {campaign.starts_at ? `Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
-                            {campaign.starts_at && campaign.ends_at ? ' · ' : ''}
-                            {campaign.ends_at ? `Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
-                        </p>
-                    )}
-                    {campaign.description && !campaign.show_caixa_fixo_story && (
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                            {campaign.description}
-                        </p>
-                    )}
-                </div>
+                {!campaign.show_construcao_story ? (
+                    <div>
+                        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                            {campaign.title}
+                        </h1>
+                        {(campaign.starts_at || campaign.ends_at) && (
+                            <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                                {campaign.starts_at ? `Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
+                                {campaign.starts_at && campaign.ends_at ? ' · ' : ''}
+                                {campaign.ends_at ? `Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
+                            </p>
+                        )}
+                        {campaign.description && !campaign.show_caixa_fixo_story && (
+                            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                {campaign.description}
+                            </p>
+                        )}
+                    </div>
+                ) : null}
 
-                {campaign.show_caixa_fixo_story ? <CaixaFixoIgrejaStory /> : null}
+                {campaign.show_caixa_fixo_story ? (
+                    <CaixaFixoIgrejaStory story={campaign.caixa_fixo_story ?? null} />
+                ) : null}
+
+                {campaign.show_construcao_story ? (
+                    <ConstrucaoIgrejaStory
+                        story={campaign.construcao_story ?? null}
+                        coverImageUrl={campaign.cover_image_url}
+                        campaignTitle={campaign.title}
+                    />
+                ) : null}
 
                 {(campaign.story_youtube_embed_url || campaign.story_photos.length > 0) && (
                     <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800">
@@ -335,12 +355,26 @@ export default function MobileDonationCampaignShow({
                 )}
 
                 <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800">
-                    <DonationProgressBar
-                        raisedAmount={campaign.raised_amount}
-                        goalAmount={campaign.goal_amount}
-                        remainingAmount={campaign.remaining_amount}
-                        progressPercent={campaign.progress_percent}
-                    />
+                    {(() => {
+                        let fromStory: number | null = null;
+                        if (campaign.show_construcao_story) {
+                            fromStory = construcaoProgressRaised(campaign.construcao_story);
+                        } else if (campaign.show_caixa_fixo_story) {
+                            fromStory = caixaFixoProgressRaised(campaign.caixa_fixo_story);
+                        }
+                        const raised = fromStory ?? campaign.raised_amount;
+                        const goal = campaign.goal_amount;
+                        const remaining = Math.max(0, goal - raised);
+                        const percent = goal > 0 ? Math.min(100, Math.floor((raised / goal) * 100)) : 0;
+                        return (
+                            <DonationProgressBar
+                                raisedAmount={raised}
+                                goalAmount={goal}
+                                remainingAmount={remaining}
+                                progressPercent={percent}
+                            />
+                        );
+                    })()}
                 </div>
 
                 {availabilityMessage && (

@@ -1,5 +1,9 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import DonationProgressBar from '@/Components/Donations/DonationProgressBar';
+import type { CaixaFixoStoryFinancial } from '@/data/caixaFixoIgrejaStory';
+import { caixaFixoProgressRaised } from '@/data/caixaFixoIgrejaStory';
+import type { ConstrucaoIgrejaStoryData } from '@/data/construcaoIgrejaStory';
+import { construcaoProgressRaised } from '@/data/construcaoIgrejaStory';
 import { Head, Link } from '@inertiajs/react';
 import { BanknotesIcon } from '@heroicons/react/24/outline';
 
@@ -15,6 +19,10 @@ interface Campaign {
     ends_at: string | null;
     cover_image_url: string | null;
     accepting_donations: boolean;
+    show_caixa_fixo_story?: boolean;
+    caixa_fixo_story?: CaixaFixoStoryFinancial | null;
+    show_construcao_story?: boolean;
+    construcao_story?: ConstrucaoIgrejaStoryData | null;
     thanks_is_published?: boolean;
 }
 
@@ -99,13 +107,27 @@ export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
                                     </p>
                                 )}
                                 <div className="mt-3">
-                                    <DonationProgressBar
-                                        raisedAmount={campaign.raised_amount}
-                                        goalAmount={campaign.goal_amount}
-                                        remainingAmount={campaign.remaining_amount}
-                                        progressPercent={campaign.progress_percent}
-                                        size="sm"
-                                    />
+                                    {(() => {
+                                        let fromStory: number | null = null;
+                                        if (campaign.show_construcao_story) {
+                                            fromStory = construcaoProgressRaised(campaign.construcao_story);
+                                        } else if (campaign.show_caixa_fixo_story) {
+                                            fromStory = caixaFixoProgressRaised(campaign.caixa_fixo_story);
+                                        }
+                                        const raised = fromStory ?? campaign.raised_amount;
+                                        const goal = campaign.goal_amount;
+                                        const remaining = Math.max(0, goal - raised);
+                                        const percent = goal > 0 ? Math.min(100, Math.floor((raised / goal) * 100)) : 0;
+                                        return (
+                                            <DonationProgressBar
+                                                raisedAmount={raised}
+                                                goalAmount={goal}
+                                                remainingAmount={remaining}
+                                                progressPercent={percent}
+                                                size="sm"
+                                            />
+                                        );
+                                    })()}
                                 </div>
                                 {availabilityLabel && (
                                     <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">

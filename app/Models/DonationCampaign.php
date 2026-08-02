@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\CaixaFixoIgrejaStoryDefaults;
+use App\Support\ConstrucaoIgrejaStoryDefaults;
 use App\Support\StorageUrl;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -32,6 +34,9 @@ class DonationCampaign extends Model
         'thanks_donors_notified_at',
         'allow_over_goal',
         'show_caixa_fixo_story',
+        'caixa_fixo_story',
+        'show_construcao_story',
+        'construcao_story',
         'created_by',
     ];
 
@@ -42,6 +47,9 @@ class DonationCampaign extends Model
         'ends_at' => 'date',
         'allow_over_goal' => 'boolean',
         'show_caixa_fixo_story' => 'boolean',
+        'caixa_fixo_story' => 'array',
+        'show_construcao_story' => 'boolean',
+        'construcao_story' => 'array',
         'thanks_published_at' => 'datetime',
         'thanks_donors_notified_at' => 'datetime',
     ];
@@ -103,6 +111,161 @@ class DonationCampaign extends Model
     public function thanksIsPublished(): bool
     {
         return $this->thanks_published_at !== null;
+    }
+
+    /**
+     * História financeira do Caixa Fixo (valores editáveis + defaults).
+     *
+     * @return array{
+     *     monthly_total: float,
+     *     cost_items: list<array{label: string, percent: float, amount: float, tone: string, compact?: bool}>,
+     *     annual_year: int,
+     *     annual_lines: list<array{label: string, amount: float, tone: string, emphasize?: bool, flow?: string}>
+     * }
+     */
+    public function resolvedCaixaFixoStory(): array
+    {
+        $defaults = CaixaFixoIgrejaStoryDefaults::financial();
+        $stored = is_array($this->caixa_fixo_story) ? $this->caixa_fixo_story : null;
+
+        if ($stored === null) {
+            return $defaults;
+        }
+
+        $monthlyTotal = isset($stored['monthly_total'])
+            ? round((float) $stored['monthly_total'], 2)
+            : $defaults['monthly_total'];
+
+        $costItems = $defaults['cost_items'];
+        if (isset($stored['cost_items']) && is_array($stored['cost_items']) && $stored['cost_items'] !== []) {
+            $costItems = [];
+            foreach ($stored['cost_items'] as $item) {
+                if (! is_array($item) || ! isset($item['label'], $item['amount'], $item['tone'])) {
+                    continue;
+                }
+                $amount = round((float) $item['amount'], 2);
+                $percent = isset($item['percent'])
+                    ? round((float) $item['percent'], 2)
+                    : ($monthlyTotal > 0 ? round(($amount / $monthlyTotal) * 100, 2) : 0.0);
+                $row = [
+                    'label' => (string) $item['label'],
+                    'percent' => $percent,
+                    'amount' => $amount,
+                    'tone' => (string) $item['tone'],
+                ];
+                if (! empty($item['compact'])) {
+                    $row['compact'] = true;
+                }
+                $costItems[] = $row;
+            }
+            if ($costItems === []) {
+                $costItems = $defaults['cost_items'];
+            }
+        }
+
+        $annualLines = $defaults['annual_lines'];
+        if (isset($stored['annual_lines']) && is_array($stored['annual_lines']) && $stored['annual_lines'] !== []) {
+            $annualLines = [];
+            foreach ($stored['annual_lines'] as $line) {
+                if (! is_array($line) || ! isset($line['label'], $line['amount'], $line['tone'])) {
+                    continue;
+                }
+                $row = [
+                    'label' => (string) $line['label'],
+                    'amount' => round((float) $line['amount'], 2),
+                    'tone' => (string) $line['tone'],
+                ];
+                if (! empty($line['emphasize'])) {
+                    $row['emphasize'] = true;
+                }
+                if (isset($line['flow']) && in_array($line['flow'], ['in', 'out'], true)) {
+                    $row['flow'] = $line['flow'];
+                }
+                $annualLines[] = $row;
+            }
+            if ($annualLines === []) {
+                $annualLines = $defaults['annual_lines'];
+            }
+        }
+
+        return [
+            'monthly_total' => $monthlyTotal,
+            'cost_items' => $costItems,
+            'annual_year' => isset($stored['annual_year'])
+                ? (int) $stored['annual_year']
+                : $defaults['annual_year'],
+            'annual_lines' => $annualLines,
+        ];
+    }
+
+    /**
+     * História da Construção da Igreja (valores editáveis + defaults).
+     *
+     * @return array{
+     *     launch_date: string,
+     *     as_of_date: string,
+     *     raised_amount: float,
+     *     eyebrow: string,
+     *     title: string,
+     *     paragraphs: list<string>,
+     *     highlights: list<string>
+     * }
+     */
+    public function resolvedConstrucaoStory(): array
+    {
+        $defaults = ConstrucaoIgrejaStoryDefaults::story();
+        $stored = is_array($this->construcao_story) ? $this->construcao_story : null;
+
+        if ($stored === null) {
+            return $defaults;
+        }
+
+        $paragraphs = $defaults['paragraphs'];
+        if (isset($stored['paragraphs']) && is_array($stored['paragraphs']) && $stored['paragraphs'] !== []) {
+            $paragraphs = array_values(array_filter(array_map(
+                fn ($p) => is_string($p) ? trim($p) : '',
+                $stored['paragraphs']
+            )));
+            if ($paragraphs === []) {
+                $paragraphs = $defaults['paragraphs'];
+            }
+        }
+
+        $highlights = $defaults['highlights'];
+        if (isset($stored['highlights']) && is_array($stored['highlights']) && $stored['highlights'] !== []) {
+            $highlights = array_values(array_filter(array_map(
+                fn ($h) => is_string($h) ? trim($h) : '',
+                $stored['highlights']
+            )));
+            if ($highlights === []) {
+                $highlights = $defaults['highlights'];
+            }
+        }
+
+        return [
+            'launch_date' => isset($stored['launch_date']) && is_string($stored['launch_date']) && $stored['launch_date'] !== ''
+                ? $stored['launch_date']
+                : $defaults['launch_date'],
+            'as_of_date' => isset($stored['as_of_date']) && is_string($stored['as_of_date']) && $stored['as_of_date'] !== ''
+                ? $stored['as_of_date']
+                : $defaults['as_of_date'],
+            'raised_amount' => isset($stored['raised_amount'])
+                ? round((float) $stored['raised_amount'], 2)
+                : $defaults['raised_amount'],
+            'eyebrow' => isset($stored['eyebrow']) && is_string($stored['eyebrow']) && trim($stored['eyebrow']) !== ''
+                ? trim($stored['eyebrow'])
+                : $defaults['eyebrow'],
+            'title' => isset($stored['title']) && is_string($stored['title']) && trim($stored['title']) !== ''
+                ? trim($stored['title'])
+                : $defaults['title'],
+            'paragraphs' => $paragraphs,
+            'highlights' => $highlights,
+        ];
+    }
+
+    public function hasProtectedStory(): bool
+    {
+        return (bool) $this->show_caixa_fixo_story || (bool) $this->show_construcao_story;
     }
 
     public function isAcceptingDonations(): bool
@@ -176,6 +339,9 @@ class DonationCampaign extends Model
             'cover_image_url' => $this->cover_image_url,
             'accepting_donations' => $this->isAcceptingDonations(),
             'show_caixa_fixo_story' => (bool) $this->show_caixa_fixo_story,
+            'caixa_fixo_story' => $this->show_caixa_fixo_story ? $this->resolvedCaixaFixoStory() : null,
+            'show_construcao_story' => (bool) $this->show_construcao_story,
+            'construcao_story' => $this->show_construcao_story ? $this->resolvedConstrucaoStory() : null,
             'story_video_url' => $this->story_video_url,
             'story_youtube_embed_url' => $this->storyYoutubeEmbedUrl(),
             'story_photos' => $this->photosPayload(DonationCampaignPhoto::KIND_STORY),

@@ -1,5 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import CaixaFixoIgrejaStory from '@/Components/Donations/CaixaFixoIgrejaStory';
+import ConstrucaoIgrejaStory from '@/Components/Donations/ConstrucaoIgrejaStory';
 import DonationProgressBar from '@/Components/Donations/DonationProgressBar';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
@@ -26,6 +27,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 import { DONATION_CAMPAIGN_COVER_SPECS } from '@/constants/mediaCoverSpecs';
+import type { CaixaFixoStoryFinancial } from '@/data/caixaFixoIgrejaStory';
+import { caixaFixoProgressRaised, defaultCaixaFixoStoryFinancial } from '@/data/caixaFixoIgrejaStory';
+import type { ConstrucaoIgrejaStoryData } from '@/data/construcaoIgrejaStory';
+import { construcaoProgressRaised, defaultConstrucaoIgrejaStory } from '@/data/construcaoIgrejaStory';
 import { parseMoneyInput } from '@/lib/pixPayload';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
@@ -51,6 +56,9 @@ interface Campaign {
     allow_over_goal: boolean;
     donations_count: number;
     show_caixa_fixo_story: boolean;
+    caixa_fixo_story: CaixaFixoStoryFinancial | null;
+    show_construcao_story: boolean;
+    construcao_story: ConstrucaoIgrejaStoryData | null;
     story_video_url: string | null;
     story_photos: CampaignPhoto[];
     thanks_message: string | null;
@@ -107,6 +115,10 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     const [mediaCampaign, setMediaCampaign] = useState<Campaign | null>(null);
     const [adjustDonation, setAdjustDonation] = useState<DonationRow | null>(null);
     const [manualDonationOpen, setManualDonationOpen] = useState(false);
+    const [savingCaixaFixo, setSavingCaixaFixo] = useState(false);
+    const [savingConstrucao, setSavingConstrucao] = useState(false);
+    const [previewStoryDraft, setPreviewStoryDraft] = useState<CaixaFixoStoryFinancial | null>(null);
+    const [previewConstrucaoDraft, setPreviewConstrucaoDraft] = useState<ConstrucaoIgrejaStoryData | null>(null);
     const storyPhotosInputRef = useRef<HTMLInputElement | null>(null);
     const thanksPhotosInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -119,6 +131,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
         status: 'active',
         allow_over_goal: true,
         show_caixa_fixo_story: false,
+        show_construcao_story: false,
         cover_image: null as File | null,
     });
 
@@ -177,6 +190,108 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
         if (updated) setMediaCampaign(updated);
     }, [campaigns, mediaCampaign?.id]);
 
+    useEffect(() => {
+        if (!previewCampaign) return;
+        const updated = campaigns.find((c) => c.id === previewCampaign.id);
+        if (updated) setPreviewCampaign(updated);
+    }, [campaigns, previewCampaign?.id]);
+
+    useEffect(() => {
+        if (!previewCampaign?.show_caixa_fixo_story) {
+            setPreviewStoryDraft(null);
+            return;
+        }
+        setPreviewStoryDraft(previewCampaign.caixa_fixo_story ?? defaultCaixaFixoStoryFinancial());
+    }, [previewCampaign?.id, previewCampaign?.show_caixa_fixo_story, previewCampaign?.caixa_fixo_story]);
+
+    useEffect(() => {
+        if (!previewCampaign?.show_construcao_story) {
+            setPreviewConstrucaoDraft(null);
+            return;
+        }
+        setPreviewConstrucaoDraft(previewCampaign.construcao_story ?? defaultConstrucaoIgrejaStory());
+    }, [previewCampaign?.id, previewCampaign?.show_construcao_story, previewCampaign?.construcao_story]);
+
+    function progressForCampaign(
+        campaign: Campaign,
+        overrides: {
+            caixaFixo?: CaixaFixoStoryFinancial | null;
+            construcao?: ConstrucaoIgrejaStoryData | null;
+        } = {},
+    ): { raised: number; goal: number; remaining: number; percent: number } {
+        let fromStory: number | null = null;
+        if (campaign.show_construcao_story) {
+            fromStory = construcaoProgressRaised(overrides.construcao ?? campaign.construcao_story);
+        } else if (campaign.show_caixa_fixo_story) {
+            fromStory = caixaFixoProgressRaised(overrides.caixaFixo ?? campaign.caixa_fixo_story);
+        }
+        const raised = fromStory ?? campaign.raised_amount;
+        const goal = campaign.goal_amount;
+        const remaining = Math.max(0, goal - raised);
+        const percent = goal > 0 ? Math.min(100, Math.floor((raised / goal) * 100)) : 0;
+        return { raised, goal, remaining, percent };
+    }
+
+    const previewProgress = useMemo(() => {
+        if (!previewCampaign) {
+            return null;
+        }
+        return progressForCampaign(previewCampaign, {
+            caixaFixo: previewStoryDraft,
+            construcao: previewConstrucaoDraft,
+        });
+    }, [previewCampaign, previewStoryDraft, previewConstrucaoDraft]);
+
+    function saveCaixaFixoStory(story: CaixaFixoStoryFinancial) {
+        if (!previewCampaign) return;
+        setSavingCaixaFixo(true);
+        router.patch(
+            route('donation-campaigns.caixa-fixo.update', previewCampaign.id),
+            {
+                monthly_total: story.monthly_total.toFixed(2),
+                annual_year: story.annual_year,
+                cost_items: story.cost_items.map((item) => ({
+                    label: item.label,
+                    amount: item.amount.toFixed(2),
+                    tone: item.tone,
+                    compact: Boolean(item.compact),
+                })),
+                annual_lines: story.annual_lines.map((line) => ({
+                    label: line.label,
+                    amount: line.amount.toFixed(2),
+                    tone: line.tone,
+                    emphasize: Boolean(line.emphasize),
+                    flow: line.flow ?? null,
+                })),
+            },
+            {
+                ...inertiaListModalSave,
+                onFinish: () => setSavingCaixaFixo(false),
+            },
+        );
+    }
+
+    function saveConstrucaoStory(story: ConstrucaoIgrejaStoryData) {
+        if (!previewCampaign) return;
+        setSavingConstrucao(true);
+        router.patch(
+            route('donation-campaigns.construcao.update', previewCampaign.id),
+            {
+                launch_date: story.launch_date,
+                as_of_date: story.as_of_date,
+                raised_amount: story.raised_amount.toFixed(2),
+                eyebrow: story.eyebrow,
+                title: story.title,
+                paragraphs: story.paragraphs,
+                highlights: story.highlights,
+            },
+            {
+                ...inertiaListModalSave,
+                onFinish: () => setSavingConstrucao(false),
+            },
+        );
+    }
+
     const editingCampaign = editingId ? campaigns.find((c) => c.id === editingId) : null;
 
     const coverPreviewUrl = useMemo(() => {
@@ -200,6 +315,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
             status: 'active',
             allow_over_goal: true,
             show_caixa_fixo_story: false,
+            show_construcao_story: false,
             cover_image: null,
         });
         setIsModalOpen(true);
@@ -217,6 +333,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
             status: campaign.status,
             allow_over_goal: campaign.allow_over_goal,
             show_caixa_fixo_story: campaign.show_caixa_fixo_story,
+            show_construcao_story: campaign.show_construcao_story,
             cover_image: null,
         });
         clearErrors();
@@ -246,7 +363,10 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
         }
     };
 
-    const handleDelete = async (id: number) => {
+    const handleDelete = async (campaign: Campaign) => {
+        if (campaign.show_caixa_fixo_story || campaign.show_construcao_story) {
+            return;
+        }
         const ok = await confirmAction({
             title: 'Remover campanha?',
             text: 'A campanha e todas as contribuições associadas serão excluídas.',
@@ -255,7 +375,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
             icon: 'warning',
         });
         if (ok) {
-            router.delete(route('donation-campaigns.destroy', id));
+            router.delete(route('donation-campaigns.destroy', campaign.id));
         }
     };
 
@@ -388,7 +508,9 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                         )}
                     </div>
                 ) : (
-                    campaigns.map((campaign) => (
+                    campaigns.map((campaign) => {
+                        const progress = progressForCampaign(campaign);
+                        return (
                         <article
                             key={campaign.id}
                             className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
@@ -413,11 +535,16 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                             História do Caixa Fixo ativa
                                         </p>
                                     )}
+                                    {campaign.show_construcao_story && (
+                                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                            História da Construção ativa
+                                        </p>
+                                    )}
                                     <DonationProgressBar
-                                        raisedAmount={campaign.raised_amount}
-                                        goalAmount={campaign.goal_amount}
-                                        remainingAmount={campaign.remaining_amount}
-                                        progressPercent={campaign.progress_percent}
+                                        raisedAmount={progress.raised}
+                                        goalAmount={progress.goal}
+                                        remainingAmount={progress.remaining}
+                                        progressPercent={progress.percent}
                                     />
                                     <p className="text-xs text-zinc-500">
                                         {campaign.donations_count} contribuição(ões)
@@ -465,17 +592,20 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                             icon={<PencilIcon className="h-5 w-5" />}
                                             onClick={() => openEditModal(campaign)}
                                         />
-                                        <ListCardIconActionButton
-                                            label="Excluir"
-                                            icon={<TrashIcon className="h-5 w-5" />}
-                                            tone="danger"
-                                            onClick={() => handleDelete(campaign.id)}
-                                        />
+                                        {!campaign.show_caixa_fixo_story && !campaign.show_construcao_story ? (
+                                            <ListCardIconActionButton
+                                                label="Excluir"
+                                                icon={<TrashIcon className="h-5 w-5" />}
+                                                tone="danger"
+                                                onClick={() => handleDelete(campaign)}
+                                            />
+                                        ) : null}
                                     </>
                                 )}
                             </ListCardActionRow>
                         </article>
-                    ))
+                        );
+                    })
                 )}
             </div>
 
@@ -503,7 +633,9 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                         </div>
                     </div>
                     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
-                        {previewCampaign?.cover_image_url && !previewCampaign.show_caixa_fixo_story ? (
+                        {previewCampaign?.cover_image_url
+                        && !previewCampaign.show_caixa_fixo_story
+                        && !previewCampaign.show_construcao_story ? (
                             <img
                                 src={previewCampaign.cover_image_url}
                                 alt=""
@@ -511,7 +643,23 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                             />
                         ) : null}
                         {previewCampaign?.show_caixa_fixo_story ? (
-                            <CaixaFixoIgrejaStory />
+                            <CaixaFixoIgrejaStory
+                                story={previewCampaign.caixa_fixo_story}
+                                editable={canManageMedia}
+                                saving={savingCaixaFixo}
+                                onChange={setPreviewStoryDraft}
+                                onSave={canManageMedia ? saveCaixaFixoStory : undefined}
+                            />
+                        ) : previewCampaign?.show_construcao_story ? (
+                            <ConstrucaoIgrejaStory
+                                story={previewCampaign.construcao_story}
+                                coverImageUrl={previewCampaign.cover_image_url}
+                                campaignTitle={previewCampaign.title}
+                                editable={canManageMedia}
+                                saving={savingConstrucao}
+                                onChange={setPreviewConstrucaoDraft}
+                                onSave={canManageMedia ? saveConstrucaoStory : undefined}
+                            />
                         ) : previewCampaign?.description ? (
                             <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
                                 {previewCampaign.description}
@@ -521,13 +669,13 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                 Esta campanha ainda não tem descrição ou história publicada.
                             </p>
                         )}
-                        {previewCampaign ? (
+                        {previewCampaign && previewProgress ? (
                             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
                                 <DonationProgressBar
-                                    raisedAmount={previewCampaign.raised_amount}
-                                    goalAmount={previewCampaign.goal_amount}
-                                    remainingAmount={previewCampaign.remaining_amount}
-                                    progressPercent={previewCampaign.progress_percent}
+                                    raisedAmount={previewProgress.raised}
+                                    goalAmount={previewProgress.goal}
+                                    remainingAmount={previewProgress.remaining}
+                                    progressPercent={previewProgress.percent}
                                 />
                             </div>
                         ) : null}
@@ -628,13 +776,41 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                         <input
                             type="checkbox"
                             checked={data.show_caixa_fixo_story}
-                            onChange={(e) => setData('show_caixa_fixo_story', e.target.checked)}
+                            onChange={(e) => {
+                                const checked = e.target.checked;
+                                setData((current) => ({
+                                    ...current,
+                                    show_caixa_fixo_story: checked,
+                                    show_construcao_story: checked ? false : current.show_construcao_story,
+                                }));
+                            }}
                             className="mt-0.5 cursor-pointer"
                         />
                         <span>
                             Exibir história do Caixa Fixo da Igreja
                             <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
                                 Mostra no app a distribuição dos custos mensais e o saldo anual, em vez de um texto simples.
+                            </span>
+                        </span>
+                    </label>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                        <input
+                            type="checkbox"
+                            checked={data.show_construcao_story}
+                            onChange={(e) => {
+                                const checked = e.target.checked;
+                                setData((current) => ({
+                                    ...current,
+                                    show_construcao_story: checked,
+                                    show_caixa_fixo_story: checked ? false : current.show_caixa_fixo_story,
+                                }));
+                            }}
+                            className="mt-0.5 cursor-pointer"
+                        />
+                        <span>
+                            Exibir história da Construção da Igreja
+                            <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+                                Mostra no app o card de arrecadação da construção com valor em destaque e barra de progresso.
                             </span>
                         </span>
                     </label>

@@ -1,29 +1,61 @@
 import {
-    CAIXA_FIXO_ANNUAL_LINES,
-    CAIXA_FIXO_ANNUAL_YEAR,
     CAIXA_FIXO_CLOSING,
-    CAIXA_FIXO_COST_ITEMS,
     CAIXA_FIXO_EXECUTIVE_SUMMARY,
     CAIXA_FIXO_HERO_IMAGE,
     CAIXA_FIXO_INTRO,
-    CAIXA_FIXO_MONTHLY_TOTAL,
+    defaultCaixaFixoStoryFinancial,
+    type AnnualLine,
     type AnnualLineTone,
+    type CaixaFixoStoryFinancial,
     type CostBarTone,
+    type CostItem,
 } from '@/data/caixaFixoIgrejaStory';
+import { parseMoneyInput, parseSignedMoneyInput } from '@/lib/pixPayload';
+import PrimaryButton from '@/Components/PrimaryButton';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
-import {
-    ChartBarIcon,
-    HeartIcon,
-} from '@heroicons/react/24/outline';
+import { ChartBarIcon, HeartIcon } from '@heroicons/react/24/outline';
+import { useEffect, useState } from 'react';
 
 function formatBrl(value: number): string {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatMoneyFieldValue(value: number): string {
+    return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatSignedMoneyFieldValue(value: number): string {
+    const abs = formatMoneyFieldValue(Math.abs(value));
+    return value < 0 ? `-${abs}` : abs;
 }
 
 function formatPercent(value: number): string {
     return value.toLocaleString('pt-BR', {
         minimumFractionDigits: value % 1 === 0 ? 0 : 2,
         maximumFractionDigits: 2,
+    });
+}
+
+function withRecalculatedPercents(story: CaixaFixoStoryFinancial): CaixaFixoStoryFinancial {
+    const total = story.monthly_total;
+    return {
+        ...story,
+        cost_items: story.cost_items.map((item) => ({
+            ...item,
+            percent: total > 0 ? Math.round((item.amount / total) * 10000) / 100 : 0,
+        })),
+    };
+}
+
+function resolveStory(initial?: CaixaFixoStoryFinancial | null): CaixaFixoStoryFinancial {
+    if (!initial) {
+        return defaultCaixaFixoStoryFinancial();
+    }
+    return withRecalculatedPercents({
+        monthly_total: initial.monthly_total,
+        cost_items: initial.cost_items.map((item) => ({ ...item })),
+        annual_year: initial.annual_year,
+        annual_lines: initial.annual_lines.map((line) => ({ ...line })),
     });
 }
 
@@ -75,9 +107,133 @@ const annualToneClass: Record<
     },
 };
 
-export default function CaixaFixoIgrejaStory() {
-    const mainCosts = CAIXA_FIXO_COST_ITEMS.filter((item) => !item.compact);
-    const compactCosts = CAIXA_FIXO_COST_ITEMS.filter((item) => item.compact);
+const moneyInputClass =
+    'w-full min-w-[7.5rem] max-w-[11rem] cursor-text rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-right text-sm font-semibold tabular-nums text-zinc-900 shadow-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-200 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-brand-500 dark:focus:ring-brand-900/50';
+
+const moneyInputLargeClass =
+    'mt-1 w-full max-w-xs cursor-text rounded-xl border border-brand-200 bg-white px-3 py-2 text-2xl font-bold tracking-tight tabular-nums text-zinc-900 shadow-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-200 dark:border-brand-800 dark:bg-zinc-950 dark:text-white dark:focus:border-brand-500 dark:focus:ring-brand-900/50 sm:text-3xl';
+
+type MoneyFieldProps = {
+    id: string;
+    value: number;
+    signed?: boolean;
+    large?: boolean;
+    'aria-label': string;
+    onCommit: (value: number) => void;
+};
+
+function MoneyField({ id, value, signed = false, large = false, onCommit, ...aria }: MoneyFieldProps) {
+    const [draft, setDraft] = useState(() =>
+        signed ? formatSignedMoneyFieldValue(value) : formatMoneyFieldValue(value),
+    );
+
+    useEffect(() => {
+        setDraft(signed ? formatSignedMoneyFieldValue(value) : formatMoneyFieldValue(value));
+    }, [value, signed]);
+
+    return (
+        <input
+            id={id}
+            type="text"
+            inputMode="decimal"
+            aria-label={aria['aria-label']}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => {
+                const parsed = signed ? parseSignedMoneyInput(draft) : parseMoneyInput(draft);
+                if (parsed === null) {
+                    setDraft(signed ? formatSignedMoneyFieldValue(value) : formatMoneyFieldValue(value));
+                    return;
+                }
+                onCommit(parsed);
+                setDraft(signed ? formatSignedMoneyFieldValue(parsed) : formatMoneyFieldValue(parsed));
+            }}
+            className={large ? moneyInputLargeClass : moneyInputClass}
+        />
+    );
+}
+
+type Props = {
+    story?: CaixaFixoStoryFinancial | null;
+    editable?: boolean;
+    saving?: boolean;
+    onChange?: (story: CaixaFixoStoryFinancial) => void;
+    onSave?: (story: CaixaFixoStoryFinancial) => void;
+};
+
+export default function CaixaFixoIgrejaStory({
+    story: storyProp = null,
+    editable = false,
+    saving = false,
+    onChange,
+    onSave,
+}: Props) {
+    const [story, setStory] = useState<CaixaFixoStoryFinancial>(() => resolveStory(storyProp));
+
+    useEffect(() => {
+        setStory(resolveStory(storyProp));
+    }, [storyProp]);
+
+    function commitStory(next: CaixaFixoStoryFinancial) {
+        setStory(next);
+        onChange?.(next);
+    }
+
+    function updateMonthlyTotal(amount: number) {
+        commitStory(withRecalculatedPercents({ ...story, monthly_total: amount }));
+    }
+
+    function updateCostAmount(index: number, amount: number) {
+        const cost_items = story.cost_items.map((item, i) => (i === index ? { ...item, amount } : item));
+        commitStory(withRecalculatedPercents({ ...story, cost_items }));
+    }
+
+    function updateAnnualAmount(index: number, amount: number) {
+        commitStory({
+            ...story,
+            annual_lines: story.annual_lines.map((line, i) => (i === index ? { ...line, amount } : line)),
+        });
+    }
+
+    const mainCosts = story.cost_items
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => !item.compact);
+    const compactCosts = story.cost_items
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => item.compact);
+
+    function renderCostAmount(item: CostItem, index: number, className?: string) {
+        if (editable) {
+            return (
+                <MoneyField
+                    id={`caixa-fixo-cost-${index}`}
+                    value={item.amount}
+                    aria-label={`Valor de ${item.label}`}
+                    onCommit={(value) => updateCostAmount(index, value)}
+                />
+            );
+        }
+        return (
+            <p className={className ?? 'shrink-0 text-sm font-semibold tabular-nums text-zinc-900 dark:text-white'}>
+                {formatBrl(item.amount)}
+            </p>
+        );
+    }
+
+    function renderAnnualAmount(line: AnnualLine, index: number, className: string) {
+        if (editable) {
+            return (
+                <MoneyField
+                    id={`caixa-fixo-annual-${index}`}
+                    value={line.amount}
+                    signed
+                    aria-label={`Valor de ${line.label}`}
+                    onCommit={(value) => updateAnnualAmount(index, value)}
+                />
+            );
+        }
+        return <span className={className}>{formatBrl(line.amount)}</span>;
+    }
 
     return (
         <div className="space-y-5">
@@ -114,9 +270,19 @@ export default function CaixaFixoIgrejaStory() {
                         Como são distribuídos os custos fixos mensais?
                     </p>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Custo fixo mensal total</p>
-                    <p className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
-                        {formatBrl(CAIXA_FIXO_MONTHLY_TOTAL)}
-                    </p>
+                    {editable ? (
+                        <MoneyField
+                            id="caixa-fixo-monthly-total"
+                            value={story.monthly_total}
+                            large
+                            aria-label="Custo fixo mensal total"
+                            onCommit={updateMonthlyTotal}
+                        />
+                    ) : (
+                        <p className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                            {formatBrl(story.monthly_total)}
+                        </p>
+                    )}
                 </div>
 
                 <div className="space-y-4 p-4 sm:p-5">
@@ -126,7 +292,7 @@ export default function CaixaFixoIgrejaStory() {
                     </h3>
 
                     <ul className="space-y-3.5">
-                        {mainCosts.map((item) => (
+                        {mainCosts.map(({ item, index }) => (
                             <li key={item.label}>
                                 <div className="mb-1.5 flex items-end justify-between gap-3">
                                     <div className="min-w-0">
@@ -135,9 +301,7 @@ export default function CaixaFixoIgrejaStory() {
                                             {formatPercent(item.percent)}%
                                         </p>
                                     </div>
-                                    <p className="shrink-0 text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">
-                                        {formatBrl(item.amount)}
-                                    </p>
+                                    {renderCostAmount(item, index)}
                                 </div>
                                 <div className="h-2.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
                                     <div
@@ -151,7 +315,7 @@ export default function CaixaFixoIgrejaStory() {
                     </ul>
 
                     <ul className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
-                        {compactCosts.map((item) => (
+                        {compactCosts.map(({ item, index }) => (
                             <li
                                 key={item.label}
                                 className="flex items-center justify-between gap-3 text-sm text-zinc-700 dark:text-zinc-300"
@@ -169,9 +333,11 @@ export default function CaixaFixoIgrejaStory() {
                                         </span>
                                     </span>
                                 </span>
-                                <span className="shrink-0 font-medium tabular-nums text-zinc-900 dark:text-zinc-100">
-                                    {formatBrl(item.amount)}
-                                </span>
+                                {renderCostAmount(
+                                    item,
+                                    index,
+                                    'shrink-0 font-medium tabular-nums text-zinc-900 dark:text-zinc-100',
+                                )}
                             </li>
                         ))}
                     </ul>
@@ -199,33 +365,35 @@ export default function CaixaFixoIgrejaStory() {
                         Transparência financeira
                     </p>
                     <h3 className="mt-1 text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">
-                        Saldo anual {CAIXA_FIXO_ANNUAL_YEAR}
+                        Saldo anual {story.annual_year}
                     </h3>
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                        Movimentação do caixa da Oferta Nova Semente ao longo de {CAIXA_FIXO_ANNUAL_YEAR}.
+                        Movimentação do caixa da Oferta Nova Semente ao longo de {story.annual_year}.
                     </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 border-b border-zinc-100 p-3 dark:border-zinc-800 sm:grid-cols-4 sm:gap-3 sm:p-4">
-                    {CAIXA_FIXO_ANNUAL_LINES.filter((line) => !line.emphasize).map((line) => (
-                        <div
-                            key={`chip-${line.label}`}
-                            className={`rounded-xl border px-3 py-2.5 ${annualToneClass[line.tone].chip}`}
-                        >
-                            <p className="text-[11px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
-                                {line.label}
-                            </p>
-                            <p
-                                className={`mt-1 text-sm font-semibold tabular-nums leading-tight ${annualToneClass[line.tone].amount}`}
+                    {story.annual_lines
+                        .filter((line) => !line.emphasize)
+                        .map((line) => (
+                            <div
+                                key={`chip-${line.label}`}
+                                className={`rounded-xl border px-3 py-2.5 ${annualToneClass[line.tone].chip}`}
                             >
-                                {formatBrl(line.amount)}
-                            </p>
-                        </div>
-                    ))}
+                                <p className="text-[11px] font-medium leading-tight text-zinc-500 dark:text-zinc-400">
+                                    {line.label}
+                                </p>
+                                <p
+                                    className={`mt-1 text-sm font-semibold tabular-nums leading-tight ${annualToneClass[line.tone].amount}`}
+                                >
+                                    {formatBrl(line.amount)}
+                                </p>
+                            </div>
+                        ))}
                 </div>
 
                 <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {CAIXA_FIXO_ANNUAL_LINES.map((line) => {
+                    {story.annual_lines.map((line, index) => {
                         const tone = annualToneClass[line.tone];
                         const isEmphasized = Boolean(line.emphasize);
 
@@ -263,21 +431,21 @@ export default function CaixaFixoIgrejaStory() {
                                         )}
                                     </div>
                                 </div>
-                                <span
-                                    className={`shrink-0 tabular-nums ${
+                                {renderAnnualAmount(
+                                    line,
+                                    index,
+                                    `shrink-0 tabular-nums ${
                                         isEmphasized
                                             ? 'text-base font-bold text-emerald-900 dark:text-emerald-100 sm:text-lg'
                                             : 'text-sm font-semibold text-zinc-900 dark:text-zinc-50 sm:text-base'
-                                    }`}
-                                >
-                                    {formatBrl(line.amount)}
-                                </span>
+                                    }`,
+                                )}
                             </div>
                         );
                     })}
                 </div>
                 <p className="border-t border-zinc-100 px-4 py-3 text-xs leading-relaxed text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 sm:px-5">
-                    O saldo atual considera o saldo inicial, as ofertas recebidas em {CAIXA_FIXO_ANNUAL_YEAR}, as
+                    O saldo atual considera o saldo inicial, as ofertas recebidas em {story.annual_year}, as
                     despesas do período e o repasse à AP Construção.
                 </p>
             </section>
@@ -307,6 +475,18 @@ export default function CaixaFixoIgrejaStory() {
                     </div>
                 </div>
             </section>
+
+            {editable && onSave ? (
+                <div className="sticky bottom-0 z-10 -mx-1 flex justify-end border-t border-zinc-200 bg-white/95 px-1 py-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95 sm:mx-0">
+                    <PrimaryButton
+                        type="button"
+                        disabled={saving}
+                        onClick={() => onSave(withRecalculatedPercents(story))}
+                    >
+                        {saving ? 'Salvando…' : 'Salvar'}
+                    </PrimaryButton>
+                </div>
+            ) : null}
         </div>
     );
 }

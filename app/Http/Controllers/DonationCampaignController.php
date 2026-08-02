@@ -90,6 +90,9 @@ class DonationCampaignController extends Controller
                 'cover_image_url' => $c->cover_image_url,
                 'allow_over_goal' => $c->allow_over_goal,
                 'show_caixa_fixo_story' => (bool) $c->show_caixa_fixo_story,
+                'caixa_fixo_story' => $c->show_caixa_fixo_story ? $c->resolvedCaixaFixoStory() : null,
+                'show_construcao_story' => (bool) $c->show_construcao_story,
+                'construcao_story' => $c->show_construcao_story ? $c->resolvedConstrucaoStory() : null,
                 'donations_count' => $c->donations()->count(),
                 'story_video_url' => $c->story_video_url,
                 'story_photos' => $c->photosPayload(DonationCampaignPhoto::KIND_STORY),
@@ -126,6 +129,7 @@ class DonationCampaignController extends Controller
             'status' => ['required', 'in:active,closed,archived'],
             'allow_over_goal' => ['boolean'],
             'show_caixa_fixo_story' => ['boolean'],
+            'show_construcao_story' => ['boolean'],
             'cover_image' => ['nullable', 'image', 'max:5120'],
         ]);
 
@@ -139,6 +143,12 @@ class DonationCampaignController extends Controller
             $coverPath = $request->file('cover_image')->store('donations/campaign-covers', 'public');
         }
 
+        $showCaixaFixo = $request->boolean('show_caixa_fixo_story');
+        $showConstrucao = $request->boolean('show_construcao_story');
+        if ($showCaixaFixo && $showConstrucao) {
+            $showConstrucao = false;
+        }
+
         $campaign = DonationCampaign::create([
             'church_id' => $churchId,
             'title' => $data['title'],
@@ -148,7 +158,8 @@ class DonationCampaignController extends Controller
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'] ?? null,
             'allow_over_goal' => $request->boolean('allow_over_goal', true),
-            'show_caixa_fixo_story' => $request->boolean('show_caixa_fixo_story'),
+            'show_caixa_fixo_story' => $showCaixaFixo,
+            'show_construcao_story' => $showConstrucao,
             'cover_image_path' => $coverPath,
             'created_by' => $request->user()?->id,
         ]);
@@ -178,8 +189,15 @@ class DonationCampaignController extends Controller
             'status' => ['required', 'in:active,closed,archived'],
             'allow_over_goal' => ['boolean'],
             'show_caixa_fixo_story' => ['boolean'],
+            'show_construcao_story' => ['boolean'],
             'cover_image' => ['nullable', 'image', 'max:5120'],
         ]);
+
+        $showCaixaFixo = $request->boolean('show_caixa_fixo_story');
+        $showConstrucao = $request->boolean('show_construcao_story');
+        if ($showCaixaFixo && $showConstrucao) {
+            $showConstrucao = false;
+        }
 
         $update = [
             'title' => $data['title'],
@@ -189,7 +207,8 @@ class DonationCampaignController extends Controller
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'] ?? null,
             'allow_over_goal' => $request->boolean('allow_over_goal', true),
-            'show_caixa_fixo_story' => $request->boolean('show_caixa_fixo_story'),
+            'show_caixa_fixo_story' => $showCaixaFixo,
+            'show_construcao_story' => $showConstrucao,
         ];
 
         if ($request->hasFile('cover_image')) {
@@ -207,6 +226,12 @@ class DonationCampaignController extends Controller
     public function destroy(DonationCampaign $donationCampaign)
     {
         $this->assertCanManage(request()->user());
+
+        if ($donationCampaign->hasProtectedStory()) {
+            return redirect()
+                ->route('donation-campaigns.index')
+                ->with('error', 'Esta campanha possui história publicada e não pode ser excluída.');
+        }
 
         if ($donationCampaign->cover_image_path) {
             Storage::disk('public')->delete($donationCampaign->cover_image_path);
