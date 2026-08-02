@@ -57,7 +57,13 @@ type PageProps = {
 };
 
 export default function Topbar({ onMenuClick }: TopbarProps) {
-    const { auth, recentNotifications = [], unreadInboxNotificationsCount = 0 } = usePage().props as PageProps;
+    const page = usePage();
+    const { auth, recentNotifications = [], unreadInboxNotificationsCount = 0 } = page.props as PageProps;
+    // NS Conecta usa header próprio — nunca mostrar a Topbar global nesse módulo.
+    const isNsConecta =
+        (typeof page.component === 'string' && page.component.startsWith('Mobile/NsWhats/')) ||
+        (typeof page.url === 'string' &&
+            (page.url.startsWith('/mobile/ns-whats') || page.url.includes('/mobile/ns-whats?')));
     const [liveNotifications, setLiveNotifications] = useState<NotificationItem[]>(
         Array.isArray(recentNotifications) ? recentNotifications : [],
     );
@@ -157,6 +163,10 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
             setMarkingAll(false);
         }
     };
+
+    if (isNsConecta) {
+        return null;
+    }
 
     return (
         <header
