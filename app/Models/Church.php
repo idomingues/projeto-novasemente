@@ -140,6 +140,20 @@ class Church extends Model
         return $v !== '' ? $v : self::DEFAULT_LIBRARY_MEDITATION_URL;
     }
 
+    /**
+     * URL do devocional por público (Adulto / Mulher / Jovem).
+     * Adultos respeitam o link configurado na igreja; Mulheres e Jovens usam as landings CPB.
+     */
+    public function resolvedLibraryMeditationUrlForAudience(?string $audience = null): string
+    {
+        $audience = \App\Support\DevotionalAudience::normalize($audience);
+        if ($audience === \App\Support\DevotionalAudience::ADULTOS) {
+            return $this->resolvedLibraryMeditationUrl();
+        }
+
+        return \App\Support\DevotionalAudience::defaultUrl($audience);
+    }
+
     public function resolvedLibraryLessonUrl(): string
     {
         $v = trim((string) ($this->library_lesson_url ?? ''));

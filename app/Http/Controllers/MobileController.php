@@ -52,6 +52,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -326,17 +327,25 @@ class MobileController extends Controller
     public function meditacaoDiaria(Request $request): Response
     {
         $church = $this->currentChurch();
-        $url = $church !== null ? $church->resolvedLibraryMeditationUrl() : Church::DEFAULT_LIBRARY_MEDITATION_URL;
+        $audience = \App\Support\DevotionalAudience::fromRequest($request);
+        $url = $church !== null
+            ? $church->resolvedLibraryMeditationUrlForAudience($audience)
+            : \App\Support\DevotionalAudience::defaultUrl($audience);
 
         /** @var LibraryExternalPageExtractService $svc */
         $svc = app(LibraryExternalPageExtractService::class);
         $result = $svc->fetchAndExtract($url, 'meditation');
+
+        Cookie::queue('ns_devotional_audience', $audience, 60 * 24 * 400);
 
         return Inertia::render('Mobile/MeditationDaily', [
             'ok' => ! empty($result['ok']),
             'html' => (string) ($result['html'] ?? ''),
             'error' => (string) ($result['error'] ?? ''),
             'sourceUrl' => $url,
+            'audience' => $audience,
+            'audienceOptions' => \App\Support\DevotionalAudience::options(),
+            'audienceTitle' => \App\Support\DevotionalAudience::title($audience),
         ]);
     }
 

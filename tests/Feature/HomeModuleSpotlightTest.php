@@ -23,18 +23,22 @@ class HomeModuleSpotlightTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Mobile/Home')
                 ->where('moduleSpotlight.interval_seconds', 6)
-                ->has('moduleSpotlight.items', 2)
-                ->where('moduleSpotlight.items.0.id', 'ns_whats_2026_07')
-                ->where('moduleSpotlight.items.0.route', 'mobile.ns-whats.index')
-                ->where('moduleSpotlight.items.0.title', 'NS Conecta')
+                ->has('moduleSpotlight.items', 3)
+                ->where('moduleSpotlight.items.0.id', 'meditacao_diaria_2026_08')
+                ->where('moduleSpotlight.items.0.route', 'mobile.meditacao-diaria')
+                ->where('moduleSpotlight.items.0.title', 'Meditação diária')
                 ->where('moduleSpotlight.items.0.badge', 'New')
-                ->where('moduleSpotlight.items.0.home_card_id', 'ns-whats')
-                ->where('moduleSpotlight.title', 'NS Conecta')
-                ->where('moduleSpotlight.home_card_ids', ['ns-whats', 'enquetes'])
-                ->where('moduleSpotlight.items.1.id', 'enquetes_2026_07')
-                ->where('moduleSpotlight.items.1.route', 'mobile.polls.index')
-                ->where('moduleSpotlight.items.1.title', 'Enquetes')
-                ->where('moduleSpotlight.items.1.home_card_id', 'enquetes'));
+                ->where('moduleSpotlight.items.0.home_card_id', 'meditacao-diaria')
+                ->where('moduleSpotlight.title', 'Meditação diária')
+                ->where('moduleSpotlight.home_card_ids', ['meditacao-diaria', 'ns-whats', 'enquetes'])
+                ->where('moduleSpotlight.items.1.id', 'ns_whats_2026_07')
+                ->where('moduleSpotlight.items.1.route', 'mobile.ns-whats.index')
+                ->where('moduleSpotlight.items.1.title', 'NS Conecta')
+                ->where('moduleSpotlight.items.1.home_card_id', 'ns-whats')
+                ->where('moduleSpotlight.items.2.id', 'enquetes_2026_07')
+                ->where('moduleSpotlight.items.2.route', 'mobile.polls.index')
+                ->where('moduleSpotlight.items.2.title', 'Enquetes')
+                ->where('moduleSpotlight.items.2.home_card_id', 'enquetes'));
     }
 
     public function test_spotlight_respects_campaign_period(): void

@@ -29,6 +29,7 @@ final class PublicationSubject
         'musica',
         'donation_campaign',
         'polls',
+        'meditation',
     ];
 
     /**
@@ -117,7 +118,7 @@ final class PublicationSubject
     private static function baseQuery(string $type, int $id): ?Builder
     {
         $modelClass = match ($type) {
-            'news', 'health' => News::class,
+            'news', 'health', 'meditation' => News::class,
             'culto' => Culto::class,
             'charity_donation' => CharityCampaign::class,
             'library' => LibraryBook::class,
@@ -137,9 +138,13 @@ final class PublicationSubject
         $query = $modelClass::query()->whereKey($id);
 
         if ($type === 'news') {
-            $query->where('section', News::SECTION_NEWS);
+            $query->where('section', News::SECTION_NEWS)
+                ->where('slug', 'not like', MeditationDailyFeed::SLUG_PREFIX.'%');
         } elseif ($type === 'health') {
             $query->where('section', News::SECTION_HEALTH);
+        } elseif ($type === 'meditation') {
+            $query->where('section', News::SECTION_NEWS)
+                ->where('slug', 'like', MeditationDailyFeed::SLUG_PREFIX.'%');
         }
 
         return $query;

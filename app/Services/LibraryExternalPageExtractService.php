@@ -143,8 +143,13 @@ class LibraryExternalPageExtractService
     private function resolveCpbMeditationDailyUrlFromIndexIfApplicable(string $url, string $indexHtml): ?string
     {
         $lowerUrl = strtolower($url);
-        $looksLikeIndex = str_contains($lowerUrl, 'mais.cpb.com.br/meditacoes-diarias');
-        if (! $looksLikeIndex) {
+        $isHojeRedirect = str_contains($lowerUrl, 'meditacao-jovem-hoje')
+            || str_contains($lowerUrl, 'meditacao-mulher-hoje');
+        $looksLikeIndex = str_contains($lowerUrl, 'mais.cpb.com.br/meditacoes-diarias')
+            || str_contains($lowerUrl, 'mais.cpb.com.br/meditacao-da-mulher')
+            || (str_contains($lowerUrl, 'mais.cpb.com.br/meditacao-jovem') && ! $isHojeRedirect);
+
+        if (! $looksLikeIndex && ! $isHojeRedirect) {
             return null;
         }
 
@@ -160,13 +165,33 @@ class LibraryExternalPageExtractService
 
         $xp = new \DOMXPath($dom);
 
+        if ($isHojeRedirect) {
+            // Páginas *-hoje: meta/JS redirecionam; o HTML traz «clique aqui» com post_type=meditacao.
+            $nodes = $xp->query('//a[@href[contains(., "post_type=meditacao")]]');
+            if ($nodes !== false && $nodes->length > 0) {
+                $href = (string) (($nodes->item(0) instanceof \DOMElement) ? $nodes->item(0)->getAttribute('href') : '');
+                $href = trim(html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                if ($href !== '') {
+                    return $this->absolutizeUrl($url, $href);
+                }
+            }
+
+            if (preg_match('/https?:\\\\\/\\\\\/mais\.cpb\.com\.br\\\\\/\?post_type=meditacao[^"\']*/i', $indexHtml, $m)) {
+                $raw = stripcslashes($m[0]);
+
+                return html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            }
+
+            return null;
+        }
+
         // 1) Caso comum: <a href="..."><button>LER DEVOCIONAL</button></a>
         $nodes = $xp->query(
             '//a[@href][.//button[contains(translate(normalize-space(string(.)), "abcdefghijklmnopqrstuvwxyzáàâãäçéèêëíìîïñóòôõöúùûü", "abcdefghijklmnopqrstuvwxyzáàâãäçéèêëíìîïñóòôõöúùûü"), "ler devocional")]]'
         );
         if ($nodes !== false && $nodes->length > 0) {
             $href = (string) (($nodes->item(0) instanceof \DOMElement) ? $nodes->item(0)->getAttribute('href') : '');
-            $href = trim($href);
+            $href = trim(html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
             if ($href !== '') {
                 return $this->absolutizeUrl($url, $href);
             }
@@ -178,7 +203,7 @@ class LibraryExternalPageExtractService
         );
         if ($nodes !== false && $nodes->length > 0) {
             $href = (string) (($nodes->item(0) instanceof \DOMElement) ? $nodes->item(0)->getAttribute('href') : '');
-            $href = trim($href);
+            $href = trim(html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
             if ($href !== '') {
                 return $this->absolutizeUrl($url, $href);
             }
@@ -188,7 +213,7 @@ class LibraryExternalPageExtractService
         $nodes = $xp->query('//a[@href[contains(., "post_type=meditacao")]]');
         if ($nodes !== false && $nodes->length > 0) {
             $href = (string) (($nodes->item(0) instanceof \DOMElement) ? $nodes->item(0)->getAttribute('href') : '');
-            $href = trim($href);
+            $href = trim(html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
             if ($href !== '') {
                 return $this->absolutizeUrl($url, $href);
             }

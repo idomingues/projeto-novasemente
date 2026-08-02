@@ -37,5 +37,6 @@ return [
         'acervo' => null,
         'musica' => null,
         'polls' => '/images/publications/enquetes-feed-cover.png',
+        'meditation' => null,
     ],
 ];

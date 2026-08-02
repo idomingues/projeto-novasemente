@@ -15,6 +15,13 @@ import {
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
 import LibraryLessonDayNotes from '@/Components/Mobile/LibraryLessonDayNotes';
+import MeditationAudiencePicker from '@/Components/Mobile/MeditationAudiencePicker';
+import {
+    type DevotionalAudience,
+    DEVOTIONAL_AUDIENCE_DEFAULT,
+    readStoredDevotionalAudience,
+    storeDevotionalAudience,
+} from '@/data/devotionalAudience';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { pdfUrlWithViewerParams, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
 
@@ -175,9 +182,16 @@ export default function MobileLibrary({
     const [readerSourceUrl, setReaderSourceUrl] = useState<string | null>(null);
     const [dayIdx, setDayIdx] = useState(0);
     const [lessonNoteSlugs, setLessonNoteSlugs] = useState<string[]>([]);
+    const [meditationAudience, setMeditationAudience] = useState<DevotionalAudience>(() =>
+        typeof window !== 'undefined' ? readStoredDevotionalAudience() : DEVOTIONAL_AUDIENCE_DEFAULT,
+    );
     const isLessonTab = tab === 'lesson';
     const handleLessonNoteSlugsChange = useCallback((slugs: string[]) => {
         setLessonNoteSlugs(slugs);
+    }, []);
+
+    useEffect(() => {
+        setMeditationAudience(readStoredDevotionalAudience());
     }, []);
 
     useEffect(() => {
@@ -261,10 +275,16 @@ export default function MobileLibrary({
         setDayIdx(0);
         setLessonNoteSlugs([]);
 
-        fetch(route('mobile.biblioteca.config-external-content', tab), {
-            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin',
-        })
+        fetch(
+            route('mobile.biblioteca.config-external-content', {
+                type: tab,
+                ...(tab === 'meditation' ? { audience: meditationAudience } : {}),
+            }),
+            {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            },
+        )
             .then(async (r) => {
                 const data: {
                     ok?: boolean;
@@ -304,7 +324,7 @@ export default function MobileLibrary({
         return () => {
             cancelled = true;
         };
-    }, [tab, configuredUrl, isConfiguredExternalTab]);
+    }, [tab, configuredUrl, isConfiguredExternalTab, meditationAudience]);
 
     const readerDisplayHtml = useMemo(() => {
         if (readerSegments && readerSegments.length > 1) {
@@ -442,7 +462,18 @@ export default function MobileLibrary({
                         showHeading={false}
                     />
                 ) : isConfiguredExternalTab ? (
-                    <div className="rounded-2xl border border-zinc-200/90 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
+                    <div className="space-y-3">
+                        {tab === 'meditation' ? (
+                            <MeditationAudiencePicker
+                                value={meditationAudience}
+                                onChange={(next) => {
+                                    storeDevotionalAudience(next);
+                                    setMeditationAudience(next);
+                                }}
+                                disabled={readerStatus === 'loading'}
+                            />
+                        ) : null}
+                        <div className="rounded-2xl border border-zinc-200/90 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
                         {!configuredUrl ? (
                             <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">{emptyMessage}</p>
                         ) : readerStatus === 'loading' ? (
@@ -542,6 +573,7 @@ export default function MobileLibrary({
                                 ) : null}
                             </div>
                         ) : null}
+                    </div>
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200/90 bg-white py-14 text-center dark:border-zinc-800 dark:bg-zinc-900">

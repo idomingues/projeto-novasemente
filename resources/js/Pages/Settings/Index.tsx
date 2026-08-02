@@ -313,7 +313,7 @@ export default function SettingsIndex({
                     <div className="mt-6 space-y-6">
                         <form onSubmit={submitMeditation} className="space-y-4">
                             <div>
-                                <InputLabel htmlFor="library_meditation_url" value="URL da meditação" />
+                                <InputLabel htmlFor="library_meditation_url" value="URL da meditação (Adulto)" />
                                 <TextInput
                                     id="library_meditation_url"
                                     type="url"
@@ -322,6 +322,9 @@ export default function SettingsIndex({
                                     onChange={(e) => meditationForm.setData('library_meditation_url', e.target.value)}
                                     placeholder="https://…"
                                 />
+                                <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Usada no público Adulto. Mulher e Jovem usam os links oficiais da CPB Mais.
+                                </p>
                                 <InputError message={meditationForm.errors.library_meditation_url} className="mt-1" />
                             </div>
                             <div className="flex justify-end">

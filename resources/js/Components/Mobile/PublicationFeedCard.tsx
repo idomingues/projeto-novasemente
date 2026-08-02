@@ -38,6 +38,8 @@ export type PublicationFeedItem = {
     instagram_url?: string | null;
     image_url: string | null;
     cover_play_overlay?: boolean;
+    cover_overlay_text?: string | null;
+    cover_overlay_citation?: string | null;
     published_at: string | null;
     photographer_name?: string | null;
     href: string;
@@ -61,6 +63,7 @@ const TYPE_ICONS: Record<string, MenuIcon> = {
     acervo: PlayCircleIcon,
     musica: MusicalNoteIcon,
     polls: ChartBarIcon,
+    meditation: BookOpenIcon,
 };
 
 const TYPE_TAG_STYLES: Record<string, string> = {
@@ -82,6 +85,8 @@ const TYPE_TAG_STYLES: Record<string, string> = {
         'bg-purple-50 text-purple-800 ring-purple-200/80 dark:bg-purple-950/50 dark:text-purple-200 dark:ring-purple-800/60',
     polls:
         'bg-cyan-50 text-cyan-900 ring-cyan-200/80 dark:bg-cyan-950/50 dark:text-cyan-200 dark:ring-cyan-800/60',
+    meditation:
+        'bg-sky-50 text-sky-900 ring-sky-200/80 dark:bg-sky-950/50 dark:text-sky-100 dark:ring-sky-800/60',
 };
 
 const DEFAULT_TAG_STYLE =
@@ -235,20 +240,26 @@ export default function PublicationFeedCard({
     const photoDateTitle = formatPhotoDateTitle(item.published_at);
 
     const isPolls = item.type === 'polls';
+    const isMeditation = item.type === 'meditation';
+    const overlayText = (item.cover_overlay_text ?? '').trim();
+    const overlayCitation = (item.cover_overlay_citation ?? '').trim();
+    const showMeditationOverlay = isMeditation && overlayText !== '';
     // Mobile: proporção por tipo. sm+ (iPad/PC): capa quadrada para cards alinhados no grid.
-    const coverAspectClass = isNews
-        ? 'sm:aspect-square'
-        : isPhotos
-          ? 'aspect-[4/5] sm:aspect-square'
-          : isPolls
-            ? 'aspect-[16/9] sm:aspect-square'
-            : 'aspect-square';
-    const placeholderAspectClass = isPhotos
+    const coverAspectClass = isMeditation
+        ? 'aspect-[4/5] sm:aspect-square'
+        : isNews
+          ? 'sm:aspect-square'
+          : isPhotos
+            ? 'aspect-[4/5] sm:aspect-square'
+            : isPolls
+              ? 'aspect-[16/9] sm:aspect-square'
+              : 'aspect-square';
+    const placeholderAspectClass = isMeditation || isPhotos
         ? 'aspect-[4/5] sm:aspect-square'
         : isPolls
           ? 'aspect-[16/9] sm:aspect-square'
           : 'aspect-square';
-    const coverImageClass = isNews
+    const coverImageClass = isNews && !isMeditation
         ? 'block h-auto w-full object-contain sm:h-full sm:object-cover sm:object-center'
         : 'h-full w-full object-cover object-center';
 
@@ -337,6 +348,24 @@ export default function PublicationFeedCard({
                 referrerPolicy="no-referrer"
                 onError={() => setCoverBroken(true)}
             />
+            {showMeditationOverlay ? (
+                <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/75 via-black/35 to-transparent px-4 pb-5 pt-16 sm:px-5 sm:pb-6">
+                    <p
+                        className="text-[1.05rem] font-medium leading-snug tracking-tight text-white sm:text-[1.15rem]"
+                        style={{
+                            fontFamily:
+                                '"Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif',
+                        }}
+                    >
+                        “{overlayText}”
+                    </p>
+                    {overlayCitation ? (
+                        <p className="mt-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">
+                            {overlayCitation}
+                        </p>
+                    ) : null}
+                </div>
+            ) : null}
             {!openInstagramOnPlay && item.cover_play_overlay ? <VideoPlayOverlay /> : null}
         </div>
     ) : null;
@@ -476,6 +505,28 @@ export default function PublicationFeedCard({
                             <h2 className="line-clamp-3 text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-white sm:line-clamp-2">
                                 {item.title}
                             </h2>
+                            {item.href ? (
+                                <Link
+                                    href={item.href}
+                                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-black px-3.5 py-2 text-[13px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                                >
+                                    {actionLabel}
+                                    <ChevronDownIcon className="h-3.5 w-3.5 -rotate-90" aria-hidden />
+                                </Link>
+                            ) : null}
+                        </div>
+                    ) : isMeditation ? (
+                        <div className="min-h-0 flex-1 space-y-3">
+                            <div className="space-y-1.5">
+                                <h2 className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-white">
+                                    {item.title}
+                                </h2>
+                                {fullPlain && fullPlain !== overlayText ? (
+                                    <p className="line-clamp-3 text-[13.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">
+                                        {fullPlain}
+                                    </p>
+                                ) : null}
+                            </div>
                             {item.href ? (
                                 <Link
                                     href={item.href}

@@ -1,7 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import VolunteerSignupIncompleteBanner from '@/Components/Volunteers/VolunteerSignupIncompleteBanner';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import {
     AcademicCapIcon,
@@ -36,7 +36,14 @@ import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobi
 import HomeFeaturedWeek, { type HomeFeaturedWeekPayload } from '@/Components/Mobile/HomeFeaturedWeek';
 import { type HomeModuleSpotlightPayload } from '@/Components/Mobile/HomeModuleSpotlightBanner';
 import HomeCardBookmarkButton from '@/Components/Mobile/HomeCardBookmarkButton';
+import MeditationAudiencePicker from '@/Components/Mobile/MeditationAudiencePicker';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
+import {
+    type DevotionalAudience,
+    DEVOTIONAL_AUDIENCE_DEFAULT,
+    readStoredDevotionalAudience,
+    storeDevotionalAudience,
+} from '@/data/devotionalAudience';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
 
 type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -197,7 +204,7 @@ const homeQuickActions: QuickAction[] = [
     {
         id: 'meditacao-diaria',
         label: 'Meditação diária',
-        subtitle: 'Meditação diária de hoje',
+        subtitle: 'Adulto, Mulher ou Jovem',
         route: 'mobile.meditacao-diaria',
         featureKey: 'devotional',
         icon: BookOpenIcon,
@@ -367,10 +374,27 @@ export default function MobileHome({
     const [promiseOpen, setPromiseOpen] = useState(false);
     const [bookmarks, setBookmarks] = useState<string[]>(bookmarkedHomeCards);
     const [bookmarkBusy, setBookmarkBusy] = useState(false);
+    const [meditationAudience, setMeditationAudience] = useState<DevotionalAudience>(() =>
+        typeof window !== 'undefined' ? readStoredDevotionalAudience() : DEVOTIONAL_AUDIENCE_DEFAULT,
+    );
 
     useEffect(() => {
         setBookmarks(bookmarkedHomeCards);
     }, [bookmarkedHomeCards]);
+
+    useEffect(() => {
+        setMeditationAudience(readStoredDevotionalAudience());
+    }, []);
+
+    useEffect(() => {
+        const syncFromStorage = () => setMeditationAudience(readStoredDevotionalAudience());
+        window.addEventListener('focus', syncFromStorage);
+        document.addEventListener('visibilitychange', syncFromStorage);
+        return () => {
+            window.removeEventListener('focus', syncFromStorage);
+            document.removeEventListener('visibilitychange', syncFromStorage);
+        };
+    }, []);
 
     const openPromise = () => {
         setPromiseOpen(true);
@@ -449,6 +473,13 @@ export default function MobileHome({
         const items = [...actions, { kind: 'sobre' as const, id: 'sobre-o-app', label: 'Sobre o APP' }];
 
         return items.sort((a, b) => {
+            // Meditação diária fica fixa no primeiro lugar da grade.
+            const aPinned = a.id === 'meditacao-diaria' ? 0 : 1;
+            const bPinned = b.id === 'meditacao-diaria' ? 0 : 1;
+            if (aPinned !== bPinned) {
+                return aPinned - bPinned;
+            }
+
             const aSpotlight = spotlightRank.has(a.id);
             const bSpotlight = spotlightRank.has(b.id);
             if (aSpotlight !== bSpotlight) {
@@ -548,6 +579,7 @@ export default function MobileHome({
                                     moduleSpotlight?.items?.some((s) => s.home_card_id === id),
                             );
                             const cardClass = isSpotlightCard ? homeCardSpotlightClass : homeCardClass;
+                            const isMeditationCard = id === 'meditacao-diaria';
                             const content = (
                                 <>
                                     {isSpotlightCard ? (
@@ -592,16 +624,31 @@ export default function MobileHome({
                                         >
                                             {label}
                                         </p>
-                                        <p
-                                            className={`mt-1 text-[11px] font-medium leading-snug ${
-                                                isSpotlightCard
-                                                    ? 'text-teal-900/75 dark:text-teal-100/80'
-                                                    : 'text-zinc-600 dark:text-zinc-300'
-                                            }`}
-                                        >
-                                            {subtitle}
-                                        </p>
+                                        {!isMeditationCard ? (
+                                            <p
+                                                className={`mt-1 text-[11px] font-medium leading-snug ${
+                                                    isSpotlightCard
+                                                        ? 'text-teal-900/75 dark:text-teal-100/80'
+                                                        : 'text-zinc-600 dark:text-zinc-300'
+                                                }`}
+                                            >
+                                                {subtitle}
+                                            </p>
+                                        ) : null}
                                     </div>
+                                    {isMeditationCard ? (
+                                        <div className="mt-2.5">
+                                            <MeditationAudiencePicker
+                                                size="compact"
+                                                value={meditationAudience}
+                                                onChange={(next) => {
+                                                    storeDevotionalAudience(next);
+                                                    setMeditationAudience(next);
+                                                    router.visit(route('mobile.meditacao-diaria', { audience: next }));
+                                                }}
+                                            />
+                                        </div>
+                                    ) : null}
                                 </>
                             );
 
@@ -615,16 +662,15 @@ export default function MobileHome({
 
                             if (!routeName) return null;
 
+                            const href =
+                                isMeditationCard
+                                    ? route(routeName, { audience: meditationAudience })
+                                    : routeParams
+                                      ? route(routeName, routeParams)
+                                      : route(routeName);
+
                             return (
-                                <Link
-                                    key={id}
-                                    href={
-                                        routeParams
-                                            ? route(routeName, routeParams)
-                                            : route(routeName)
-                                    }
-                                    className={cardClass}
-                                >
+                                <Link key={id} href={href} className={cardClass}>
                                     {content}
                                 </Link>
                             );

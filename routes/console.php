@@ -116,3 +116,7 @@ Artisan::command('app:release-notes', function () {
 Schedule::command('auth:prune-login-events')->weekly();
 Schedule::command('revista-adventista:sync-archive')->dailyAt('03:00');
 Schedule::command('revista-adventista:sync')->dailyAt('02:30');
+Schedule::command('app:publish-meditation-daily-feed')
+    ->dailyAt('05:00')
+    ->timezone((string) config('app.timezone', 'America/Sao_Paulo'))
+    ->withoutOverlapping();

@@ -21,6 +21,8 @@ jobs:
             git fetch origin main && git reset --hard origin/main
             # Aplicar limites de upload para PDF/capa da Biblioteca em produção.
             bash deployment/apply-upload-limits.sh
+            # Garantir cron do Laravel Schedule (meditação 05:00, revista, acervo, etc.).
+            bash deployment/ensure-laravel-scheduler-cron.sh
             # Limpar caches/views antigas para forçar uso do código novo (header, etc.)
             php artisan optimize:clear 2>/dev/null || true
             find storage/framework/views -name '*.php' -delete 2>/dev/null || true
@@ -44,3 +46,4 @@ jobs:
             php artisan view:cache
             php artisan permission:cache-reset 2>/dev/null || true
             echo "Deploy concluído. Commit: $(git rev-parse --short HEAD)"
+            php artisan schedule:list 2>/dev/null || true

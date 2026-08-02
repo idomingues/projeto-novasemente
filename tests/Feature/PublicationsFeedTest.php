@@ -358,6 +358,55 @@ class PublicationsFeedTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->where('items.data', []));
     }
 
+    public function test_meditation_daily_example_appears_in_feed_with_overlay(): void
+    {
+        config(['publications_feed.preview_only' => false]);
+
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $user = User::factory()->create([
+            'church_id' => $church->id,
+            'email' => 'admin@example.com',
+        ]);
+
+        \Illuminate\Support\Facades\Http::fake([
+            'api.openverse.org/*' => \Illuminate\Support\Facades\Http::response([
+                'results' => [
+                    ['url' => 'https://live.staticflickr.com/demo/sunrise-example.jpg'],
+                ],
+            ], 200),
+            'live.staticflickr.com/*' => \Illuminate\Support\Facades\Http::response(str_repeat('JPEG', 800), 200, [
+                'Content-Type' => 'image/jpeg',
+            ]),
+        ]);
+
+        $this->artisan('app:publish-meditation-daily-feed-example', [
+            '--church' => $church->slug,
+            '--author' => $user->email,
+        ])->assertSuccessful();
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.publications-feed', ['type' => 'meditation']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.type', 'meditation')
+                ->where('items.data', function ($items) {
+                    $items = collect($items);
+                    if ($items->isEmpty()) {
+                        return false;
+                    }
+                    $item = $items->first();
+
+                    return $item['type'] === 'meditation'
+                        && $item['type_label'] === 'Meditação diária'
+                        && filled($item['cover_overlay_text'] ?? null)
+                        && filled($item['cover_overlay_citation'] ?? null)
+                        && filled($item['image_url'] ?? null);
+                }));
+    }
+
     public function test_guest_cannot_access_while_preview_only(): void
     {
         config([

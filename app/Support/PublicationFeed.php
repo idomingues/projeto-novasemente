@@ -84,6 +84,12 @@ class PublicationFeed
             'description' => 'Enquete aberta para a congregação responder.',
             'action' => 'Clique e responda',
         ],
+        'meditation' => [
+            'label' => 'Meditação diária',
+            'feature' => 'devotional',
+            'description' => 'Devocional do dia com versículo e reflexão.',
+            'action' => 'Ler meditação',
+        ],
     ];
 
     /**
@@ -231,6 +237,7 @@ class PublicationFeed
                 'revista' => self::collectRevistaArticles($church, $baseUrl),
                 'musica' => self::collectMusicas($church, $churchId, $baseUrl),
                 'polls' => self::collectPolls($church, $churchId, $baseUrl),
+                'meditation' => self::collectMeditationDaily($church, $churchId, $baseUrl),
                 default => collect(),
             });
         }
@@ -259,6 +266,7 @@ class PublicationFeed
             ->with('author')
             ->where('church_id', $churchId)
             ->where('section', $section)
+            ->where('slug', 'not like', MeditationDailyFeed::SLUG_PREFIX.'%')
             ->visibleToPublic()
             ->orderByDesc('published_at')
             ->limit(100)
@@ -297,6 +305,50 @@ class PublicationFeed
                     ], true),
                     instagramUrl: $instagramUrl !== '' ? $instagramUrl : null,
                     actionLabel: $deepAction,
+                );
+            });
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private static function collectMeditationDaily(?Church $church, ?int $churchId, string $baseUrl): Collection
+    {
+        if ($churchId === null) {
+            return collect();
+        }
+
+        return News::query()
+            ->where('church_id', $churchId)
+            ->where('section', News::SECTION_NEWS)
+            ->where('slug', 'like', MeditationDailyFeed::SLUG_PREFIX.'%')
+            ->visibleToPublic()
+            ->orderByDesc('published_at')
+            ->limit(60)
+            ->get()
+            ->map(function (News $post) use ($baseUrl, $church) {
+                $parsed = MeditationDailyFeed::parseStoredBody($post->body, $post->excerpt);
+                $cover = PublicationFeedCoverResolver::forNews($post, $baseUrl, $church)
+                    ?: MeditationDailyFeed::coverForDate($post->published_at ?? now());
+
+                return self::entry(
+                    type: MeditationDailyFeed::TYPE,
+                    typeLabel: self::TYPE_DEFINITIONS[MeditationDailyFeed::TYPE]['label'],
+                    pk: $post->id,
+                    title: $post->title,
+                    excerpt: $parsed['verse'],
+                    imageUrl: $cover,
+                    publishedAt: $post->published_at,
+                    href: route('mobile.meditacao-diaria', absolute: false),
+                    meta: array_values(array_filter([
+                        $parsed['citation'] !== '' ? $parsed['citation'] : null,
+                        'Devocional do dia',
+                    ])),
+                    body: $parsed['body'] !== '' ? $parsed['body'] : $parsed['verse'],
+                    requiresOpen: true,
+                    actionLabel: self::TYPE_DEFINITIONS[MeditationDailyFeed::TYPE]['action'],
+                    coverOverlayText: $parsed['verse'],
+                    coverOverlayCitation: $parsed['citation'],
                 );
             });
     }
@@ -640,6 +692,8 @@ class PublicationFeed
         bool $requiresOpen = false,
         ?string $instagramUrl = null,
         ?string $actionLabel = null,
+        ?string $coverOverlayText = null,
+        ?string $coverOverlayCitation = null,
     ): array {
         $definition = self::TYPE_DEFINITIONS[$type] ?? null;
         $resolvedExcerpt = $excerpt !== '' ? $excerpt : (
@@ -651,6 +705,8 @@ class PublicationFeed
         }
         $resolvedInstagram = trim((string) ($instagramUrl ?? ''));
         $resolvedAction = trim((string) ($actionLabel ?? ''));
+        $overlayText = trim((string) ($coverOverlayText ?? ''));
+        $overlayCitation = trim((string) ($coverOverlayCitation ?? ''));
 
         return [
             'id' => $type.'-'.$pk,
@@ -666,6 +722,8 @@ class PublicationFeed
             'instagram_url' => $resolvedInstagram !== '' ? $resolvedInstagram : null,
             'image_url' => $imageUrl,
             'cover_play_overlay' => $coverPlayOverlay,
+            'cover_overlay_text' => $overlayText !== '' ? $overlayText : null,
+            'cover_overlay_citation' => $overlayCitation !== '' ? $overlayCitation : null,
             'published_at' => $publishedAt?->format(\DateTimeInterface::ATOM),
             'href' => $href,
             'meta' => array_values(array_filter($meta, fn ($line) => is_string($line) && trim($line) !== '')),

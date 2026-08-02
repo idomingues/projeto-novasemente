@@ -23,8 +23,9 @@ class LibraryConfigExternalContentController extends Controller
             return $this->sunsetMeditationResponse($church);
         }
 
+        $audience = \App\Support\DevotionalAudience::fromRequest($request);
         $url = match ($type) {
-            'meditation' => $church->resolvedLibraryMeditationUrl(),
+            'meditation' => $church->resolvedLibraryMeditationUrlForAudience($audience),
             'lesson' => $church->resolvedLibraryLessonUrl(),
             default => '',
         };
@@ -65,6 +66,7 @@ class LibraryConfigExternalContentController extends Controller
             'segments' => $segments,
             'source_url' => $url,
             'default_index' => $defaultIndex,
+            'audience' => $type === 'meditation' ? $audience : null,
         ]);
     }
 

@@ -1,35 +1,79 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import { Head, Link } from '@inertiajs/react';
+import MeditationAudiencePicker from '@/Components/Mobile/MeditationAudiencePicker';
+import {
+    type DevotionalAudience,
+    normalizeDevotionalAudience,
+    storeDevotionalAudience,
+} from '@/data/devotionalAudience';
+import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeftIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { useEffect } from 'react';
+
+interface AudienceOption {
+    value: string;
+    label: string;
+}
 
 interface Props {
     ok: boolean;
     html: string;
     error?: string;
     sourceUrl?: string;
+    audience?: string;
+    audienceOptions?: AudienceOption[];
+    audienceTitle?: string;
 }
 
-export default function MobileMeditationDaily({ ok, html, error = '', sourceUrl = '' }: Props) {
+export default function MobileMeditationDaily({
+    ok,
+    html,
+    error = '',
+    sourceUrl = '',
+    audience: audienceProp = 'adultos',
+    audienceTitle = 'Meditação diária',
+}: Props) {
+    const audience = normalizeDevotionalAudience(audienceProp);
     const displayError = (error || '').trim() || 'Não foi possível carregar a meditação agora.';
     const displayHtml = (html || '').trim();
 
+    useEffect(() => {
+        storeDevotionalAudience(audience);
+    }, [audience]);
+
+    const selectAudience = (next: DevotionalAudience) => {
+        storeDevotionalAudience(next);
+        if (next === audience) {
+            return;
+        }
+        router.get(
+            route('mobile.meditacao-diaria', { audience: next }),
+            {},
+            { preserveScroll: true, replace: true },
+        );
+    };
+
     return (
         <MobileLayout>
-            <Head title="Meditação diária" />
+            <Head title={audienceTitle} />
             <div className="space-y-4">
                 <Link
                     href={route('mobile.home')}
-                    className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                    className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
                 >
                     <ArrowLeftIcon className="h-4 w-4" aria-hidden />
                     Voltar ao início
                 </Link>
 
-                <header className="space-y-1">
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                        Meditação diária
-                    </h1>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">Meditação do dia (melhor esforço).</p>
+                <header className="space-y-3">
+                    <div className="space-y-1">
+                        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                            {audienceTitle}
+                        </h1>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                            Escolha o público e leia a meditação de hoje.
+                        </p>
+                    </div>
+                    <MeditationAudiencePicker value={audience} onChange={selectAudience} />
                 </header>
 
                 {!ok || !displayHtml ? (
@@ -41,7 +85,7 @@ export default function MobileMeditationDaily({ ok, html, error = '', sourceUrl 
                                 href={sourceUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-2"
+                                className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold underline underline-offset-2"
                             >
                                 <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0" aria-hidden />
                                 Abrir no site original
@@ -61,7 +105,7 @@ export default function MobileMeditationDaily({ ok, html, error = '', sourceUrl 
                                     href={sourceUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 font-medium text-primary-600 underline-offset-2 hover:underline dark:text-primary-400"
+                                    className="inline-flex cursor-pointer items-center gap-2 font-medium text-primary-600 underline-offset-2 hover:underline dark:text-primary-400"
                                 >
                                     <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0" aria-hidden />
                                     Abrir no site original
@@ -74,4 +118,3 @@ export default function MobileMeditationDaily({ ok, html, error = '', sourceUrl 
         </MobileLayout>
     );
 }
-
