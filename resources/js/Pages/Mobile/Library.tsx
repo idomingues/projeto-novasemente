@@ -23,7 +23,6 @@ import {
     storeDevotionalAudience,
 } from '@/data/devotionalAudience';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { pdfUrlWithViewerParams, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -156,7 +155,6 @@ export default function MobileLibrary({
 }: Props) {
     const page = usePage();
     const appUrl = (page.props as PageProps).appUrl ?? '';
-    const viewerFragment = usePdfViewerFragment();
     const tabFromUrl = useMemo(() => {
         const raw = String(page.url ?? '');
         const qs = raw.includes('?') ? raw.slice(raw.indexOf('?') + 1) : '';
@@ -585,11 +583,10 @@ export default function MobileLibrary({
                         {filtered.map((b) => {
                             const cover = imageSrc(b.cover_url, appUrl);
                             const pdf = b.pdf_url ? imageSrc(b.pdf_url, appUrl) : '';
-                            const pdfReadUrl = pdf ? pdfUrlWithViewerParams(pdf, viewerFragment) : '';
                             const extRaw = (b.external_url ?? '').trim();
                             const ext = extRaw ? extRaw : '';
                             const showUrl = route('mobile.biblioteca.show', b.id);
-                            const directOpen = ext !== '' ? ext : '';
+                            const directOpen = ext !== '' && pdf === '' ? ext : '';
                             const description = (b.description ?? '').trim();
                             const maxDesc = 180;
                             const shortDesc =
@@ -619,10 +616,6 @@ export default function MobileLibrary({
                                     >
                                         {coverVisual}
                                     </a>
-                                ) : pdfReadUrl !== '' ? (
-                                    <a href={pdfReadUrl} className={`${coverShellClass} cursor-pointer`} aria-label={`Ler: ${b.title}`}>
-                                        {coverVisual}
-                                    </a>
                                 ) : (
                                     <Link href={showUrl} className={`${coverShellClass} cursor-pointer`} aria-label={`Ler: ${b.title}`}>
                                         {coverVisual}
@@ -647,8 +640,8 @@ export default function MobileLibrary({
                                             ) : null}
                                             <div className="mt-4 flex flex-wrap items-stretch gap-2">
                                                 {pdf !== '' ? (
-                                                    <a
-                                                        href={pdfReadUrl}
+                                                    <Link
+                                                        href={showUrl}
                                                         className="inline-flex min-h-9 cursor-pointer touch-manipulation items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
                                                         aria-label={`Ler: ${b.title}`}
                                                     >
@@ -657,7 +650,7 @@ export default function MobileLibrary({
                                                             aria-hidden
                                                         />
                                                         Ler
-                                                    </a>
+                                                    </Link>
                                                 ) : ext !== '' ? (
                                                     <a
                                                         href={ext}

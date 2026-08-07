@@ -843,6 +843,7 @@ class DonationCampaignTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Mobile/DonationCampaigns/Show')
                 ->where('campaign.show_caixa_fixo_story', true)
+                ->where('donationUrl', 'https://7me.app/71/r8ctoh')
             );
     }
 

@@ -3,7 +3,6 @@ import { BookOpenIcon, CalendarDaysIcon, SparklesIcon } from '@heroicons/react/2
 import { useMemo } from 'react';
 import InputLabel from '@/Components/InputLabel';
 import SelectInput from '@/Components/SelectInput';
-import { pdfUrlWithViewerParams, usePdfViewerFragment } from '@/lib/pdfViewerUrl';
 
 export interface RevistaAdventistaAcervoEdition {
     id: number;
@@ -36,7 +35,6 @@ export default function RevistaAdventistaAcervoContent({
     onSelectYear,
     showHeading = true,
 }: Props) {
-    const viewerFragment = usePdfViewerFragment();
     const availablePdfCount = useMemo(() => editions.filter((edition) => edition.has_pdf).length, [editions]);
     const oldestYear = useMemo(() => {
         if (availableYears.length === 0) return null;
@@ -138,9 +136,6 @@ export default function RevistaAdventistaAcervoContent({
                 <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {editions.map((edition) => {
                         const showUrl = route('mobile.acervo-revista-adventista.show', edition.id);
-                        const pdfReadUrl = edition.has_pdf
-                            ? pdfUrlWithViewerParams(route('mobile.acervo-revista-adventista.pdf-stream', edition.id), viewerFragment)
-                            : '';
 
                         const cardClassName =
                             'group flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700';
@@ -174,12 +169,12 @@ export default function RevistaAdventistaAcervoContent({
 
                         return (
                             <li key={edition.id}>
-                                {pdfReadUrl ? (
-                                    <a href={pdfReadUrl} className={`${cardClassName} cursor-pointer`} aria-label={`Ler ${edition.title}`}>
-                                        {coverBlock}
-                                    </a>
-                                ) : edition.has_pdf ? (
-                                    <Link href={showUrl} className={`${cardClassName} cursor-pointer`}>
+                                {edition.has_pdf ? (
+                                    <Link
+                                        href={showUrl}
+                                        className={`${cardClassName} cursor-pointer`}
+                                        aria-label={`Ler ${edition.title}`}
+                                    >
                                         {coverBlock}
                                     </Link>
                                 ) : (

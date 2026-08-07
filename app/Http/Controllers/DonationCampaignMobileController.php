@@ -58,7 +58,9 @@ class DonationCampaignMobileController extends Controller
         $church = $donationCampaign->church;
         $user = $request->user();
         $treasurerEmail = trim((string) ($church?->treasurer_notification_email ?? ''));
-        $donationUrl = 'https://7me.app/71/y8nzix';
+        $donationUrl = $donationCampaign->show_caixa_fixo_story
+            ? 'https://7me.app/71/r8ctoh'
+            : 'https://7me.app/71/y8nzix';
 
         $recentDonations = $donationCampaign->donations()
             ->with('user:id,name')

@@ -1,7 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import InstagramFeedCard from '@/Components/News/InstagramFeedCard';
 import InstagramViewLink from '@/Components/News/InstagramViewLink';
-import PdfTextReaderScreen from '@/Components/Mobile/PdfTextReaderScreen';
+import PdfReflowReader from '@/Components/Mobile/PdfReflowReader';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon, NewspaperIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import NewsPostCover from '@/Components/News/NewsPostCover';
@@ -102,7 +102,13 @@ export default function MobileNewsShow({ post, config }: Props) {
                         </Link>
                     </div>
 
-                    <PdfTextReaderScreen title={post.title} pdfUrl={pdfUrl} className="sm:px-0" />
+                    <PdfReflowReader
+                        title={post.title}
+                        coverUrl={cover ? imageSrc(cover, appUrl) : null}
+                        pdfUrl={pdfUrl}
+                        contentKey={`${listRoute === 'mobile.health' ? 'health' : 'news'}:pdf:${post.id}`}
+                        className="sm:px-0"
+                    />
                 </div>
             </MobileLayout>
         );
