@@ -434,11 +434,16 @@ export default function MobileLibrary({
                     </header>
                 ) : (
                     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <h1 className="min-w-0 text-balance text-3xl font-bold leading-[1.12] tracking-[-0.03em] text-zinc-900 antialiased dark:text-white sm:text-4xl sm:tracking-[-0.035em]">
-                                Biblioteca
-                            </h1>
-                            <GratisBadge className="translate-y-0.5" />
+                        <div className="min-w-0 space-y-1.5">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <h1 className="min-w-0 text-balance text-3xl font-bold leading-[1.12] tracking-[-0.03em] text-zinc-900 antialiased dark:text-white sm:text-4xl sm:tracking-[-0.035em]">
+                                    Biblioteca
+                                </h1>
+                                <GratisBadge className="translate-y-0.5" />
+                            </div>
+                            <p className="max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+                                Agora você pode ler o livro aqui e marcar onde parou.
+                            </p>
                         </div>
                         <div className="relative w-full sm:max-w-xs">
                             {!isAcervoTab ? (

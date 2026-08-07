@@ -1,4 +1,4 @@
-const DB_NAME = 'ns-pdf-text-cache-v2';
+const DB_NAME = 'ns-pdf-text-cache-v3';
 const DB_VERSION = 1;
 const STORE_NAME = 'extractions';
 

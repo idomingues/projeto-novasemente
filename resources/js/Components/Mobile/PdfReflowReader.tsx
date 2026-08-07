@@ -185,7 +185,7 @@ export default function PdfReflowReader({
             aria-label={`Conteúdo de ${title}`}
         >
             <div
-                className="space-y-5 text-zinc-800 dark:text-zinc-100"
+                className="space-y-6 text-zinc-800 dark:text-zinc-100 sm:space-y-7"
                 style={{ fontSize: `${fontSize}px`, lineHeight: leadingForSize(fontSize) }}
             >
                 {paragraphs.map((paragraph, index) => {

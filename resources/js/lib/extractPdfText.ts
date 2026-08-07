@@ -8,6 +8,7 @@ type PdfTextItem = {
     str: string;
     transform: number[];
     height: number;
+    width?: number;
 };
 
 type PositionedTextItem = {
@@ -15,12 +16,14 @@ type PositionedTextItem = {
     x: number;
     y: number;
     height: number;
+    width: number;
 };
 
 type TextLine = {
     text: string;
     y: number;
     height: number;
+    x0: number;
 };
 
 export type PdfExtractProgress = {
@@ -77,15 +80,81 @@ function sanitizePdfGlyphs(text: string): string {
         .replace(/[\uE000-\uF8FF]/g, '');
 }
 
+/** Junta letras artificialmente espaçadas: "G U I A" → "GUIA". */
+export function collapseSpacedLetters(text: string): string {
+    return text.replace(/(?<![A-Za-zÀ-ÿ])((?:[A-Za-zÀ-ÿ]\s+){2,}[A-Za-zÀ-ÿ])(?![A-Za-zÀ-ÿ])/g, (match) =>
+        match.replace(/\s+/g, ''),
+    );
+}
+
+export function normalizeParagraphText(text: string): string {
+    return collapseSpacedLetters(
+        text
+            .replace(/[\u00ad\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+            .replace(/\uFFFD/g, '')
+            .replace(/[\uE000-\uF8FF]/g, '')
+            .replace(/(?:[\s.·•‧⋯…]{2,})(?=\d+\s*$)/g, ' — ')
+            .replace(/\s+/g, ' ')
+            .replace(/\s+([,.;:!?])/g, '$1')
+            .replace(/([(\[])\s+/g, '$1')
+            .replace(/\s+([)\]])/g, '$1')
+            .trim(),
+    );
+}
+
+function estimatedWidth(item: PositionedTextItem): number {
+    if (item.width > 0) {
+        return item.width;
+    }
+
+    return Math.max(item.str.length, 1) * item.height * 0.5;
+}
+
+function joinLineParts(parts: PositionedTextItem[]): string {
+    if (parts.length === 0) {
+        return '';
+    }
+
+    const sorted = [...parts].sort((a, b) => a.x - b.x);
+    let text = sorted[0].str;
+    let prev = sorted[0];
+
+    for (let index = 1; index < sorted.length; index += 1) {
+        const current = sorted[index];
+        const gap = current.x - (prev.x + estimatedWidth(prev));
+        const spaceThreshold = Math.max(prev.height, current.height) * 0.28;
+
+        if (gap > spaceThreshold || (/\s$/.test(text) === false && /^\s/.test(current.str))) {
+            if (!/\s$/.test(text) && !/^\s/.test(current.str) && gap > spaceThreshold * 0.35) {
+                text += ' ';
+            }
+        }
+
+        text += current.str.replace(/^\s+/, '');
+        prev = current;
+    }
+
+    return text.replace(/\s+/g, ' ').trim();
+}
+
 function positionedItemsFromPage(pageItems: unknown[]): PositionedTextItem[] {
     return pageItems
         .filter(isPdfTextItem)
-        .map((item) => ({
-            str: sanitizePdfGlyphs(item.str),
-            x: item.transform[4],
-            y: item.transform[5],
-            height: item.height > 0 ? item.height : Math.abs(item.transform[3]) || 12,
-        }))
+        .map((item) => {
+            const height = item.height > 0 ? item.height : Math.abs(item.transform[3]) || 12;
+            const width =
+                typeof item.width === 'number' && item.width > 0
+                    ? item.width
+                    : Math.max(item.str.length, 1) * height * 0.5;
+
+            return {
+                str: sanitizePdfGlyphs(item.str),
+                x: item.transform[4],
+                y: item.transform[5],
+                height,
+                width,
+            };
+        })
         .filter((item) => item.str.trim() !== '');
 }
 
@@ -103,52 +172,102 @@ function groupItemsIntoLines(items: PositionedTextItem[]): TextLine[] {
         return a.x - b.x;
     });
 
-    const lines: { y: number; height: number; parts: { x: number; str: string }[] }[] = [];
+    const lines: { y: number; height: number; parts: PositionedTextItem[] }[] = [];
 
     for (const item of sorted) {
         const threshold = Math.max(item.height * 0.55, 3);
         const line = lines.find((entry) => Math.abs(entry.y - item.y) <= threshold);
 
         if (line) {
-            line.parts.push({ x: item.x, str: item.str });
+            line.parts.push(item);
             line.y = (line.y + item.y) / 2;
             line.height = Math.max(line.height, item.height);
         } else {
             lines.push({
                 y: item.y,
                 height: item.height,
-                parts: [{ x: item.x, str: item.str }],
+                parts: [item],
             });
         }
     }
 
     return lines
         .sort((a, b) => b.y - a.y)
-        .map((line) => ({
-            y: line.y,
-            height: line.height,
-            text: line.parts
-                .sort((a, b) => a.x - b.x)
-                .map((part) => part.str)
-                .join(' ')
-                .replace(/\s+/g, ' ')
-                .trim(),
-        }))
+        .map((line) => {
+            const x0 = Math.min(...line.parts.map((part) => part.x));
+            return {
+                y: line.y,
+                height: line.height,
+                x0,
+                text: joinLineParts(line.parts),
+            };
+        })
         .filter((line) => line.text !== '');
 }
 
-export function normalizeParagraphText(text: string): string {
-    return text
-        // Soft hyphen e caracteres de controle (ex.: backspace nos leaders do sumário).
-        .replace(/[\u00ad\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
-        // Glyphs inválidos do PDF (�) e áreas privadas — comuns em pontinhos do sumário.
-        .replace(/\uFFFD/g, '')
-        .replace(/[\uE000-\uF8FF]/g, '')
-        // Leaders do sumário: sequências de pontos/traços/espaços antes do número da página.
-        .replace(/(?:[\s.·•‧⋯…]{2,})(?=\d+\s*$)/g, ' — ')
-        .replace(/\s+/g, ' ')
-        .replace(/\s+([,.;:!?])/g, '$1')
-        .trim();
+function median(values: number[]): number {
+    if (values.length === 0) {
+        return 0;
+    }
+
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+function modeRounded(values: number[], bucket = 2): number {
+    if (values.length === 0) {
+        return 0;
+    }
+
+    const counts = new Map<number, number>();
+    for (const value of values) {
+        const key = Math.round(value / bucket) * bucket;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    let best = values[0];
+    let bestCount = 0;
+    for (const [key, count] of counts) {
+        if (count > bestCount) {
+            best = key;
+            bestCount = count;
+        }
+    }
+
+    return best;
+}
+
+function isNoiseLine(text: string): boolean {
+    const trimmed = text.trim();
+    if (!trimmed) {
+        return true;
+    }
+
+    // Número de página isolado, marcador de margem, tipografia/produção.
+    if (/^\d{1,4}$/.test(trimmed)) {
+        return true;
+    }
+    if (/^\[\d+\]$/.test(trimmed)) {
+        return true;
+    }
+    if (/^tipologia:/i.test(trimmed)) {
+        return true;
+    }
+    if (/^\d+\s*[–-]\s*.{0,40}$/.test(trimmed) && trimmed.length < 48) {
+        return true;
+    }
+
+    // Cabeçalho/rodapé corrido: "8 Atos dos Apóstolos" / "Título do capítulo 9".
+    if (
+        trimmed.length < 72 &&
+        !/[.!?…]/.test(trimmed) &&
+        (/^\d{1,3}\s+\S.{2,60}$/.test(trimmed) || /^\S.{2,60}\s+\d{1,3}$/.test(trimmed))
+    ) {
+        return true;
+    }
+
+    return false;
 }
 
 function joinLineIntoParagraph(current: string, line: string): string {
@@ -161,31 +280,45 @@ function joinLineIntoParagraph(current: string, line: string): string {
         return trimmed;
     }
 
-    if (current.endsWith('-')) {
-        return `${current.slice(0, -1)}${trimmed}`;
+    if (/[-\u2010\u2011]$/.test(current)) {
+        return `${current.replace(/[-\u2010\u2011]$/, '')}${trimmed}`;
     }
 
     return `${current} ${trimmed}`;
 }
 
 function linesToParagraphs(lines: TextLine[]): string[] {
+    const usable = lines.filter((line) => !isNoiseLine(line.text));
+    if (usable.length === 0) {
+        return [];
+    }
+
+    const bodyLeft = modeRounded(
+        usable.map((line) => line.x0),
+        2,
+    );
+    const indentDelta = Math.max(10, median(usable.map((line) => line.height)) * 0.7);
+    const avgHeight = median(usable.map((line) => line.height)) || 12;
+
     const paragraphs: string[] = [];
     let current = '';
 
-    for (let index = 0; index < lines.length; index += 1) {
-        const line = lines[index];
-        const previous = index > 0 ? lines[index - 1] : null;
+    for (let index = 0; index < usable.length; index += 1) {
+        const line = usable[index];
+        const previous = index > 0 ? usable[index - 1] : null;
+        const indented = line.x0 >= bodyLeft + indentDelta;
+        const yGap = previous ? previous.y - line.y : 0;
+        const largeGap = previous !== null && yGap > avgHeight * 1.55;
+        const startsLikeHeading =
+            /^capítulo\s+\d+/i.test(line.text) ||
+            (/^[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ0-9]/.test(line.text) &&
+                line.text.length < 80 &&
+                line.height > avgHeight * 1.15);
 
-        if (previous) {
-            const yGap = previous.y - line.y;
-            const avgHeight = (previous.height + line.height) / 2;
-            const isParagraphBreak = yGap > avgHeight * 1.75;
-
-            if (isParagraphBreak && current) {
-                paragraphs.push(normalizeParagraphText(current));
-                current = line.text;
-                continue;
-            }
+        if (current && (indented || largeGap || startsLikeHeading)) {
+            paragraphs.push(normalizeParagraphText(current));
+            current = line.text;
+            continue;
         }
 
         current = joinLineIntoParagraph(current, line.text);
@@ -199,7 +332,34 @@ function linesToParagraphs(lines: TextLine[]): string[] {
 }
 
 function paragraphContinuesFromPrevious(last: string, next: string): boolean {
-    return /^[a-záàâãéêíóôõúç]/.test(next) || !/[.!?:"'»]\s*$/.test(last);
+    const left = last.trimEnd();
+    const right = next.trimStart();
+
+    if (!left || !right) {
+        return false;
+    }
+
+    // Hífen de fim de linha / página.
+    if (/[-\u2010\u2011]$/.test(left)) {
+        return true;
+    }
+
+    // Continuação em minúscula (mesmo parágrafo partido).
+    if (/^[a-záàâãéêíóôõúç]/.test(right)) {
+        return true;
+    }
+
+    // Terminou frase: próximo bloco é novo parágrafo.
+    if (/[.!?…»"”']\s*$/.test(left)) {
+        return false;
+    }
+
+    // Começa como novo parágrafo / capítulo.
+    if (/^(capítulo\s+\d+|[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ“"0-9])/i.test(right)) {
+        return false;
+    }
+
+    return true;
 }
 
 function mergeIncomingPageParagraphs(finalized: string[], pendingTail: string | null, pageParagraphs: string[]): {
@@ -217,7 +377,10 @@ function mergeIncomingPageParagraphs(finalized: string[], pendingTail: string | 
     if (nextPending) {
         const first = pageParagraphs[0];
         if (paragraphContinuesFromPrevious(nextPending, first)) {
-            nextPending = normalizeParagraphText(`${nextPending} ${first}`);
+            const joined = /[-\u2010\u2011]$/.test(nextPending.trimEnd())
+                ? `${nextPending.trimEnd().replace(/[-\u2010\u2011]$/, '')}${first}`
+                : `${nextPending} ${first}`;
+            nextPending = normalizeParagraphText(joined);
             startIndex = 1;
         } else {
             nextFinalized.push(nextPending);
@@ -281,7 +444,6 @@ export async function extractPdfTextProgressive(
     const totalPages = pdf.numPages;
     let finalized: string[] = [];
     let pendingTail: string | null = null;
-    let emptyProbeChars = 0;
 
     for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
         throwIfAborted(signal);
@@ -299,13 +461,9 @@ export async function extractPdfTextProgressive(
         });
 
         if (pageNumber <= EARLY_EMPTY_PAGE_PROBE) {
-            emptyProbeChars = totalCharCount(finalized, pendingTail);
-            if (pageNumber === EARLY_EMPTY_PAGE_PROBE && emptyProbeChars < MIN_USEFUL_CHARS) {
-                // Continua até o fim — scans podem ter capa vazia; só falha no final se continuar vazio.
-            }
+            totalCharCount(finalized, pendingTail);
         }
 
-        // Yield to the UI thread between pages on large books.
         await new Promise<void>((resolve) => {
             if (typeof window !== 'undefined') {
                 window.setTimeout(resolve, 0);
