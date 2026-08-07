@@ -8,6 +8,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Inertia\Support\Header;
 
@@ -84,7 +85,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         /*
          * Sessão/CSRF expirado (419): em produção não devemos mostrar a página crua "Page Expired".
-         * Redireciona com mensagem amigável para o utilizador tentar novamente.
+         * Volta à página atual/anterior com mensagem amigável — não forçar tela de login
+         * (cookie "remember" pode reautenticar na próxima carga completa).
          */
         $exceptions->render(function (TokenMismatchException $e, Request $request) {
             if ($request->expectsJson()) {
@@ -95,19 +97,24 @@ return Application::configure(basePath: dirname(__DIR__))
 
             $message = 'A sessão expirou. Atualize a página e tente novamente.';
 
-            $loginUrl = route('login');
+            $fallback = url()->previous();
+            if ($fallback === '' || $fallback === $request->fullUrl()) {
+                $fallback = $request->isMethod('GET')
+                    ? url()->current()
+                    : (Route::has('mobile.home') ? route('mobile.home') : url('/'));
+            }
 
             if ($request->header(Header::INERTIA)) {
-                return redirect()->to($request->isMethod('GET') ? url()->current() : $loginUrl)
+                return redirect()->to($fallback)
                     ->with('error', $message)
                     ->setStatusCode(303);
             }
 
             if ($request->routeIs('login') || $request->is('login')) {
-                return redirect()->to($loginUrl)->with('error', $message);
+                return redirect()->route('login')->with('error', $message);
             }
 
-            return redirect()->guest($loginUrl)->with('error', $message);
+            return redirect()->to($fallback)->with('error', $message);
         });
 
         /*

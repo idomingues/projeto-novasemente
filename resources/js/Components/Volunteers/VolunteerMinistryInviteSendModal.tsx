@@ -104,7 +104,7 @@ export default function VolunteerMinistryInviteSendModal({
             onClose={onClose}
             maxWidth="lg"
             footer={
-                payload ? (
+                payload && (plainMessage || payload.inviteResendEmailUrl) ? (
                     <div className="flex w-full flex-col gap-3">
                         {plainMessage ? (
                             <>
@@ -145,16 +145,14 @@ export default function VolunteerMinistryInviteSendModal({
                                 ) : null}
                             </>
                         ) : null}
-                        <div className="flex flex-col-reverse gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-700 sm:flex-row sm:justify-end">
-                            <SecondaryButton
-                                type="button"
-                                onClick={onClose}
-                                disabled={resendInviteForm.processing}
-                                className="!h-11 w-full !rounded-xl !normal-case !tracking-normal sm:w-auto"
+                        {payload.inviteResendEmailUrl ? (
+                            <div
+                                className={`flex flex-col-reverse gap-2 sm:flex-row sm:justify-end ${
+                                    plainMessage
+                                        ? 'border-t border-zinc-200 pt-3 dark:border-zinc-700'
+                                        : ''
+                                }`}
                             >
-                                Fechar
-                            </SecondaryButton>
-                            {payload.inviteResendEmailUrl ? (
                                 <PrimaryButton
                                     type="button"
                                     onClick={submitResendEmail}
@@ -169,8 +167,8 @@ export default function VolunteerMinistryInviteSendModal({
                                     <EnvelopeIcon className="mr-2 h-5 w-5 shrink-0" aria-hidden />
                                     {resendInviteForm.processing ? 'Enviando…' : 'Enviar por e-mail'}
                                 </PrimaryButton>
-                            ) : null}
-                        </div>
+                            </div>
+                        ) : null}
                     </div>
                 ) : undefined
             }

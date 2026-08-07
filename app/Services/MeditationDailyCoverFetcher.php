@@ -18,6 +18,12 @@ class MeditationDailyCoverFetcher
 {
     private const OPENVERSE_ENDPOINT = 'https://api.openverse.org/v1/images';
 
+    /** Altura máxima da fumaça em relação à capa (centro superior). */
+    private const BRAND_MARK_HEIGHT_RATIO = 0.10;
+
+    /** Margem superior da marca, em fração da altura da capa. */
+    private const BRAND_MARK_TOP_RATIO = 0.025;
+
     /** @var list<string> */
     private const QUERIES = [
         'sunrise',
@@ -190,7 +196,16 @@ class MeditationDailyCoverFetcher
                 $ext = 'webp';
             }
 
-            $relative = 'meditation-covers/'.$date->format('Y').'/'.$date->format('Y-m-d').'.'.$ext;
+            $branded = $this->applyBrandMark($bytes, $contentType);
+            if ($branded !== null) {
+                $bytes = $branded['bytes'];
+                $ext = $branded['ext'];
+                // Sufixo `.ns` marca capa já com logo (o feed não sobrepõe de novo).
+                $relative = 'meditation-covers/'.$date->format('Y').'/'.$date->format('Y-m-d').'.ns.'.$ext;
+            } else {
+                $relative = 'meditation-covers/'.$date->format('Y').'/'.$date->format('Y-m-d').'.'.$ext;
+            }
+
             Storage::disk('public')->put($relative, $bytes);
 
             return StorageUrl::publicMediaUrl($relative);
@@ -201,6 +216,86 @@ class MeditationDailyCoverFetcher
 
             return null;
         }
+    }
+
+    /**
+     * Insere a marca Nova Semente no centro superior da capa.
+     *
+     * @return array{bytes: string, ext: string}|null
+     */
+    public function applyBrandMark(string $imageBytes, string $contentType = ''): ?array
+    {
+        if (! extension_loaded('gd') || $imageBytes === '') {
+            return null;
+        }
+
+        $logoPath = public_path('images/brand/meditation-cover-logo.png');
+        if (! is_file($logoPath)) {
+            return null;
+        }
+
+        $cover = @imagecreatefromstring($imageBytes);
+        if ($cover === false) {
+            return null;
+        }
+
+        $logo = @imagecreatefrompng($logoPath);
+        if ($logo === false) {
+            return null;
+        }
+
+        $coverW = imagesx($cover);
+        $coverH = imagesy($cover);
+        $logoW = imagesx($logo);
+        $logoH = imagesy($logo);
+        if ($coverW < 32 || $coverH < 32 || $logoW < 1 || $logoH < 1) {
+            return null;
+        }
+
+        $targetH = max(20, (int) round($coverH * self::BRAND_MARK_HEIGHT_RATIO));
+        $targetW = (int) round($logoW * ($targetH / $logoH));
+        if ($targetW < 1) {
+            return null;
+        }
+
+        $destX = (int) round(($coverW - $targetW) / 2);
+        $destY = (int) round($coverH * self::BRAND_MARK_TOP_RATIO);
+
+        imagealphablending($cover, true);
+        imagecopyresampled(
+            $cover,
+            $logo,
+            $destX,
+            $destY,
+            0,
+            0,
+            $targetW,
+            $targetH,
+            $logoW,
+            $logoH,
+        );
+
+        ob_start();
+        $ext = 'jpg';
+        $ok = false;
+        if (str_contains($contentType, 'png')) {
+            imagesavealpha($cover, true);
+            $ok = imagepng($cover, null, 6);
+            $ext = 'png';
+        } elseif (str_contains($contentType, 'webp') && function_exists('imagewebp')) {
+            $ok = imagewebp($cover, null, 85);
+            $ext = 'webp';
+        } else {
+            $ok = imagejpeg($cover, null, 88);
+            $ext = 'jpg';
+        }
+        $bytes = (string) ob_get_clean();
+
+        if (! $ok || $bytes === '') {
+            return null;
+        }
+
+        return ['bytes' => $bytes, 'ext' => $ext];
     }
 
     /**
@@ -236,7 +331,7 @@ class MeditationDailyCoverFetcher
 
         // Path local de storage também conta.
         if (str_contains($url, 'meditation-covers/')) {
-            if (preg_match('#meditation-covers/\d{4}/(\d{4}-\d{2}-\d{2})\.[a-z0-9]+#i', $url, $m)) {
+            if (preg_match('#meditation-covers/\d{4}/(\d{4}-\d{2}-\d{2})(?:\.ns)?\.[a-z0-9]+#i', $url, $m)) {
                 return 'local:'.$m[1];
             }
 

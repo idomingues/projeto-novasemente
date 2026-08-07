@@ -1,5 +1,4 @@
 import Modal from '@/Components/Modal';
-import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useCallback, useState } from 'react';
 
 type VerseRow = { verse: number; text: string };
@@ -92,26 +91,16 @@ export default function LibraryLessonReaderContent({ html, className = '' }: Pro
                 dangerouslySetInnerHTML={{ __html: html }}
             />
 
-            <Modal show={verseModal !== null} onClose={() => setVerseModal(null)} maxWidth="lg" showCloseButton={false}>
+            <Modal show={verseModal !== null} onClose={() => setVerseModal(null)} maxWidth="lg">
                 {verseModal ? (
                     <>
-                        <div className="flex items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
-                            <div className="min-w-0">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">
-                                    Versículo bíblico
-                                </p>
-                                <h2 className="mt-0.5 text-lg font-bold text-zinc-900 dark:text-white">
-                                    {verseModal.status === 'ok' ? verseModal.ref : verseModal.ref}
-                                </h2>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setVerseModal(null)}
-                                className="cursor-pointer rounded-full p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                                aria-label="Fechar"
-                            >
-                                <XMarkIcon className="h-5 w-5" />
-                            </button>
+                        <div className="border-b border-zinc-100 px-5 py-4 pr-12 dark:border-zinc-800 sm:pr-14">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">
+                                Versículo bíblico
+                            </p>
+                            <h2 className="mt-0.5 text-lg font-bold text-zinc-900 dark:text-white">
+                                {verseModal.status === 'ok' ? verseModal.ref : verseModal.ref}
+                            </h2>
                         </div>
 
                         <div className="max-h-[min(70vh,32rem)] overflow-y-auto p-5">

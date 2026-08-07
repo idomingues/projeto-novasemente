@@ -166,7 +166,7 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        Auth::login($user);
+        Auth::login($user, true);
 
         $request->session()->flash('registration_success', true);
         $request->session()->flash('success', 'Conta criada com sucesso. Bem-vindo(a)!');
@@ -300,7 +300,7 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        Auth::login($user);
+        Auth::login($user, true);
 
         $request->session()->flash('registration_success', true);
         $request->session()->flash('success', 'Conta criada e convite aceite. Bem-vindo(a)!');
@@ -360,7 +360,7 @@ class RegisteredUserController extends Controller
         app(SyncUserChurchFromRegistration::class)($user, $request);
         $user->ensureVolunteerProfile();
 
-        Auth::login($user);
+        Auth::login($user, true);
 
         $request->session()->flash('registration_success', true);
         $request->session()->flash('success', 'Conta criada com sucesso. Bem-vindo(a)!');

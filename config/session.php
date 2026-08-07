@@ -32,7 +32,12 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    /*
+     * Idle timeout em minutos. App / web: manter o usuário autenticado por muito tempo;
+     * só o logout explícito deve encerrar a sessão (o cookie "remember" reforça isso).
+     * 43200 = 30 dias.
+     */
+    'lifetime' => (int) env('SESSION_LIFETIME', 43200),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 

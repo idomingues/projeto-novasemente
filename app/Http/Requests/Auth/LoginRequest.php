@@ -105,7 +105,9 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        Auth::login($user, $this->boolean('remember'));
+        // Padrão: manter conectado (só sai com logout). Checkbox "Manter conectado" pode desligar.
+        $remember = $this->has('remember') ? $this->boolean('remember') : true;
+        Auth::login($user, $remember);
 
         RateLimiter::clear($this->throttleKey());
     }

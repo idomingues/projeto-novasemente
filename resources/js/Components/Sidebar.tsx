@@ -179,8 +179,10 @@ export default function Sidebar({
         openSupportTicketsCount?: number;
     };
     const currentChurch = (props as { currentChurch?: ChurchInfo | null }).currentChurch ?? null;
+    const defaultBrandLogoUrl = (props as { defaultBrandLogoUrl?: string }).defaultBrandLogoUrl;
     const churchesForSwitch = (props as { churchesForSwitch?: ChurchForSwitch[] }).churchesForSwitch ?? [];
     const adminSidebarMenu = (props as { adminSidebarMenu?: ServerSidebarItem[] }).adminSidebarMenu;
+    const brandLogoSrc = currentChurch?.logo_url ?? defaultBrandLogoUrl ?? '/logo-ns.png';
 
     const permissions: string[] = auth?.permissions ?? [];
     const isAuthenticated = !!auth?.user;
@@ -529,27 +531,22 @@ export default function Sidebar({
                 />
             ) : null}
             <aside
-                className={`fixed left-0 top-0 z-50 flex h-screen w-[17.5rem] flex-col border-r border-zinc-200 bg-white shadow-[4px_0_24px_-12px_rgba(0,0,0,0.12)] transition-transform duration-300 ease-out dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.45)] ${
+                className={`fixed left-0 top-0 z-50 flex h-[100dvh] w-[17.5rem] flex-col border-r border-zinc-200 bg-white shadow-[4px_0_24px_-12px_rgba(0,0,0,0.12)] transition-transform duration-300 ease-out dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.45)] ${
                     mobileOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}
+                style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
             >
-                {/* Logo Area */}
+                {/* Logo Area — abaixo do status bar (safe area) */}
                 <div className="flex h-[4.75rem] shrink-0 items-center justify-between border-b border-zinc-200/70 px-4 dark:border-zinc-800/80">
                     <Link
                         href={route('mobile.home')}
                         className="group flex min-w-0 cursor-pointer items-center gap-3 transition-opacity hover:opacity-90"
                     >
-                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-600 shadow-md shadow-brand-600/25 ring-1 ring-brand-700/10 dark:bg-brand-500 dark:shadow-brand-500/20">
-                            {currentChurch?.logo_url ? (
-                                <img
-                                    src={currentChurch.logo_url}
-                                    alt=""
-                                    className="h-full w-full object-cover"
-                                />
-                            ) : (
-                                <BuildingOfficeIcon className="h-5 w-5 text-white" />
-                            )}
-                        </div>
+                        <img
+                            src={brandLogoSrc}
+                            alt=""
+                            className="h-10 w-10 shrink-0 rounded-full object-cover object-center ring-1 ring-zinc-200/80 dark:invert dark:ring-zinc-700"
+                        />
                         <div className="flex min-w-0 flex-col gap-0.5">
                             <span className="truncate text-[15px] font-bold leading-tight tracking-[-0.02em] text-zinc-900 dark:text-zinc-50">
                                 {currentChurch?.name ?? 'Igreja'}

@@ -191,7 +191,7 @@ final class MissionAppAccount
             $volunteer->update(['email' => $email]);
 
             event(new Registered($user));
-            Auth::login($user);
+            Auth::login($user, true);
         });
 
         return [

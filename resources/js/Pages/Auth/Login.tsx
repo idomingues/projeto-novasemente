@@ -92,7 +92,7 @@ export default function Login({
     const { data, setData, processing, errors, reset, setError, clearErrors } = useForm({
         login: '',
         password: '',
-        remember: false as boolean,
+        remember: true as boolean,
         redirect: redirectTo ?? '',
         _token: csrfToken,
         /** Honeypot (deixar vazio): bots preenchem; o servidor rejeita. */
@@ -208,7 +208,8 @@ export default function Login({
         submitLogin({
             login: credentials.login,
             password: credentials.password,
-            remember: data.remember,
+            // Biometria = mesmo aparelho de confiança: manter sessão até o usuário sair.
+            remember: true,
             redirect: data.redirect,
             _token: data._token,
             website: data.website,
@@ -397,7 +398,7 @@ export default function Login({
                                             name="remember"
                                             checked={data.remember}
                                             onChange={(e) =>
-                                                setData('remember', (e.target.checked || false) as false)
+                                                setData('remember', e.target.checked)
                                             }
                                         />
                                         <span className="text-sm text-zinc-600">Manter conectado</span>

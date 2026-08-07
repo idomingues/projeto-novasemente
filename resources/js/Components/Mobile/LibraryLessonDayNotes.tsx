@@ -6,7 +6,6 @@ import {
     CheckIcon,
     LockClosedIcon,
     PencilSquareIcon,
-    XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { Link, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -543,21 +542,11 @@ export default function LibraryLessonDayNotes({
             )}
 
             <Modal show={weekModalOpen} onClose={() => setWeekModalOpen(false)} maxWidth="lg">
-                <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
-                    <div>
-                        <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Anotações da semana</h2>
-                        <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
-                            Toque em um dia para editar
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => setWeekModalOpen(false)}
-                        className="cursor-pointer rounded-full p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                        aria-label="Fechar"
-                    >
-                        <XMarkIcon className="h-5 w-5" />
-                    </button>
+                <div className="border-b border-zinc-100 px-5 py-4 pr-12 dark:border-zinc-800 sm:pr-14">
+                    <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Anotações da semana</h2>
+                    <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+                        Toque em um dia para editar
+                    </p>
                 </div>
                 <div className="max-h-[min(70vh,32rem)] space-y-3 overflow-y-auto p-5">
                     {weekNotes.length === 0 ? (

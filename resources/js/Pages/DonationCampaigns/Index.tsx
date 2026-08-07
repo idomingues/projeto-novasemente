@@ -13,9 +13,8 @@ import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import {
-    ArrowTopRightOnSquareIcon,
     BanknotesIcon,
     DocumentTextIcon,
     EyeIcon,
@@ -611,7 +610,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
 
             <Modal show={previewCampaign !== null} onClose={() => setPreviewCampaign(null)} maxWidth="3xl">
                 <div className="flex max-h-[min(90dvh,calc(100dvh-2rem))] flex-col">
-                    <div className="flex shrink-0 flex-col gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+                    <div className="shrink-0 border-b border-zinc-200 px-5 py-4 pr-12 dark:border-zinc-800 sm:px-6 sm:pr-14">
                         <div className="min-w-0">
                             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
                                 {previewCampaign?.title}
@@ -619,17 +618,6 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                                 Prévia do conteúdo exibido no app
                             </p>
-                        </div>
-                        <div className="flex shrink-0 flex-wrap gap-2">
-                            {previewCampaign ? (
-                                <Link
-                                    href={route('mobile.campaigns.show', previewCampaign.id)}
-                                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
-                                >
-                                    <ArrowTopRightOnSquareIcon className="h-4 w-4" aria-hidden />
-                                    Abrir no app
-                                </Link>
-                            ) : null}
                         </div>
                     </div>
                     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
@@ -859,17 +847,17 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
 
             <Modal show={detailCampaign !== null} onClose={() => setDetailCampaign(null)} maxWidth="2xl">
                 <div className="p-6">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                            Contribuições — {detailCampaign?.title}
-                        </h3>
-                        {canManageDonations && detailCampaign?.status !== 'archived' && (
+                    <h3 className="pr-10 text-lg font-semibold text-zinc-900 dark:text-white">
+                        Contribuições — {detailCampaign?.title}
+                    </h3>
+                    {canManageDonations && detailCampaign?.status !== 'archived' && (
+                        <div className="mt-3">
                             <SecondaryButton type="button" onClick={openManualDonation}>
                                 <PlusIcon className="mr-1.5 h-4 w-4" />
                                 Registrar contribuição manual
                             </SecondaryButton>
-                        )}
-                    </div>
+                        </div>
+                    )}
                     {loadingDonations ? (
                         <p className="mt-4 text-sm text-zinc-500">Carregando...</p>
                     ) : detailDonations.length === 0 ? (

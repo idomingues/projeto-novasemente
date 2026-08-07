@@ -348,8 +348,16 @@ export default function PublicationFeedCard({
                 referrerPolicy="no-referrer"
                 onError={() => setCoverBroken(true)}
             />
+            {isMeditation && !src.includes('.ns.') ? (
+                <img
+                    src="/images/brand/meditation-cover-logo.png"
+                    alt=""
+                    aria-hidden
+                    className="pointer-events-none absolute left-1/2 top-3 z-[1] h-[10%] max-h-14 w-auto -translate-x-1/2 object-contain drop-shadow-[0_1px_2px_rgba(255,255,255,0.65)] sm:top-4 sm:max-h-16"
+                />
+            ) : null}
             {showMeditationOverlay ? (
-                <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/75 via-black/35 to-transparent px-4 pb-5 pt-16 sm:px-5 sm:pb-6">
+                <div className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-end bg-gradient-to-t from-black/75 via-black/35 to-transparent px-4 pb-5 pt-16 sm:px-5 sm:pb-6">
                     <p
                         className="text-[1.05rem] font-medium leading-snug tracking-tight text-white sm:text-[1.15rem]"
                         style={{

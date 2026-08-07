@@ -693,17 +693,17 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
 
             <Modal show={detailCampaign !== null} onClose={() => setDetailCampaign(null)} maxWidth="2xl">
                 <div className="p-6">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                            {detailIsItemCampaign ? 'Compromissos e entregas' : 'Doações'} — {detailCampaign?.title}
-                        </h3>
-                        {canManageDonations && detailCampaign?.status !== 'archived' && !detailIsItemCampaign && (
+                    <h3 className="pr-10 text-lg font-semibold text-zinc-900 dark:text-white">
+                        {detailIsItemCampaign ? 'Compromissos e entregas' : 'Doações'} — {detailCampaign?.title}
+                    </h3>
+                    {canManageDonations && detailCampaign?.status !== 'archived' && !detailIsItemCampaign && (
+                        <div className="mt-3">
                             <SecondaryButton type="button" onClick={openManualDonation}>
                                 <PlusIcon className="mr-1.5 h-4 w-4" />
                                 Registrar doação manual
                             </SecondaryButton>
-                        )}
-                    </div>
+                        </div>
+                    )}
                     {loadingDonations ? (
                         <p className="mt-4 text-sm text-zinc-500">Carregando...</p>
                     ) : detailDonations.length === 0 ? (

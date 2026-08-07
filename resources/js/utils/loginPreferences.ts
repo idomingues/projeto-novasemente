@@ -44,13 +44,18 @@ export function clearLastLogin(): void {
 }
 
 export function readRememberPreference(): boolean {
+    // Sem preferência salva: manter conectado (app/web só sai com logout explícito).
     if (!canUseStorage()) {
-        return false;
+        return true;
     }
     try {
-        return localStorage.getItem(REMEMBER_KEY) === '1';
+        const value = localStorage.getItem(REMEMBER_KEY);
+        if (value === null) {
+            return true;
+        }
+        return value === '1';
     } catch {
-        return false;
+        return true;
     }
 }
 
