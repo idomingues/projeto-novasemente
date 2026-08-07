@@ -211,7 +211,13 @@ export default function ReadingPositionControls({
         clearReadingPosition(contentKey);
         setSavedPosition(null);
         setResumeDismissed(true);
+        setJustSaved(false);
+        hasAutoResumedRef.current = true;
         onMarkedParagraphChange?.(null);
+        if (saveTimerRef.current !== null) {
+            window.clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = null;
+        }
     };
 
     const showResumeBanner = ready && savedPosition !== null && !resumeDismissed;
@@ -230,16 +236,26 @@ export default function ReadingPositionControls({
                 ) : (
                     <BookmarkIcon className="h-4 w-4 shrink-0" aria-hidden />
                 )}
-                {justSaved ? 'Marcador salvo' : 'Marcar onde parei'}
+                {justSaved ? 'Marcador salvo' : savedPosition ? 'Atualizar marcador' : 'Marcar onde parei'}
             </button>
             {savedPosition ? (
-                <button
-                    type="button"
-                    onClick={() => savedPosition && resumeToPosition(savedPosition)}
-                    className="inline-flex min-h-11 cursor-pointer touch-manipulation items-center justify-center rounded-2xl border border-teal-300 bg-white px-4 py-2.5 text-sm font-semibold text-teal-800 shadow-sm transition hover:bg-teal-50 dark:border-teal-700 dark:bg-zinc-900 dark:text-teal-200 dark:hover:bg-teal-950/40"
-                >
-                    Ir ao marcador
-                </button>
+                <>
+                    <button
+                        type="button"
+                        onClick={() => resumeToPosition(savedPosition)}
+                        className="inline-flex min-h-11 cursor-pointer touch-manipulation items-center justify-center rounded-2xl border border-teal-300 bg-white px-4 py-2.5 text-sm font-semibold text-teal-800 shadow-sm transition hover:bg-teal-50 dark:border-teal-700 dark:bg-zinc-900 dark:text-teal-200 dark:hover:bg-teal-950/40"
+                    >
+                        Ir ao marcador
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleClear}
+                        className="inline-flex min-h-11 cursor-pointer touch-manipulation items-center justify-center gap-1.5 rounded-2xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    >
+                        <XMarkIcon className="h-4 w-4 shrink-0" aria-hidden />
+                        Remover
+                    </button>
+                </>
             ) : null}
         </div>
     );
