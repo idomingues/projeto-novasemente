@@ -83,22 +83,75 @@ export const CAIXA_FIXO_ANNUAL_LINES: AnnualLine[] = [
 
 export type CaixaFixoStoryFinancial = {
     monthly_total: number;
+    /** Ofertas do mês corrente (barra de fora / lista). */
+    monthly_raised: number;
     cost_items: CostItem[];
     annual_year: number;
     annual_lines: AnnualLine[];
 };
 
+export type CaixaFixoProgress = {
+    raised: number;
+    goal: number;
+    remaining: number;
+    percent: number;
+};
+
+/** Nome do mês atual em pt-BR (ex.: "agosto"), fuso America/Sao_Paulo. */
+export function currentMonthNamePtBr(date: Date = new Date()): string {
+    return new Intl.DateTimeFormat('pt-BR', {
+        month: 'long',
+        timeZone: 'America/Sao_Paulo',
+    }).format(date);
+}
+
+/** Título do mês corrente (ex.: "Agosto de 2026"). */
+export function currentMonthTitlePtBr(date: Date = new Date()): string {
+    const raw = new Intl.DateTimeFormat('pt-BR', {
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'America/Sao_Paulo',
+    }).format(date);
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+/** Rótulos da barra mensal — sempre o mês corrente. */
+export function caixaFixoMonthlyProgressLabels(date: Date = new Date()): {
+    raisedLabel: string;
+    remainingLabel: string;
+    monthTitle: string;
+} {
+    const month = currentMonthNamePtBr(date);
+    return {
+        raisedLabel: `arrecadados em ${month}`,
+        remainingLabel: `Faltam em ${month}`,
+        monthTitle: currentMonthTitlePtBr(date),
+    };
+}
+
 export function defaultCaixaFixoStoryFinancial(): CaixaFixoStoryFinancial {
+    const annualIn =
+        CAIXA_FIXO_ANNUAL_LINES.find((item) => item.flow === 'in')?.amount ??
+        CAIXA_FIXO_ANNUAL_LINES.find((item) => /ofertas/i.test(item.label))?.amount ??
+        0;
+
     return {
         monthly_total: CAIXA_FIXO_MONTHLY_TOTAL,
+        monthly_raised: Math.round((Math.abs(annualIn) / 12) * 100) / 100,
         cost_items: CAIXA_FIXO_COST_ITEMS.map((item) => ({ ...item })),
         annual_year: CAIXA_FIXO_ANNUAL_YEAR,
         annual_lines: CAIXA_FIXO_ANNUAL_LINES.map((line) => ({ ...line })),
     };
 }
 
-/** Valor de ofertas (entrada) da história — usado na barra de progresso. */
-export function caixaFixoProgressRaised(story: CaixaFixoStoryFinancial | null | undefined): number | null {
+function buildProgress(raised: number, goal: number): CaixaFixoProgress {
+    const remaining = Math.max(0, goal - raised);
+    const percent = goal > 0 ? Math.min(100, Math.floor((raised / goal) * 100)) : 0;
+    return { raised, goal, remaining, percent };
+}
+
+/** Ofertas anuais (entrada) da história — barra interna / detalhe. */
+export function caixaFixoAnnualProgressRaised(story: CaixaFixoStoryFinancial | null | undefined): number | null {
     if (!story?.annual_lines?.length) {
         return null;
     }
@@ -109,6 +162,44 @@ export function caixaFixoProgressRaised(story: CaixaFixoStoryFinancial | null | 
         return null;
     }
     return Math.abs(line.amount);
+}
+
+/** @deprecated Use caixaFixoAnnualProgressRaised — mantido para compatibilidade. */
+export function caixaFixoProgressRaised(story: CaixaFixoStoryFinancial | null | undefined): number | null {
+    return caixaFixoAnnualProgressRaised(story);
+}
+
+/** Progresso mensal (lista / fora): ofertas do mês × custo fixo mensal. */
+export function caixaFixoMonthlyProgress(
+    story: CaixaFixoStoryFinancial | null | undefined,
+): CaixaFixoProgress | null {
+    if (!story || typeof story.monthly_total !== 'number' || !Number.isFinite(story.monthly_total)) {
+        return null;
+    }
+
+    let raised = 0;
+    if (typeof story.monthly_raised === 'number' && Number.isFinite(story.monthly_raised)) {
+        raised = Math.max(0, story.monthly_raised);
+    } else {
+        const annual = caixaFixoAnnualProgressRaised(story);
+        if (annual !== null) {
+            raised = Math.round((annual / 12) * 100) / 100;
+        }
+    }
+
+    return buildProgress(raised, story.monthly_total);
+}
+
+/** Progresso anual (detalhe / dentro): ofertas do ano × meta anual. */
+export function caixaFixoAnnualProgress(
+    story: CaixaFixoStoryFinancial | null | undefined,
+    annualGoal: number,
+): CaixaFixoProgress | null {
+    const raised = caixaFixoAnnualProgressRaised(story);
+    if (raised === null || !Number.isFinite(annualGoal) || annualGoal <= 0) {
+        return null;
+    }
+    return buildProgress(raised, annualGoal);
 }
 
 export const CAIXA_FIXO_CLOSING = {

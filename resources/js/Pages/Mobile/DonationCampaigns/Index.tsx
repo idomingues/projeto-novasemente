@@ -1,7 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import DonationProgressBar from '@/Components/Donations/DonationProgressBar';
 import type { CaixaFixoStoryFinancial } from '@/data/caixaFixoIgrejaStory';
-import { caixaFixoProgressRaised } from '@/data/caixaFixoIgrejaStory';
+import { caixaFixoMonthlyProgress, caixaFixoMonthlyProgressLabels } from '@/data/caixaFixoIgrejaStory';
 import type { ConstrucaoIgrejaStoryData } from '@/data/construcaoIgrejaStory';
 import { construcaoProgressRaised } from '@/data/construcaoIgrejaStory';
 import { Head, Link } from '@inertiajs/react';
@@ -99,6 +99,11 @@ export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
                                     />
                                 )}
                                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{campaign.title}</h2>
+                                {campaign.show_caixa_fixo_story && (
+                                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">
+                                        {caixaFixoMonthlyProgressLabels().monthTitle}
+                                    </p>
+                                )}
                                 {(campaign.starts_at || campaign.ends_at) && (
                                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                         {campaign.starts_at ? `Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
@@ -108,11 +113,26 @@ export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
                                 )}
                                 <div className="mt-3">
                                     {(() => {
+                                        if (campaign.show_caixa_fixo_story) {
+                                            const monthly = caixaFixoMonthlyProgress(campaign.caixa_fixo_story);
+                                            const labels = caixaFixoMonthlyProgressLabels();
+                                            if (monthly) {
+                                                return (
+                                                    <DonationProgressBar
+                                                        raisedAmount={monthly.raised}
+                                                        goalAmount={monthly.goal}
+                                                        remainingAmount={monthly.remaining}
+                                                        progressPercent={monthly.percent}
+                                                        raisedLabel={labels.raisedLabel}
+                                                        remainingLabel={labels.remainingLabel}
+                                                        size="sm"
+                                                    />
+                                                );
+                                            }
+                                        }
                                         let fromStory: number | null = null;
                                         if (campaign.show_construcao_story) {
                                             fromStory = construcaoProgressRaised(campaign.construcao_story);
-                                        } else if (campaign.show_caixa_fixo_story) {
-                                            fromStory = caixaFixoProgressRaised(campaign.caixa_fixo_story);
                                         }
                                         const raised = fromStory ?? campaign.raised_amount;
                                         const goal = campaign.goal_amount;

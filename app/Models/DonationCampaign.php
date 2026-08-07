@@ -118,6 +118,7 @@ class DonationCampaign extends Model
      *
      * @return array{
      *     monthly_total: float,
+     *     monthly_raised: float,
      *     cost_items: list<array{label: string, percent: float, amount: float, tone: string, compact?: bool}>,
      *     annual_year: int,
      *     annual_lines: list<array{label: string, amount: float, tone: string, emphasize?: bool, flow?: string}>
@@ -188,8 +189,23 @@ class DonationCampaign extends Model
             }
         }
 
+        if (array_key_exists('monthly_raised', $stored)) {
+            $monthlyRaised = round((float) $stored['monthly_raised'], 2);
+        } else {
+            $annualIn = 0.0;
+            foreach ($annualLines as $line) {
+                $flow = $line['flow'] ?? null;
+                if ($flow === 'in' || ($flow === null && preg_match('/ofertas/i', (string) $line['label']))) {
+                    $annualIn = abs((float) $line['amount']);
+                    break;
+                }
+            }
+            $monthlyRaised = round($annualIn / 12, 2);
+        }
+
         return [
             'monthly_total' => $monthlyTotal,
+            'monthly_raised' => max(0.0, $monthlyRaised),
             'cost_items' => $costItems,
             'annual_year' => isset($stored['annual_year'])
                 ? (int) $stored['annual_year']

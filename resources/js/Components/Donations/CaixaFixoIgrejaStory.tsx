@@ -3,6 +3,8 @@ import {
     CAIXA_FIXO_EXECUTIVE_SUMMARY,
     CAIXA_FIXO_HERO_IMAGE,
     CAIXA_FIXO_INTRO,
+    caixaFixoAnnualProgress,
+    currentMonthTitlePtBr,
     defaultCaixaFixoStoryFinancial,
     type AnnualLine,
     type AnnualLineTone,
@@ -10,6 +12,7 @@ import {
     type CostBarTone,
     type CostItem,
 } from '@/data/caixaFixoIgrejaStory';
+import DonationProgressBar from '@/Components/Donations/DonationProgressBar';
 import { parseMoneyInput, parseSignedMoneyInput } from '@/lib/pixPayload';
 import PrimaryButton from '@/Components/PrimaryButton';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
@@ -51,8 +54,22 @@ function resolveStory(initial?: CaixaFixoStoryFinancial | null): CaixaFixoStoryF
     if (!initial) {
         return defaultCaixaFixoStoryFinancial();
     }
+
+    let monthlyRaised = 0;
+    if (typeof initial.monthly_raised === 'number' && Number.isFinite(initial.monthly_raised)) {
+        monthlyRaised = Math.max(0, initial.monthly_raised);
+    } else {
+        const annualIn =
+            initial.annual_lines.find((item) => item.flow === 'in') ??
+            initial.annual_lines.find((item) => /ofertas/i.test(item.label));
+        if (annualIn) {
+            monthlyRaised = Math.round((Math.abs(annualIn.amount) / 12) * 100) / 100;
+        }
+    }
+
     return withRecalculatedPercents({
         monthly_total: initial.monthly_total,
+        monthly_raised: monthlyRaised,
         cost_items: initial.cost_items.map((item) => ({ ...item })),
         annual_year: initial.annual_year,
         annual_lines: initial.annual_lines.map((line) => ({ ...line })),
@@ -183,6 +200,10 @@ export default function CaixaFixoIgrejaStory({
         commitStory(withRecalculatedPercents({ ...story, monthly_total: amount }));
     }
 
+    function updateMonthlyRaised(amount: number) {
+        commitStory({ ...story, monthly_raised: Math.max(0, amount) });
+    }
+
     function updateCostAmount(index: number, amount: number) {
         const cost_items = story.cost_items.map((item, i) => (i === index ? { ...item, amount } : item));
         commitStory(withRecalculatedPercents({ ...story, cost_items }));
@@ -201,6 +222,9 @@ export default function CaixaFixoIgrejaStory({
     const compactCosts = story.cost_items
         .map((item, index) => ({ item, index }))
         .filter(({ item }) => item.compact);
+    const currentMonth = currentMonthTitlePtBr();
+    const annualGoal = story.monthly_total > 0 ? story.monthly_total * 12 : 0;
+    const annualProgress = caixaFixoAnnualProgress(story, annualGoal);
 
     function renderCostAmount(item: CostItem, index: number, className?: string) {
         if (editable) {
@@ -283,6 +307,29 @@ export default function CaixaFixoIgrejaStory({
                             {formatBrl(story.monthly_total)}
                         </p>
                     )}
+                    <div className="mt-4 rounded-xl border border-brand-100/80 bg-white/70 px-3 py-3 dark:border-brand-900/40 dark:bg-zinc-950/30">
+                        <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                            Ofertas — {currentMonth}
+                        </p>
+                        {editable ? (
+                            <MoneyField
+                                id="caixa-fixo-monthly-raised"
+                                value={story.monthly_raised}
+                                large
+                                aria-label={`Ofertas — ${currentMonth}`}
+                                onCommit={updateMonthlyRaised}
+                            />
+                        ) : (
+                            <p className="mt-1 text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+                                {formatBrl(story.monthly_raised)}
+                            </p>
+                        )}
+                        {editable && (
+                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                Valor da lista · mês corrente (atualiza sozinho)
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 <div className="space-y-4 p-4 sm:p-5">
@@ -370,6 +417,22 @@ export default function CaixaFixoIgrejaStory({
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                         Movimentação do caixa da Oferta Nova Semente ao longo de {story.annual_year}.
                     </p>
+                    {annualProgress && (
+                        <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+                            <p className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                                Progresso anual {story.annual_year}
+                            </p>
+                            <DonationProgressBar
+                                raisedAmount={annualProgress.raised}
+                                goalAmount={annualProgress.goal}
+                                remainingAmount={annualProgress.remaining}
+                                progressPercent={annualProgress.percent}
+                                raisedLabel={`arrecadados em ${story.annual_year}`}
+                                remainingLabel="Faltam no ano"
+                                size="sm"
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 border-b border-zinc-100 p-3 dark:border-zinc-800 sm:grid-cols-4 sm:gap-3 sm:p-4">

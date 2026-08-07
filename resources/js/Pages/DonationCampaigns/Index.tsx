@@ -27,7 +27,7 @@ import {
 import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 import { DONATION_CAMPAIGN_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import type { CaixaFixoStoryFinancial } from '@/data/caixaFixoIgrejaStory';
-import { caixaFixoProgressRaised, defaultCaixaFixoStoryFinancial } from '@/data/caixaFixoIgrejaStory';
+import { caixaFixoAnnualProgress, caixaFixoMonthlyProgress, caixaFixoMonthlyProgressLabels, defaultCaixaFixoStoryFinancial } from '@/data/caixaFixoIgrejaStory';
 import type { ConstrucaoIgrejaStoryData } from '@/data/construcaoIgrejaStory';
 import { construcaoProgressRaised, defaultConstrucaoIgrejaStory } from '@/data/construcaoIgrejaStory';
 import { parseMoneyInput } from '@/lib/pixPayload';
@@ -217,12 +217,45 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
             caixaFixo?: CaixaFixoStoryFinancial | null;
             construcao?: ConstrucaoIgrejaStoryData | null;
         } = {},
-    ): { raised: number; goal: number; remaining: number; percent: number } {
+        mode: 'list' | 'detail' = 'list',
+    ): {
+        raised: number;
+        goal: number;
+        remaining: number;
+        percent: number;
+        raisedLabel?: string;
+        remainingLabel?: string;
+        monthTitle?: string;
+    } {
+        if (campaign.show_caixa_fixo_story) {
+            const story = overrides.caixaFixo ?? campaign.caixa_fixo_story;
+            if (mode === 'list') {
+                const monthly = caixaFixoMonthlyProgress(story);
+                if (monthly) {
+                    const labels = caixaFixoMonthlyProgressLabels();
+                    return {
+                        ...monthly,
+                        raisedLabel: labels.raisedLabel,
+                        remainingLabel: labels.remainingLabel,
+                        monthTitle: labels.monthTitle,
+                    };
+                }
+            } else {
+                const annual = caixaFixoAnnualProgress(story, campaign.goal_amount);
+                if (annual) {
+                    const year = story?.annual_year;
+                    return {
+                        ...annual,
+                        raisedLabel: year ? `arrecadados em ${year}` : 'arrecadados no ano',
+                        remainingLabel: 'Faltam no ano',
+                    };
+                }
+            }
+        }
+
         let fromStory: number | null = null;
         if (campaign.show_construcao_story) {
             fromStory = construcaoProgressRaised(overrides.construcao ?? campaign.construcao_story);
-        } else if (campaign.show_caixa_fixo_story) {
-            fromStory = caixaFixoProgressRaised(overrides.caixaFixo ?? campaign.caixa_fixo_story);
         }
         const raised = fromStory ?? campaign.raised_amount;
         const goal = campaign.goal_amount;
@@ -235,10 +268,14 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
         if (!previewCampaign) {
             return null;
         }
-        return progressForCampaign(previewCampaign, {
-            caixaFixo: previewStoryDraft,
-            construcao: previewConstrucaoDraft,
-        });
+        return progressForCampaign(
+            previewCampaign,
+            {
+                caixaFixo: previewStoryDraft,
+                construcao: previewConstrucaoDraft,
+            },
+            'detail',
+        );
     }, [previewCampaign, previewStoryDraft, previewConstrucaoDraft]);
 
     function saveCaixaFixoStory(story: CaixaFixoStoryFinancial) {
@@ -248,6 +285,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
             route('donation-campaigns.caixa-fixo.update', previewCampaign.id),
             {
                 monthly_total: story.monthly_total.toFixed(2),
+                monthly_raised: story.monthly_raised.toFixed(2),
                 annual_year: story.annual_year,
                 cost_items: story.cost_items.map((item) => ({
                     label: item.label,
@@ -530,8 +568,8 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                         <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">{campaign.description}</p>
                                     )}
                                     {campaign.show_caixa_fixo_story && (
-                                        <p className="text-xs font-medium text-sky-700 dark:text-sky-300">
-                                            História do Caixa Fixo ativa
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">
+                                            {progress.monthTitle ?? caixaFixoMonthlyProgressLabels().monthTitle}
                                         </p>
                                     )}
                                     {campaign.show_construcao_story && (
@@ -544,6 +582,8 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                         goalAmount={progress.goal}
                                         remainingAmount={progress.remaining}
                                         progressPercent={progress.percent}
+                                        raisedLabel={progress.raisedLabel}
+                                        remainingLabel={progress.remainingLabel}
                                     />
                                     <p className="text-xs text-zinc-500">
                                         {campaign.donations_count} contribuição(ões)
@@ -657,13 +697,15 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                 Esta campanha ainda não tem descrição ou história publicada.
                             </p>
                         )}
-                        {previewCampaign && previewProgress ? (
+                        {previewCampaign && previewProgress && !previewCampaign.show_caixa_fixo_story ? (
                             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
                                 <DonationProgressBar
                                     raisedAmount={previewProgress.raised}
                                     goalAmount={previewProgress.goal}
                                     remainingAmount={previewProgress.remaining}
                                     progressPercent={previewProgress.percent}
+                                    raisedLabel={previewProgress.raisedLabel}
+                                    remainingLabel={previewProgress.remainingLabel}
                                 />
                             </div>
                         ) : null}

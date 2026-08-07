@@ -16,23 +16,12 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import {
     ArrowLeftIcon,
-    ArrowTopRightOnSquareIcon,
     CheckIcon,
     DocumentDuplicateIcon,
     PlayCircleIcon,
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { FormEventHandler, useState } from 'react';
-
-const SEVENME_LOGO_SRC = '/images/7me-logo.png';
-
-function donationLinkHost(url: string): string {
-    try {
-        return new URL(url).host;
-    } catch {
-        return '';
-    }
-}
 
 interface CampaignPhoto {
     id: number;
@@ -179,8 +168,6 @@ export default function MobileDonationCampaignShow({
     });
 
     const pixKey = pix.pix_key?.trim() || localOffer.pixKey;
-    const donationHost = donationUrl ? donationLinkHost(donationUrl) : '';
-    const hasDonationUrl = Boolean(donationUrl);
     const processStep: 1 | 2 | 3 = confirmStep ? 3 : 2;
     const availabilityMessage = !campaign.accepting_donations
         ? campaign.status === 'active' && campaign.starts_at && campaignStartsInFuture(campaign.starts_at)
@@ -397,44 +384,21 @@ export default function MobileDonationCampaignShow({
                     </div>
                 )}
 
-                {campaign.accepting_donations && (
-                    <PrimaryButton type="button" onClick={openDonateModal} className="w-full">
-                        Contribuir agora
-                    </PrimaryButton>
-                )}
-
-                {hasDonationUrl && donationUrl && (
-                    <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800">
+                {campaign.accepting_donations &&
+                    (donationUrl ? (
                         <a
                             href={donationUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group flex cursor-pointer items-center gap-3 rounded-2xl bg-zinc-50/90 px-3.5 py-3 transition hover:bg-zinc-100 active:scale-[0.99] dark:bg-zinc-950/40 dark:hover:bg-zinc-800/70"
+                            className="inline-flex h-12 w-full cursor-pointer items-center justify-center rounded-full bg-zinc-900 px-8 text-sm font-semibold uppercase tracking-widest text-white shadow-sm transition duration-150 ease-in-out hover:bg-zinc-700 hover:shadow-md focus:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 focus:ring-offset-white active:bg-zinc-900 dark:bg-white dark:text-black dark:hover:bg-zinc-100 dark:focus:bg-zinc-200 dark:focus:ring-white dark:focus:ring-offset-zinc-900 dark:active:bg-zinc-300"
                         >
-                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-zinc-700">
-                                <img
-                                    src={SEVENME_LOGO_SRC}
-                                    alt=""
-                                    className="h-5 w-auto max-w-[28px] object-contain"
-                                    width={28}
-                                    height={20}
-                                />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                                <span className="block text-sm font-semibold text-zinc-900 dark:text-white">
-                                    Doar pelo 7me
-                                </span>
-                                <span className="mt-0.5 block truncate text-xs text-zinc-500 dark:text-zinc-400">
-                                    {donationHost || 'Abrir link oficial'}
-                                </span>
-                            </span>
-                            <ArrowTopRightOnSquareIcon
-                                className="h-4 w-4 shrink-0 text-zinc-400 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300"
-                                aria-hidden
-                            />
+                            Contribuir agora via 7me
                         </a>
-                    </section>
-                )}
+                    ) : (
+                        <PrimaryButton type="button" onClick={openDonateModal} className="w-full">
+                            Contribuir agora
+                        </PrimaryButton>
+                    ))}
 
                 {campaign.thanks_is_published && (
                     <section className="rounded-3xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30">

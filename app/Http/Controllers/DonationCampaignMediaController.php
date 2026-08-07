@@ -55,6 +55,7 @@ class DonationCampaignMediaController extends Controller
 
         $request->merge([
             'monthly_total' => $this->normalizeMoneyInput($request->input('monthly_total')),
+            'monthly_raised' => $this->normalizeMoneyInput($request->input('monthly_raised')),
         ]);
 
         $costItemsInput = $request->input('cost_items', []);
@@ -79,6 +80,7 @@ class DonationCampaignMediaController extends Controller
 
         $data = $request->validate([
             'monthly_total' => ['required', 'numeric', 'min:0.01', 'max:9999999999.99'],
+            'monthly_raised' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
             'annual_year' => ['required', 'integer', 'min:2000', 'max:2100'],
             'cost_items' => ['required', 'array', 'min:1'],
             'cost_items.*.label' => ['required', 'string', 'max:255'],
@@ -94,6 +96,7 @@ class DonationCampaignMediaController extends Controller
         ]);
 
         $monthlyTotal = round((float) $data['monthly_total'], 2);
+        $monthlyRaised = round((float) $data['monthly_raised'], 2);
 
         $costItems = [];
         foreach ($data['cost_items'] as $item) {
@@ -129,6 +132,7 @@ class DonationCampaignMediaController extends Controller
         $donationCampaign->update([
             'caixa_fixo_story' => [
                 'monthly_total' => $monthlyTotal,
+                'monthly_raised' => $monthlyRaised,
                 'cost_items' => $costItems,
                 'annual_year' => (int) $data['annual_year'],
                 'annual_lines' => $annualLines,

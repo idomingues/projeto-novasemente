@@ -863,6 +863,7 @@ class DonationCampaignTest extends TestCase
 
         $payload = [
             'monthly_total' => '180.000,00',
+            'monthly_raised' => '95.000,00',
             'annual_year' => 2026,
             'cost_items' => [
                 [
@@ -912,6 +913,7 @@ class DonationCampaignTest extends TestCase
 
         $this->assertNotNull($campaign->caixa_fixo_story);
         $this->assertEquals(180000.0, (float) $campaign->caixa_fixo_story['monthly_total']);
+        $this->assertEquals(95000.0, (float) $campaign->caixa_fixo_story['monthly_raised']);
         $this->assertEquals(50000.0, (float) $campaign->caixa_fixo_story['cost_items'][0]['amount']);
         $this->assertEquals(27.78, (float) $campaign->caixa_fixo_story['cost_items'][0]['percent']);
         $this->assertEquals(-800000.0, (float) $campaign->caixa_fixo_story['annual_lines'][1]['amount']);
@@ -921,6 +923,7 @@ class DonationCampaignTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Mobile/DonationCampaigns/Show')
                 ->where('campaign.caixa_fixo_story.monthly_total', 180000)
+                ->where('campaign.caixa_fixo_story.monthly_raised', 95000)
                 ->where('campaign.caixa_fixo_story.cost_items.0.amount', 50000)
             );
     }

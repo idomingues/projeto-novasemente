@@ -11,6 +11,7 @@ final class CaixaFixoIgrejaStoryDefaults
     /**
      * @return array{
      *     monthly_total: float,
+     *     monthly_raised: float,
      *     cost_items: list<array{label: string, percent: float, amount: float, tone: string, compact?: bool}>,
      *     annual_year: int,
      *     annual_lines: list<array{label: string, amount: float, tone: string, emphasize?: bool, flow?: string}>
@@ -18,8 +19,11 @@ final class CaixaFixoIgrejaStoryDefaults
      */
     public static function financial(): array
     {
+        $annualIn = 977_249.48;
+
         return [
             'monthly_total' => 177_948.95,
+            'monthly_raised' => round($annualIn / 12, 2),
             'cost_items' => [
                 ['label' => 'Parcela da Construção (AP)', 'percent' => 28.1, 'amount' => 50_000.0, 'tone' => 'sky'],
                 ['label' => 'Músicos, Som e Louvor', 'percent' => 19.02, 'amount' => 33_851.19, 'tone' => 'emerald'],
@@ -39,7 +43,7 @@ final class CaixaFixoIgrejaStoryDefaults
             'annual_year' => 2026,
             'annual_lines' => [
                 ['label' => 'Saldo inicial', 'amount' => 407_381.06, 'tone' => 'emerald'],
-                ['label' => 'Ofertas 2026', 'amount' => 977_249.48, 'tone' => 'sky', 'flow' => 'in'],
+                ['label' => 'Ofertas 2026', 'amount' => $annualIn, 'tone' => 'sky', 'flow' => 'in'],
                 ['label' => 'Despesas 2026', 'amount' => -856_814.83, 'tone' => 'amber', 'flow' => 'out'],
                 ['label' => 'Repassar AP Construção', 'amount' => -468_816.9, 'tone' => 'orange', 'flow' => 'out'],
                 ['label' => 'Saldo atual', 'amount' => 58_998.81, 'tone' => 'brand', 'emphasize' => true],
