@@ -428,6 +428,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/mobile/inicio/marcadores', [MobileController::class, 'toggleHomeCardBookmark'])
         ->middleware('throttle:60,1')
         ->name('mobile.home.bookmarks.toggle');
+    Route::post('/mobile/biblioteca/marcadores', [MobileController::class, 'toggleLibraryBookBookmark'])
+        ->middleware('throttle:60,1')
+        ->name('mobile.biblioteca.bookmarks.toggle');
 
     Route::post('/mobile/publicacoes/{feedId}/like', [PublicationEngagementController::class, 'toggleLike'])
         ->middleware('throttle:60,1')

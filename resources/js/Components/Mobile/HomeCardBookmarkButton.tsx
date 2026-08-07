@@ -7,6 +7,8 @@ type Props = {
     disabled?: boolean;
     onToggle: (cardKey: string) => void;
     className?: string;
+    labelAdd?: string;
+    labelRemove?: string;
 };
 
 export default function HomeCardBookmarkButton({
@@ -15,7 +17,11 @@ export default function HomeCardBookmarkButton({
     disabled = false,
     onToggle,
     className = '',
+    labelAdd = 'Marcar como favorito',
+    labelRemove = 'Remover dos favoritos',
 }: Props) {
+    const label = bookmarked ? labelRemove : labelAdd;
+
     return (
         <button
             type="button"
@@ -28,9 +34,9 @@ export default function HomeCardBookmarkButton({
                 }
             }}
             className={`absolute right-2 top-2 z-10 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 ${className}`}
-            aria-label={bookmarked ? 'Remover dos favoritos' : 'Marcar como favorito'}
+            aria-label={label}
             aria-pressed={bookmarked}
-            title={bookmarked ? 'Remover dos favoritos' : 'Marcar como favorito'}
+            title={label}
         >
             {bookmarked ? (
                 <HeartSolidIcon className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" aria-hidden />

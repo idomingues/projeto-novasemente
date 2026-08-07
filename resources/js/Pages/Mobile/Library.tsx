@@ -14,6 +14,7 @@ import {
     ArchiveBoxIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
+import HomeCardBookmarkButton from '@/Components/Mobile/HomeCardBookmarkButton';
 import LibraryLessonDayNotes from '@/Components/Mobile/LibraryLessonDayNotes';
 import MeditationAudiencePicker from '@/Components/Mobile/MeditationAudiencePicker';
 import {
@@ -54,6 +55,7 @@ interface Props {
     lessonUrl?: string | null;
     sunsetMeditationConfigured?: boolean;
     librarySetupMessage?: string | null;
+    bookmarkedLibraryBookIds?: number[];
     revistaAdventistaAcervo?: {
         editions: Array<{
             id: number;
@@ -70,7 +72,11 @@ interface Props {
     } | null;
 }
 
-type PageProps = { appUrl?: string };
+type PageProps = {
+    appUrl?: string;
+    auth?: { user?: { id?: number; name?: string } | null };
+    csrf_token?: string;
+};
 
 interface ReaderSegment {
     slug: string;
@@ -151,10 +157,67 @@ export default function MobileLibrary({
     lessonUrl: lessonUrlProp = null,
     sunsetMeditationConfigured = false,
     librarySetupMessage = null,
+    bookmarkedLibraryBookIds = [],
     revistaAdventistaAcervo = null,
 }: Props) {
     const page = usePage();
-    const appUrl = (page.props as PageProps).appUrl ?? '';
+    const { appUrl = '', auth, csrf_token: csrfProp } = page.props as PageProps;
+    const user = auth?.user ?? null;
+    const canBookmark = Boolean(user);
+    const [bookmarks, setBookmarks] = useState<number[]>(bookmarkedLibraryBookIds);
+    const [bookmarkBusy, setBookmarkBusy] = useState(false);
+
+    useEffect(() => {
+        setBookmarks(bookmarkedLibraryBookIds);
+    }, [bookmarkedLibraryBookIds]);
+
+    const toggleBookmark = useCallback(
+        async (cardKey: string) => {
+            const bookId = Number(cardKey);
+            if (!canBookmark || bookmarkBusy || !Number.isFinite(bookId) || bookId <= 0) {
+                return;
+            }
+
+            setBookmarkBusy(true);
+            const prev = bookmarks;
+            const next = prev.includes(bookId)
+                ? prev.filter((id) => id !== bookId)
+                : [bookId, ...prev.filter((id) => id !== bookId)];
+            setBookmarks(next);
+
+            try {
+                const csrf =
+                    csrfProp ??
+                    document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ??
+                    '';
+                const response = await fetch(route('mobile.biblioteca.bookmarks.toggle'), {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ library_book_id: bookId }),
+                });
+                if (!response.ok) {
+                    setBookmarks(prev);
+                    return;
+                }
+                const payload = (await response.json()) as { bookmarkedLibraryBookIds?: number[] };
+                if (Array.isArray(payload.bookmarkedLibraryBookIds)) {
+                    setBookmarks(payload.bookmarkedLibraryBookIds.map((id) => Number(id)));
+                }
+            } catch {
+                setBookmarks(prev);
+            } finally {
+                setBookmarkBusy(false);
+            }
+        },
+        [bookmarks, bookmarkBusy, canBookmark, csrfProp],
+    );
+
     const tabFromUrl = useMemo(() => {
         const raw = String(page.url ?? '');
         const qs = raw.includes('?') ? raw.slice(raw.indexOf('?') + 1) : '';
@@ -212,13 +275,26 @@ export default function MobileLibrary({
 
     const filtered = useMemo(() => {
         const q = normalizeForSearch(search);
-        return books.filter((b) => {
+        const list = books.filter((b) => {
             if (b.category !== tab) return false;
             if (!q) return true;
             const t = normalizeForSearch(b.title + (b.subtitle ? ` ${b.subtitle}` : ''));
             return t.includes(q);
         });
-    }, [books, tab, search]);
+
+        // Preferidos («estou lendo») sobem para o início, na ordem do marcador.
+        return [...list].sort((a, b) => {
+            const aBook = bookmarks.includes(a.id) ? 0 : 1;
+            const bBook = bookmarks.includes(b.id) ? 0 : 1;
+            if (aBook !== bBook) {
+                return aBook - bBook;
+            }
+            if (aBook === 0) {
+                return bookmarks.indexOf(a.id) - bookmarks.indexOf(b.id);
+            }
+            return 0;
+        });
+    }, [books, tab, search, bookmarks]);
 
     const selectAcervoYear = (year: number) => {
         router.get(
@@ -604,6 +680,20 @@ export default function MobileLibrary({
                             const coverShellClass =
                                 'relative block aspect-[3/4] w-[8.75rem] shrink-0 overflow-hidden rounded-lg bg-zinc-100 touch-manipulation transition active:opacity-90 dark:bg-zinc-800 sm:w-36';
 
+                            const isReading = bookmarks.includes(b.id);
+                            const coverBookmark =
+                                canBookmark ? (
+                                    <HomeCardBookmarkButton
+                                        cardKey={String(b.id)}
+                                        bookmarked={isReading}
+                                        disabled={bookmarkBusy}
+                                        onToggle={toggleBookmark}
+                                        className="bg-white/90 shadow-sm backdrop-blur dark:bg-zinc-900/90"
+                                        labelAdd="Marcar como estou lendo"
+                                        labelRemove="Remover dos que estou lendo"
+                                    />
+                                ) : null;
+
                             const coverBlock =
                                 directOpen !== '' ? (
                                     <a
@@ -615,24 +705,37 @@ export default function MobileLibrary({
                                         title="Abrir no site"
                                     >
                                         {coverVisual}
+                                        {coverBookmark}
                                     </a>
                                 ) : (
                                     <Link href={showUrl} className={`${coverShellClass} cursor-pointer`} aria-label={`Ler: ${b.title}`}>
                                         {coverVisual}
+                                        {coverBookmark}
                                     </Link>
                                 );
 
                             return (
                                 <li
                                     key={b.id}
-                                    className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+                                    className={`overflow-hidden rounded-2xl border bg-white dark:bg-zinc-900 ${
+                                        isReading
+                                            ? 'border-teal-300/90 dark:border-teal-700'
+                                            : 'border-zinc-200/90 dark:border-zinc-800'
+                                    }`}
                                 >
                                     <div className="flex items-start gap-4 p-4">
                                         {coverBlock}
                                         <div className="min-w-0 flex-1 pt-0.5">
-                                            <h2 className="text-lg font-bold leading-snug tracking-[-0.02em] text-zinc-900 antialiased dark:text-white sm:text-xl sm:tracking-[-0.025em]">
-                                                {b.title}
-                                            </h2>
+                                            <div className="flex flex-wrap items-start gap-2">
+                                                <h2 className="text-lg font-bold leading-snug tracking-[-0.02em] text-zinc-900 antialiased dark:text-white sm:text-xl sm:tracking-[-0.025em]">
+                                                    {b.title}
+                                                </h2>
+                                                {isReading ? (
+                                                    <span className="mt-0.5 inline-flex shrink-0 items-center rounded-md bg-teal-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-teal-800 dark:bg-teal-950/50 dark:text-teal-200">
+                                                        Estou lendo
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                             {b.subtitle ? (
                                                 <p className="mt-1.5 line-clamp-2 text-[15px] font-normal leading-relaxed text-zinc-500 dark:text-zinc-400">
                                                     {b.subtitle}

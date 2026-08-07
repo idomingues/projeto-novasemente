@@ -23,6 +23,7 @@ use App\Models\ScheduleCheckinDate;
 use App\Models\User;
 use App\Models\UserDismissedAppNotification;
 use App\Models\UserHomeCardBookmark;
+use App\Models\UserLibraryBookBookmark;
 use App\Models\UserInboxNotification;
 use App\Models\Volunteer;
 use App\Services\DriveFolderCoverService;
@@ -1461,6 +1462,7 @@ class MobileController extends Controller
                 'categories' => $categories,
                 'revistaAdventistaAcervo' => $acervoEnabled ? $this->revistaAdventistaAcervoPayload($request) : null,
                 'librarySetupMessage' => 'A biblioteca ainda não está disponível. Peça ao responsável técnico para concluir a atualização da base de dados.',
+                'bookmarkedLibraryBookIds' => [],
             ]);
         }
 
@@ -1475,6 +1477,18 @@ class MobileController extends Controller
             ->values()
             ->all();
 
+        $bookmarkedLibraryBookIds = [];
+        $user = $request->user();
+        if ($user !== null && Schema::hasTable('user_library_book_bookmarks')) {
+            $bookmarkedLibraryBookIds = UserLibraryBookBookmark::query()
+                ->where('user_id', $user->id)
+                ->orderByDesc('created_at')
+                ->pluck('library_book_id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+        }
+
         return Inertia::render('Mobile/Library', [
             'books' => $books,
             'categories' => $categories,
@@ -1483,6 +1497,49 @@ class MobileController extends Controller
             'lessonUrl' => $church !== null ? $church->resolvedLibraryLessonUrl() : null,
             'sunsetMeditationConfigured' => $church !== null && $church->hasLibrarySunsetMeditation(),
             'librarySetupMessage' => null,
+            'bookmarkedLibraryBookIds' => $bookmarkedLibraryBookIds,
+        ]);
+    }
+
+    public function toggleLibraryBookBookmark(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user !== null, 401);
+
+        $data = $request->validate([
+            'library_book_id' => ['required', 'integer', 'exists:library_books,id'],
+        ]);
+
+        $libraryBook = LibraryBook::query()->findOrFail((int) $data['library_book_id']);
+        abort_unless($this->canAccessLibraryBook($libraryBook), 404);
+
+        $existing = UserLibraryBookBookmark::query()
+            ->where('user_id', $user->id)
+            ->where('library_book_id', $libraryBook->id)
+            ->first();
+
+        if ($existing !== null) {
+            $existing->delete();
+            $bookmarked = false;
+        } else {
+            UserLibraryBookBookmark::query()->create([
+                'user_id' => $user->id,
+                'library_book_id' => $libraryBook->id,
+            ]);
+            $bookmarked = true;
+        }
+
+        $ids = UserLibraryBookBookmark::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->pluck('library_book_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        return response()->json([
+            'bookmarked' => $bookmarked,
+            'bookmarkedLibraryBookIds' => $ids,
         ]);
     }
 
