@@ -1,4 +1,5 @@
 import {
+    ArrowUturnUpIcon,
     BookmarkIcon,
     CheckIcon,
     XMarkIcon,
@@ -222,38 +223,64 @@ export default function ReadingPositionControls({
 
     const showResumeBanner = ready && savedPosition !== null && !resumeDismissed;
     const canMark = ready && paragraphCount > 0;
+    const markLabel = justSaved ? 'Salvo' : savedPosition ? 'Atualizar' : 'Marcar';
+
+    const iconBtnClass =
+        'inline-flex h-8 w-8 cursor-pointer touch-manipulation items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100';
 
     const actionButtons = (
-        <div className="flex flex-wrap items-center gap-2">
+        <div
+            className="inline-flex items-center gap-0.5 rounded-full bg-white/95 p-1 shadow-sm ring-1 ring-zinc-200/90 backdrop-blur-md dark:bg-zinc-900/95 dark:ring-zinc-700/90"
+            role="toolbar"
+            aria-label="Marcador de leitura"
+        >
             <button
                 type="button"
                 onClick={handleMark}
                 disabled={!canMark}
-                className="inline-flex min-h-11 flex-1 cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-2xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-teal-600 dark:hover:bg-teal-500 sm:flex-none"
+                className="inline-flex h-8 cursor-pointer touch-manipulation items-center gap-1.5 rounded-full bg-teal-50 px-3 text-xs font-semibold text-teal-800 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-teal-950/60 dark:text-teal-200 dark:hover:bg-teal-900/70"
+                aria-label={
+                    justSaved
+                        ? 'Marcador salvo'
+                        : savedPosition
+                          ? 'Atualizar marcador'
+                          : 'Marcar onde parei'
+                }
+                title={
+                    justSaved
+                        ? 'Marcador salvo'
+                        : savedPosition
+                          ? 'Atualizar marcador'
+                          : 'Marcar onde parei'
+                }
             >
                 {justSaved ? (
-                    <CheckIcon className="h-4 w-4 shrink-0" aria-hidden />
+                    <CheckIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 ) : (
-                    <BookmarkIcon className="h-4 w-4 shrink-0" aria-hidden />
+                    <BookmarkIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 )}
-                {justSaved ? 'Marcador salvo' : savedPosition ? 'Atualizar marcador' : 'Marcar onde parei'}
+                <span>{markLabel}</span>
             </button>
+
             {savedPosition ? (
                 <>
                     <button
                         type="button"
                         onClick={() => resumeToPosition(savedPosition)}
-                        className="inline-flex min-h-11 cursor-pointer touch-manipulation items-center justify-center rounded-2xl border border-teal-300 bg-white px-4 py-2.5 text-sm font-semibold text-teal-800 shadow-sm transition hover:bg-teal-50 dark:border-teal-700 dark:bg-zinc-900 dark:text-teal-200 dark:hover:bg-teal-950/40"
+                        className={iconBtnClass}
+                        aria-label="Ir ao marcador"
+                        title="Ir ao marcador"
                     >
-                        Ir ao marcador
+                        <ArrowUturnUpIcon className="h-3.5 w-3.5" aria-hidden />
                     </button>
                     <button
                         type="button"
                         onClick={handleClear}
-                        className="inline-flex min-h-11 cursor-pointer touch-manipulation items-center justify-center gap-1.5 rounded-2xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        className={iconBtnClass}
+                        aria-label="Remover marcador"
+                        title="Remover marcador"
                     >
-                        <XMarkIcon className="h-4 w-4 shrink-0" aria-hidden />
-                        Remover
+                        <XMarkIcon className="h-3.5 w-3.5" aria-hidden />
                     </button>
                 </>
             ) : null}
@@ -263,11 +290,11 @@ export default function ReadingPositionControls({
     return (
         <div className={className}>
             {showResumeBanner ? (
-                <div className="mb-3 flex flex-col gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 dark:border-teal-800/70 dark:bg-teal-950/40 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm font-medium text-teal-950 dark:text-teal-100">
-                        Você tem um marcador neste livro.
+                <div className="mb-3 flex items-center justify-between gap-3 rounded-xl bg-zinc-50 px-3 py-2 ring-1 ring-zinc-200/90 dark:bg-zinc-900/80 dark:ring-zinc-700/90">
+                    <p className="min-w-0 text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                        Continuar de onde parou?
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex shrink-0 items-center gap-1">
                         <button
                             type="button"
                             onClick={() => {
@@ -275,17 +302,16 @@ export default function ReadingPositionControls({
                                     resumeToPosition(savedPosition);
                                 }
                             }}
-                            className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-teal-800 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-700 dark:bg-teal-200 dark:text-teal-950 dark:hover:bg-white"
+                            className="inline-flex h-7 cursor-pointer items-center rounded-full bg-teal-700 px-2.5 text-[11px] font-semibold text-white transition hover:bg-teal-600 dark:bg-teal-600 dark:hover:bg-teal-500"
                         >
-                            Continuar daqui
+                            Continuar
                         </button>
                         <button
                             type="button"
                             onClick={handleClear}
-                            className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-xl border border-teal-300 bg-white px-3 py-2 text-xs font-semibold text-teal-900 transition hover:bg-teal-100 dark:border-teal-700 dark:bg-transparent dark:text-teal-100 dark:hover:bg-teal-900/50"
+                            className="inline-flex h-7 cursor-pointer items-center rounded-full px-2 text-[11px] font-medium text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                         >
-                            <XMarkIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                            Começar do início
+                            Ignorar
                         </button>
                     </div>
                 </div>
@@ -295,16 +321,13 @@ export default function ReadingPositionControls({
 
             {stickyActions ? (
                 <>
-                    {/* Espaço para a barra fixa + bottom nav não cobrirem o fim do texto. */}
-                    <div className="h-28" aria-hidden />
-                    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] z-30 px-4 sm:px-6 lg:px-8">
-                        <div className="pointer-events-auto mx-auto w-full max-w-3xl rounded-2xl border border-zinc-200/90 bg-white/95 p-3 shadow-lg backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/95">
-                            {actionButtons}
-                        </div>
+                    <div className="h-14" aria-hidden />
+                    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-30 flex justify-center px-4">
+                        <div className="pointer-events-auto">{actionButtons}</div>
                     </div>
                 </>
             ) : (
-                <div className="mt-3">{actionButtons}</div>
+                <div className="mt-3 flex justify-center">{actionButtons}</div>
             )}
         </div>
     );
