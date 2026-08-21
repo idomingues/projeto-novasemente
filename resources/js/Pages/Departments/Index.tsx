@@ -189,7 +189,7 @@ function PersonPicker({
     selectedPeople = [],
     selectedIds,
     onChange,
-    persistRemoval,
+    persistSelection,
     busy = false,
     memberRole,
     onViewDetail,
@@ -202,8 +202,8 @@ function PersonPicker({
     selectedPeople?: PersonRef[];
     selectedIds: number[];
     onChange: (ids: number[]) => void;
-    /** Persiste desvinculação na hora; se retornar false, a seleção não muda. */
-    persistRemoval?: (nextIds: number[], removedIds: number[]) => Promise<boolean>;
+    /** Persiste inclusão/remoção na hora; se retornar false, a seleção não muda. */
+    persistSelection?: (nextIds: number[], addedIds: number[], removedIds: number[]) => Promise<boolean>;
     busy?: boolean;
     /** Rótulo para confirmação ao desmarcar (ex.: líder, voluntário) */
     memberRole: 'líder' | 'voluntário';
@@ -264,7 +264,7 @@ function PersonPicker({
                 return confirmAction({
                     title: isAdd ? `Adicionar ${memberRole}?` : `Remover ${memberRole}?`,
                     text: isAdd
-                        ? `Deseja adicionar ${name} como ${memberRole} deste departamento? A alteração só será aplicada ao salvar.`
+                        ? `Deseja adicionar ${name} como ${memberRole} deste departamento? O vínculo será gravado agora.`
                         : `Deseja remover ${name} como ${memberRole} deste departamento? O vínculo será desfeito agora.`,
                     confirmButtonText: isAdd ? 'Adicionar' : 'Remover',
                     cancelButtonText: 'Cancelar',
@@ -276,7 +276,7 @@ function PersonPicker({
             return confirmAction({
                 title: isAdd ? `Adicionar ${plural}?` : `Remover ${plural}?`,
                 text: isAdd
-                    ? `Deseja adicionar ${ids.length} pessoas como ${plural} deste departamento? A alteração só será aplicada ao salvar.`
+                    ? `Deseja adicionar ${ids.length} pessoas como ${plural} deste departamento? Os vínculos serão gravados agora.`
                     : `Deseja remover ${ids.length} pessoas como ${plural} deste departamento? Os vínculos serão desfeitos agora.`,
                 confirmButtonText: isAdd ? 'Adicionar' : 'Remover',
                 cancelButtonText: 'Cancelar',
@@ -316,6 +316,16 @@ function PersonPicker({
                 if (!okAdd) {
                     return;
                 }
+            }
+
+            if (persistSelection && (added.length > 0 || removed.length > 0)) {
+                const persisted = await persistSelection(nextNormalized, added, removed);
+                if (!persisted) {
+                    return;
+                }
+            }
+
+            if (added.length > 0) {
                 const now = new Date().toISOString();
                 setSessionAddedAtById((prev) => {
                     const next = { ...prev };
@@ -329,12 +339,6 @@ function PersonPicker({
             }
 
             if (removed.length > 0) {
-                if (persistRemoval) {
-                    const persisted = await persistRemoval(nextNormalized, removed);
-                    if (!persisted) {
-                        return;
-                    }
-                }
                 setSessionAddedAtById((prev) => {
                     const next = { ...prev };
                     for (const id of removed) {
@@ -346,7 +350,7 @@ function PersonPicker({
 
             onChange(nextNormalized);
         },
-        [busy, confirmMemberChange, mergedAddedAtById, normalizedSelectedIds, onChange, persistRemoval],
+        [busy, confirmMemberChange, mergedAddedAtById, normalizedSelectedIds, onChange, persistSelection],
     );
 
     const renderTrailingAction = (row: { id: number; name: string }) => {
@@ -715,8 +719,12 @@ export default function Index({
         window.setTimeout(() => setDepartmentSaveMessage(null), 5000);
     }, []);
 
-    const persistRosterRemoval = useCallback(
-        async (kind: 'leaders' | 'volunteers', removedIds: number[]): Promise<boolean> => {
+    const persistRosterChange = useCallback(
+        async (
+            kind: 'leaders' | 'volunteers',
+            addedIds: number[],
+            removedIds: number[],
+        ): Promise<boolean> => {
             if (!isEditing || editingId == null) {
                 return true;
             }
@@ -728,13 +736,15 @@ export default function Index({
             const savedPeople = kind === 'leaders' ? (dept?.leaders ?? []) : (dept?.volunteers ?? []);
             const savedIds = normalizePersonIds(savedPeople.map((p) => p.id));
             const savedSet = new Set(savedIds);
-            const removedFromServer = removedIds.filter((id) => savedSet.has(id));
-            if (removedFromServer.length === 0) {
+            const toAdd = addedIds.filter((id) => !savedSet.has(id));
+            const toRemove = removedIds.filter((id) => savedSet.has(id));
+            if (toAdd.length === 0 && toRemove.length === 0) {
                 return true;
             }
 
-            const nextServerIds = savedIds.filter((id) => !removedIds.includes(id));
+            const nextServerIds = normalizePersonIds([...savedIds.filter((id) => !removedIds.includes(id)), ...toAdd]);
             clearErrors();
+            setDepartmentSaveError(null);
             setDepartmentSaving(true);
             try {
                 const result = await submitVolunteerModalPut(
@@ -755,38 +765,62 @@ export default function Index({
                             .flatMap((value) => (Array.isArray(value) ? value : [value]))
                             .find((text) => Boolean(text)) ??
                             result.message ??
-                            'Não foi possível remover. Tente novamente.',
+                            'Não foi possível atualizar a equipe. Tente novamente.',
                     );
                     return false;
                 }
 
+                const now = new Date().toISOString();
                 if (kind === 'leaders') {
                     setLeaderAddedAtById((prev) => {
                         const next = { ...prev };
-                        for (const id of removedFromServer) {
+                        for (const id of toRemove) {
                             delete next[id];
+                        }
+                        for (const id of toAdd) {
+                            if (!next[id]) {
+                                next[id] = now;
+                            }
                         }
                         return next;
                     });
                 } else {
                     setVolunteerAddedAtById((prev) => {
                         const next = { ...prev };
-                        for (const id of removedFromServer) {
+                        for (const id of toRemove) {
                             delete next[id];
+                        }
+                        for (const id of toAdd) {
+                            if (!next[id]) {
+                                next[id] = now;
+                            }
                         }
                         return next;
                     });
                 }
 
                 await reloadListModalProps(['departments', 'leaderOptions', 'volunteerOptions']);
+
+                const addedOnly = toAdd.length > 0 && toRemove.length === 0;
+                const removedOnly = toRemove.length > 0 && toAdd.length === 0;
                 showDepartmentSaveMessage(
-                    kind === 'leaders'
-                        ? removedFromServer.length === 1
-                            ? 'Líder removido.'
-                            : 'Líderes removidos.'
-                        : removedFromServer.length === 1
-                          ? 'Voluntário removido.'
-                          : 'Voluntários removidos.',
+                    addedOnly
+                        ? kind === 'leaders'
+                            ? toAdd.length === 1
+                                ? 'Líder adicionado.'
+                                : 'Líderes adicionados.'
+                            : toAdd.length === 1
+                              ? 'Voluntário adicionado.'
+                              : 'Voluntários adicionados.'
+                        : removedOnly
+                          ? kind === 'leaders'
+                              ? toRemove.length === 1
+                                  ? 'Líder removido.'
+                                  : 'Líderes removidos.'
+                              : toRemove.length === 1
+                                ? 'Voluntário removido.'
+                                : 'Voluntários removidos.'
+                          : 'Equipe atualizada.',
                 );
                 return true;
             } finally {
@@ -1305,8 +1339,8 @@ export default function Index({
                         <div className="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-700">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white">Equipe do departamento</p>
                             <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                                Associe líderes e voluntários em separado (opcional). Ao remover, o vínculo é
-                                salvo na hora; inclusões valem ao salvar.
+                                Associe líderes e voluntários em separado (opcional). Ao confirmar no modal, o
+                                vínculo é salvo na hora.
                             </p>
                             <div className="mt-3 inline-flex w-full rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/80">
                                 <button
@@ -1344,7 +1378,9 @@ export default function Index({
                                     }
                                     selectedIds={data.leader_user_ids}
                                     onChange={(ids) => setData('leader_user_ids', ids)}
-                                    persistRemoval={(_next, removed) => persistRosterRemoval('leaders', removed)}
+                                    persistSelection={(_next, added, removed) =>
+                                        persistRosterChange('leaders', added, removed)
+                                    }
                                     busy={departmentSaving}
                                     addedAtById={leaderAddedAtById}
                                     onViewDetail={volunteerDetailUrlPattern ? openVolunteerDetail : undefined}
@@ -1361,7 +1397,9 @@ export default function Index({
                                     }
                                     selectedIds={data.volunteer_ids}
                                     onChange={(ids) => setData('volunteer_ids', ids)}
-                                    persistRemoval={(_next, removed) => persistRosterRemoval('volunteers', removed)}
+                                    persistSelection={(_next, added, removed) =>
+                                        persistRosterChange('volunteers', added, removed)
+                                    }
                                     busy={departmentSaving}
                                     addedAtById={volunteerAddedAtById}
                                     onViewDetail={volunteerDetailUrlPattern ? openVolunteerDetail : undefined}

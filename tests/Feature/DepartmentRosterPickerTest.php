@@ -197,4 +197,55 @@ class DepartmentRosterPickerTest extends TestCase
         $this->assertSame('Nome Novo Picker', $fresh->name);
         $this->assertTrue($fresh->volunteers->contains('id', $volunteer->id));
     }
+
+    public function test_update_can_attach_leader_without_sending_volunteer_ids(): void
+    {
+        $this->seed();
+
+        $church = Church::query()->firstOrFail();
+        $admin = User::factory()->create(['church_id' => $church->id]);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
+
+        $ministry = Ministry::query()->create([
+            'church_id' => $church->id,
+            'name' => 'Infantil Equipe Picker',
+        ]);
+
+        $keep = User::factory()->create([
+            'church_id' => $church->id,
+            'name' => 'Líder atual',
+            'email' => 'lider.atual.picker@example.com',
+        ]);
+        $add = User::factory()->create([
+            'church_id' => $church->id,
+            'name' => 'Líder novo',
+            'email' => 'lider.novo.picker@example.com',
+        ]);
+        $ministry->users()->sync([$keep->id]);
+
+        $volunteer = Volunteer::query()->create([
+            'name' => 'Voluntário Intocado Add',
+            'email' => 'vol.intocado.add.picker@example.com',
+            'active' => true,
+        ]);
+        $ministry->volunteers()->attach($volunteer->id);
+
+        $this->actingAs($admin)
+            ->withSession(['working_church_id' => $church->id])
+            ->from(route('departments.index'))
+            ->put(route('departments.update', $ministry), [
+                'name' => $ministry->name,
+                'leader_user_ids' => [$keep->id, $add->id],
+            ])
+            ->assertSessionDoesntHaveErrors()
+            ->assertRedirect(route('departments.index', [
+                'modal' => 'edit',
+                'id' => $ministry->id,
+            ]));
+
+        $fresh = $ministry->fresh();
+        $this->assertTrue($fresh->users->contains('id', $keep->id));
+        $this->assertTrue($fresh->users->contains('id', $add->id));
+        $this->assertTrue($fresh->volunteers->contains('id', $volunteer->id));
+    }
 }
