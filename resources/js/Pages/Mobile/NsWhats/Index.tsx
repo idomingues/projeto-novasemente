@@ -774,7 +774,7 @@ export default function NsWhatsIndex({
                                         >
                                             <ArrowLeftIcon className="h-5 w-5" strokeWidth={2} />
                                         </button>
-                                        <h1 className="min-w-0 flex-1 text-[20px] font-bold leading-none tracking-tight text-zinc-900 dark:text-white">
+                                        <h1 className="min-w-0 flex-1 truncate text-[20px] font-bold leading-none tracking-tight text-zinc-900 dark:text-white">
                                             NS Conecta
                                         </h1>
                                     </>
@@ -784,10 +784,11 @@ export default function NsWhatsIndex({
                                         <button
                                             type="button"
                                             onClick={startCompose}
-                                            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-black text-white shadow-sm transition hover:bg-zinc-800 active:scale-95 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                                            className="inline-flex h-9 shrink-0 cursor-pointer items-center rounded-full px-2.5 text-[13px] font-semibold text-teal-700 transition hover:bg-teal-50 active:scale-95 dark:text-teal-300 dark:hover:bg-teal-950/40"
                                             aria-label="Nova conversa"
+                                            title="Nova conversa"
                                         >
-                                            <PlusIcon className="h-6 w-6" strokeWidth={2.4} />
+                                            Nova conversa
                                         </button>
                                     </div>
                                 ) : (

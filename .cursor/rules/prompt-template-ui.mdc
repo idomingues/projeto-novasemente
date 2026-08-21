@@ -23,7 +23,7 @@ Restrições (o que NÃO pode acontecer):
 - [ex.: sem sombra/3D; nada de select acima da lista]
 
 Critério de pronto:
-- [ex.: legível no tema claro E escuro; funciona no mobile]
+- [ex.: legível no tema claro E escuro; funciona no celular E no desktop]
 
 Print: [anexado acima / não tenho]
 ```
@@ -56,6 +56,8 @@ Restrição: manter minimalista e altura igual aos outros cards.
 
 O projeto já tem regras registradas que o agente deve seguir sozinho:
 
+- **Mobile primeiro, depois desktop (sempre os dois)** → `ux-pc-mobile-designer-prime.mdc`
+- **Telas fixas como app (não passeiam)** → `mobile-app-shell-fixo.mdc`
 - **Contraste claro/escuro** em cards → `contraste-dark-mode-cards.mdc`
 - **Filtro/ordenação por ícone + modal** em listas → `list-filtro-ordenacao-padrao.mdc`
 - **Telas em modal por padrão** (detalhe/edição/criação) → `modal-padrao-ui.mdc`

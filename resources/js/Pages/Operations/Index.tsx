@@ -195,8 +195,36 @@ export default function OperationsIndex({
 
                         <section>
                             <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 mb-3">Últimos eventos</h2>
-                            <div className="overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800">
-                                <table className="min-w-full text-left text-sm">
+                            {recentEvents.length === 0 ? (
+                                <p className="rounded-2xl border border-zinc-200 px-4 py-8 text-center text-zinc-500 dark:border-zinc-800">
+                                    Ainda não há eventos registrados.
+                                </p>
+                            ) : (
+                                <>
+                                    <ul className="space-y-3 md:hidden">
+                                        {recentEvents.map((e) => (
+                                            <li
+                                                key={e.id}
+                                                className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/40"
+                                            >
+                                                <p className="text-xs text-zinc-500">
+                                                    {e.createdAt ? new Date(e.createdAt).toLocaleString('pt-BR') : '—'}
+                                                </p>
+                                                <p className="mt-1 font-medium text-zinc-800 dark:text-zinc-200">{e.outcomeLabel}</p>
+                                                <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+                                                    {e.userName ?? (e.userId ? `#${e.userId}` : '—')}
+                                                </p>
+                                                <p className="mt-1 font-mono text-xs text-zinc-500">{e.ip ?? '—'}</p>
+                                                {e.userAgent ? (
+                                                    <p className="mt-1 line-clamp-2 text-xs text-zinc-500" title={e.userAgent}>
+                                                        {e.userAgent}
+                                                    </p>
+                                                ) : null}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <div className="hidden overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 md:block">
+                                        <table className="min-w-full text-left text-sm">
                                     <thead className="bg-zinc-100 dark:bg-zinc-800/80 text-xs uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
                                         <tr>
                                             <th className="px-4 py-3">Quando</th>
@@ -206,15 +234,8 @@ export default function OperationsIndex({
                                             <th className="px-4 py-3">User-Agent</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 bg-white dark:bg-zinc-950/40">
-                                        {recentEvents.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={5} className="px-4 py-8 text-center text-zinc-500">
-                                                    Ainda não há eventos registrados.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            recentEvents.map((e) => (
+                                    <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-950/40">
+                                        {recentEvents.map((e) => (
                                                 <tr key={e.id} className="text-zinc-800 dark:text-zinc-200">
                                                     <td className="px-4 py-2.5 whitespace-nowrap text-xs text-zinc-500">
                                                         {e.createdAt ? new Date(e.createdAt).toLocaleString('pt-BR') : '—'}
@@ -231,11 +252,12 @@ export default function OperationsIndex({
                                                         {e.userAgent ?? '—'}
                                                     </td>
                                                 </tr>
-                                            ))
-                                        )}
+                                        ))}
                                     </tbody>
                                 </table>
-                            </div>
+                                    </div>
+                                </>
+                            )}
                         </section>
                     </div>
                 ) : (

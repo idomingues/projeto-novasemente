@@ -1,34 +1,38 @@
 ---
-description: UX sempre PC + mobile, com qualidade designer-prime
+description: UX mobile-first, depois desktop; sempre os dois, com qualidade designer-prime
 alwaysApply: true
 ---
 
-# UX PC + mobile e designer-prime
+# UX mobile-first + desktop e designer-prime
 
-No projeto Nova Semente, **todo desenvolvimento com interface** deve nascer preparado para **PC e mobile**, com qualidade de **designer-prime** — não “funciona no desktop e depois ajeitamos o celular” (nem o contrário).
+No projeto Nova Semente, **todo desenvolvimento com interface** começa pelo **celular** e em seguida se completa no **desktop**. Os dois viewports devem funcionar na mesma entrega, com qualidade de **designer-prime**.
+
+Ordem de trabalho: **mobile → desktop**. Critério de pronto: **os dois**.
 
 ## Princípios
 
-1. **Dois viewports desde o início** — Planejar layout, hierarquia, toque e densidade para mobile **e** desktop na mesma entrega. Não entregar só um e deixar o outro “para depois”.
-2. **Designer-prime** — Buscar o melhor design possível dentro do sistema já existente: tipografia clara, espaçamento consistente, ações óbvias, estados vazios/erro/loading cuidadosos, sem improvisos visuais.
-3. **Um produto, duas experiências** — A mesma feature deve parecer intencional nos dois tamanhos (shell mobile, listas/hubs admin, modais). Adaptar densidade e chrome; não só “encolher” o layout de PC.
-4. **Toque e mouse** — Alvos clicáveis/tocáveis adequados; `cursor-pointer` no desktop (ver `cursor-pointer-botoes.mdc`); sem depender só de hover no mobile.
-5. **Shell e padrões do projeto** — Mobile: `MobileLayout` e shell fixo (`mobile-app-shell-fixo.mdc`). Gestão: lista + modal (`modal-padrao-ui.mdc`). Visual: minimalismo (`minimalismo-sutileza-design.mdc`) e contraste nos dois temas.
+1. **Mobile primeiro** — Layout, hierarquia, toque e densidade nascem na largura estreita (~390px). Base em coluna única, alvos tocáveis, sem scroll horizontal. Breakpoints Tailwind (`sm:`, `md:`, `lg:`) **ampliam** essa base — não o contrário.
+2. **Depois o desktop** — Na tela larga, aproveitar espaço: tabela em vez de cards, mais colunas, hover, densidade maior. Não entregar um celular “esticado”.
+3. **Sempre os dois** — Não existe “funciona no PC e depois ajeitamos o celular”, nem “só mobile por agora”. Se só um viewport está bom, **não está pronto**.
+4. **Designer-prime** — Tipografia clara, espaçamento consistente, ações óbvias, estados vazios/erro/loading cuidadosos; sem improvisos visuais.
+5. **Um produto, duas experiências** — A feature deve parecer intencional nos dois tamanhos (shell mobile, listas/hubs admin, modais). Adaptar densidade e chrome.
+6. **Toque e mouse** — Alvos adequados no celular; `cursor-pointer` no desktop (ver `cursor-pointer-botoes.mdc`); sem depender só de hover.
+7. **Telas fixas como app** — Topbar e barra inferior não se movem; só o miolo rola (`mobile-app-shell-fixo.mdc`). Gestão: lista + modal (`modal-padrao-ui.mdc`). Listas admin: cards no celular, tabela no `md+`. Visual: minimalismo e contraste nos dois temas.
 
 ## O que fazer
 
-- Antes de concluir: conferir a tela em **largura estreita (~mobile)** e **larga (~desktop)**.
-- Preferir breakpoints e padrões Tailwind já usados no projeto (`sm:`, `md:`, `lg:`) em vez de CSS ad-hoc.
+- Implementar e revisar **primeiro** em largura estreita; só então conferir a larga.
+- Preferir padrões Tailwind já usados no projeto em vez de CSS ad-hoc.
 - Em fluxos longos no mobile, avaliar modal vs. passos — não forçar desktop denso em tela pequena.
-- Textos, filtros, listas e CTAs devem permanecer usáveis sem zoom nem scroll horizontal acidental.
+- Textos, filtros, listas e CTAs usáveis sem zoom nem scroll horizontal acidental.
 
 ## Evitar
 
-- UI “só desktop” ou “só mobile” em features novas do painel/app.
-- Layout que quebra, truncamento ilegível ou botões inacessíveis em um dos viewports.
+- Tabela larga (`min-w-[…]`) ou grade de várias colunas como layout base no celular.
+- UI “só desktop” ou “só mobile” em feature nova.
 - Polir só o viewport em que se está testando e ignorar o outro.
 - Inventar um visual paralelo ao design system só para “parecer moderno”.
 
 ## Ao implementar
 
-Perguntar: **isto está bom no PC e no celular, com acabamento de designer-prime?** Se a resposta for “só num deles”, **não está pronto**.
+Perguntar, nesta ordem: **está bom no celular?** Depois: **está bom no PC?** Se qualquer um for “não”, **não está pronto**.

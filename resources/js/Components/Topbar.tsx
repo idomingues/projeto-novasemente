@@ -180,7 +180,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                         <button
                             type="button"
                             onClick={onMenuClick}
-                            className="flex-shrink-0 rounded-xl p-2.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                            className="flex-shrink-0 cursor-pointer rounded-xl p-2.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                             aria-label="Abrir menu lateral"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -197,7 +197,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
 
                     <button
                         onClick={toggleTheme}
-                        className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                        className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-900 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
                     >
                         {theme === 'dark' ? (
                             <SunIcon className="w-5 h-5" />

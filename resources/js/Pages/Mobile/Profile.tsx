@@ -15,7 +15,9 @@ import {
     ChevronRightIcon,
     PencilSquareIcon,
     UserGroupIcon,
+    BookOpenIcon,
 } from '@heroicons/react/24/outline';
+import { useAppFeatures } from '@/hooks/useAppFeatures';
 
 interface Props {
     church: { name: string } | null;
@@ -210,6 +212,12 @@ export default function MobileProfile({ user, profileCounts, volunteerSignupComp
         route().has('communication-requests.index') &&
         (isMinistryLeader || isVolunteer) &&
         !canShowComunicacaoPainel;
+    const { isEnabled } = useAppFeatures();
+    // Temporário: CONVIVA só para admin/super_admin enquanto validamos o fluxo.
+    const canShowConviva =
+        adminUnrestricted &&
+        route().has('mobile.conviva.checkin') &&
+        isEnabled('conviva');
 
     const memberRows: Row[] = [
         {
@@ -221,6 +229,17 @@ export default function MobileProfile({ user, profileCounts, volunteerSignupComp
             badgeCount: profileCounts.notifications > 0 ? profileCounts.notifications : null,
             badgeLabel: { one: 'não lida', many: 'não lidas' },
         },
+        ...(canShowConviva
+            ? ([
+                  {
+                      title: 'CONVIVA',
+                      description: 'Check-in na sua turma de estudo bíblico',
+                      icon: BookOpenIcon,
+                      href: route('mobile.conviva.checkin'),
+                      tone: 'member',
+                  },
+              ] as Row[])
+            : []),
         {
             title: 'Minha Escala',
             description: 'Escala de voluntários',

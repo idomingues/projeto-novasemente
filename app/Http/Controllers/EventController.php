@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\Event;
 use App\Services\PublicationBroadcastNotifier;
 use App\Support\EventFormSupport;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -90,7 +93,7 @@ class EventController extends Controller
 
         $data['image_url'] = EventFormSupport::resolveImageUrl($request, $data, null, 'events');
         unset($data['image_file']);
-        if (empty($data['published_at'])) {
+        if ($data['published_at'] === null) {
             $data['published_at'] = now();
         }
 
@@ -105,10 +108,10 @@ class EventController extends Controller
 
         $this->publicationBroadcast->notifyEvent($event, $request->user()?->id);
 
-        return redirect()->route('events.index')->with('success', 'Evento criado com sucesso.');
+        return ListModalRedirect::toIndexEdit('events.index', $event, 'Evento criado com sucesso.');
     }
 
-    public function update(Request $request, Event $event)
+    public function update(Request $request, Event $event): RedirectResponse|JsonResponse
     {
         EventFormSupport::mergeEmptyOptionalRequestFields($request);
 
@@ -117,13 +120,13 @@ class EventController extends Controller
 
         $data['image_url'] = EventFormSupport::resolveImageUrl($request, $data, $event->image_url, 'events');
         unset($data['image_file']);
-        if (empty($data['published_at'])) {
+        if ($data['published_at'] === null) {
             $data['published_at'] = $event->published_at ?? now();
         }
 
         $event->update($data);
 
-        return redirect()->route('events.index')->with('success', 'Evento atualizado com sucesso.');
+        return ListModalRedirect::toIndexEdit('events.index', $event->fresh() ?? $event, 'Evento atualizado com sucesso.');
     }
 
     public function destroy(Event $event)

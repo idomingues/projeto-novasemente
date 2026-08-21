@@ -34,7 +34,7 @@ import MissionPhaseManageModal from '@/Components/Mission/MissionPhaseManageModa
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import { usePersistedViewMode } from '@/hooks/usePersistedViewMode';
 import type { ListKanbanViewMode } from '@/utils/persistedViewMode';
-import { missionOverdueRowClass } from '@/utils/missionOverdueStyles';
+import { missionOverdueCardClass, missionOverdueRowClass } from '@/utils/missionOverdueStyles';
 import {
     MISSION_FILTER_FORM_DEFAULTS,
     type MissionRosterFilters,
@@ -978,7 +978,39 @@ export default function MissionIndex({
                             />
                         </Card>
                     ) : (
-                    <Card className="overflow-x-auto">
+                    <>
+                    <ul className="space-y-3 md:hidden">
+                        {volunteers.data.length === 0 ? (
+                            <li className="rounded-2xl border border-zinc-200 bg-white p-8 text-center text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900">
+                                Nenhum cadastro. Compartilhe o formulário Missão no menu Mais do app.
+                            </li>
+                        ) : (
+                            volunteers.data.map((v) => (
+                                <li key={v.id}>
+                                    <button
+                                        type="button"
+                                        onClick={() => void openDetail(v.id)}
+                                        className={`w-full cursor-pointer touch-manipulation rounded-2xl border p-4 text-left shadow-sm ${missionOverdueCardClass(v.isOverdue)}`}
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <UserListAvatar name={v.fullName} photoUrl={v.photoUrl} size="md" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-semibold text-zinc-900 dark:text-white">{v.fullName}</p>
+                                                {!v.hasEmail && <NoEmailHint />}
+                                                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{v.phaseName}</p>
+                                                <div className="mt-1">
+                                                    <SlaCell row={v} />
+                                                </div>
+                                                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{v.phone ?? '—'}</p>
+                                                {v.email ? <p className="text-xs text-zinc-500">{v.email}</p> : null}
+                                            </div>
+                                        </div>
+                                    </button>
+                                </li>
+                            ))
+                        )}
+                    </ul>
+                    <Card className="hidden overflow-x-auto md:block">
                         <table className="min-w-full text-sm">
                             <thead>
                                 <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
@@ -1020,6 +1052,7 @@ export default function MissionIndex({
                             <p className="p-8 text-center text-zinc-500">Nenhum cadastro. Compartilhe o formulário Missão no menu Mais do app.</p>
                         )}
                     </Card>
+                    </>
                     )}
                 </div>
             </div>

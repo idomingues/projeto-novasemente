@@ -28,6 +28,10 @@ type SortedMultiCheckboxListProps = {
 
 const DEFAULT_MAX_HEIGHT = 'max-h-40';
 
+function toNumericId(value: number | string): number {
+    return Number(value);
+}
+
 export default function SortedMultiCheckboxList({
     options,
     selectedIds,
@@ -39,27 +43,31 @@ export default function SortedMultiCheckboxList({
     showSelectedCount = true,
     hideSectionLabels = false,
 }: SortedMultiCheckboxListProps) {
-    const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+    const selectedSet = useMemo(
+        () => new Set(selectedIds.map(toNumericId).filter((id) => Number.isFinite(id))),
+        [selectedIds],
+    );
 
     const { selectedOptions, otherOptions } = useMemo(() => {
         const byName = (a: SortedCheckboxOption, b: SortedCheckboxOption) =>
             a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' });
         return {
-            selectedOptions: options.filter((o) => selectedSet.has(o.id)).sort(byName),
-            otherOptions: options.filter((o) => !selectedSet.has(o.id)).sort(byName),
+            selectedOptions: options.filter((o) => selectedSet.has(toNumericId(o.id))).sort(byName),
+            otherOptions: options.filter((o) => !selectedSet.has(toNumericId(o.id))).sort(byName),
         };
     }, [options, selectedSet]);
 
     const toggle = (id: number) => {
-        const opt = options.find((o) => o.id === id);
+        const numericId = toNumericId(id);
+        const opt = options.find((o) => toNumericId(o.id) === numericId);
         if (opt?.disabled) {
             return;
         }
-        const set = new Set(selectedIds);
-        if (set.has(id)) {
-            set.delete(id);
+        const set = new Set(selectedIds.map(toNumericId).filter((value) => Number.isFinite(value)));
+        if (set.has(numericId)) {
+            set.delete(numericId);
         } else {
-            set.add(id);
+            set.add(numericId);
         }
         void onChange(Array.from(set));
     };

@@ -244,7 +244,72 @@ export default function TreasurerDashboard({
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">Nenhuma doação encontrada com os filtros atuais.</p>
                 </div>
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                <>
+                    <ul className="space-y-3 md:hidden">
+                        {donations.data.map((d) => (
+                            <li
+                                key={d.id}
+                                className={`rounded-2xl border p-4 shadow-sm ${
+                                    d.dispute_status === 'pending'
+                                        ? 'border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20'
+                                        : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
+                                }`}
+                            >
+                                <p className="text-xs text-zinc-500">
+                                    {new Date(d.confirmed_at).toLocaleString('pt-BR')}
+                                </p>
+                                <p className="mt-1 font-semibold text-zinc-900 dark:text-white">{d.donor_name}</p>
+                                {d.is_anonymous && d.donor_real_name ? (
+                                    <p className="text-xs text-zinc-500">({d.donor_real_name})</p>
+                                ) : null}
+                                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{d.campaign_title}</p>
+                                <p className="mt-2 font-medium text-zinc-900 dark:text-white">{formatBrl(d.amount)}</p>
+                                {d.dispute_status === 'pending' ? (
+                                    <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                                        Reclamação pendente
+                                    </span>
+                                ) : d.dispute_status === 'resolved' ? (
+                                    <span className="mt-2 inline-block text-xs text-emerald-600 dark:text-emerald-400">
+                                        Reclamação resolvida
+                                    </span>
+                                ) : null}
+                                <div className="mt-3 flex flex-wrap gap-3">
+                                    {d.receipt_url ? (
+                                        <a
+                                            href={d.receipt_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="cursor-pointer text-xs font-medium text-brand-600 hover:underline"
+                                        >
+                                            Comprovante
+                                        </a>
+                                    ) : null}
+                                    {canManageDonations ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => openAdjust(d)}
+                                                className="inline-flex cursor-pointer items-center text-xs font-medium text-zinc-700 hover:underline dark:text-zinc-300"
+                                            >
+                                                <PencilSquareIcon className="mr-1 h-3.5 w-3.5" />
+                                                Ajustar valor
+                                            </button>
+                                            {d.dispute_status === 'pending' ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openResolve(d)}
+                                                    className="cursor-pointer text-xs font-medium text-amber-700 hover:underline dark:text-amber-300"
+                                                >
+                                                    Resolver reclamação
+                                                </button>
+                                            ) : null}
+                                        </>
+                                    ) : null}
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="hidden overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 md:block">
                     <div className="overflow-x-auto">
                         <table className="min-w-full text-sm">
                             <thead className="border-b border-zinc-200 bg-zinc-50 text-left text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/50">
@@ -362,7 +427,7 @@ export default function TreasurerDashboard({
                                         key={`${link.label}-${i}`}
                                         type="button"
                                         onClick={() => router.get(link.url!)}
-                                        className={`rounded-lg px-3 py-1 text-sm ${
+                                        className={`cursor-pointer rounded-lg px-3 py-1 text-sm ${
                                             link.active
                                                 ? 'bg-brand-600 text-white'
                                                 : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
@@ -379,7 +444,33 @@ export default function TreasurerDashboard({
                             )}
                         </div>
                     )}
-                </div>
+                    </div>
+                    {donations.last_page > 1 ? (
+                        <div className="mt-4 flex flex-wrap gap-2 md:hidden">
+                            {donations.links.map((link, i) =>
+                                link.url ? (
+                                    <button
+                                        key={`m-${link.label}-${i}`}
+                                        type="button"
+                                        onClick={() => router.get(link.url!)}
+                                        className={`cursor-pointer rounded-lg px-3 py-1 text-sm ${
+                                            link.active
+                                                ? 'bg-brand-600 text-white'
+                                                : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                                        }`}
+                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                    />
+                                ) : (
+                                    <span
+                                        key={`m-${link.label}-${i}`}
+                                        className="rounded-lg px-3 py-1 text-sm text-zinc-400"
+                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                    />
+                                ),
+                            )}
+                        </div>
+                    ) : null}
+                </>
             )}
 
             <Modal show={adjustDonation !== null} onClose={() => setAdjustDonation(null)} maxWidth="md">

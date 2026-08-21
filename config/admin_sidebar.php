@@ -52,6 +52,7 @@ return [
         ['name' => 'Notificações', 'route' => 'notifications.manage', 'icon' => 'bell-alert'],
         // Cadastro
         ['name' => 'Salas', 'route' => 'rooms.index', 'icon' => 'building-office'],
+        ['name' => 'CONVIVA', 'route' => 'conviva.index', 'icon' => 'book-open'],
         ['name' => 'Departamentos', 'route' => 'departments.index', 'icon' => 'building-office-2'],
         ['name' => 'Pastores', 'route' => 'pastors.index', 'icon' => 'user-circle'],
         ['name' => 'Programação', 'route' => 'programacao.index', 'icon' => 'clock'],

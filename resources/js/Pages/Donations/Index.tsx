@@ -716,6 +716,29 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                     ) : (
                         <div className="mt-4 max-h-96 overflow-y-auto">
                             {detailIsItemCampaign ? (
+                                <>
+                                <ul className="space-y-3 md:hidden">
+                                    {detailDonations.map((d) => (
+                                        <li
+                                            key={d.id}
+                                            className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900"
+                                        >
+                                            <p className="font-medium text-zinc-900 dark:text-white">{d.donor_name}</p>
+                                            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{d.item_description ?? '—'}</p>
+                                            <p className="mt-1 font-medium">{formatQuantity(d.quantity ?? 0, d.unit_label)}</p>
+                                            <p className="mt-1 text-xs text-zinc-500">
+                                                {d.status === 'received'
+                                                    ? 'Recebido'
+                                                    : d.status === 'cancelled'
+                                                      ? 'Cancelado'
+                                                      : 'Comprometido'}
+                                                {' · '}
+                                                {new Date((d.received_at ?? d.pledged_at) as string).toLocaleString('pt-BR')}
+                                            </p>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <div className="hidden md:block">
                                 <table className="min-w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-zinc-200 text-left text-zinc-500 dark:border-zinc-700">
@@ -769,7 +792,54 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                                         ))}
                                     </tbody>
                                 </table>
+                                </div>
+                                </>
                             ) : (
+                                <>
+                                <ul className="space-y-3 md:hidden">
+                                    {detailDonations.map((d) => (
+                                        <li
+                                            key={d.id}
+                                            className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900"
+                                        >
+                                            <p className="font-medium text-zinc-900 dark:text-white">
+                                                {d.donor_name}
+                                                {d.is_manual ? (
+                                                    <span className="ml-1.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                                        Manual
+                                                    </span>
+                                                ) : null}
+                                            </p>
+                                            <p className="mt-1 font-medium">{formatBrl(d.amount)}</p>
+                                            <p className="mt-0.5 text-xs text-zinc-500">
+                                                {new Date(d.confirmed_at).toLocaleString('pt-BR')}
+                                            </p>
+                                            <div className="mt-2 flex flex-wrap gap-3">
+                                                {d.receipt_url ? (
+                                                    <a
+                                                        href={d.receipt_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="cursor-pointer text-sm text-brand-600 hover:underline"
+                                                    >
+                                                        Ver comprovante
+                                                    </a>
+                                                ) : null}
+                                                {canManageDonations ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openAdjust(d)}
+                                                        className="inline-flex cursor-pointer items-center text-xs font-medium text-zinc-700 hover:underline dark:text-zinc-300"
+                                                    >
+                                                        <PencilSquareIcon className="mr-1 h-3.5 w-3.5" />
+                                                        Ajustar valor
+                                                    </button>
+                                                ) : null}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <div className="hidden md:block">
                                 <table className="min-w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-zinc-200 text-left text-zinc-500 dark:border-zinc-700">
@@ -832,6 +902,8 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                                         ))}
                                     </tbody>
                                 </table>
+                                </div>
+                                </>
                             )}
                         </div>
                     )}

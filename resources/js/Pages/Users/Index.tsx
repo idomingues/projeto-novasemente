@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, Link, usePage } from '@inertiajs/react';
 import {
+    AdjustmentsHorizontalIcon,
     PencilIcon,
     TrashIcon,
     UserGroupIcon,
@@ -8,6 +9,8 @@ import {
     LinkIcon,
     DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
+import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
+import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import LeaderPublicSignupShareModal from '@/Components/Leaders/LeaderPublicSignupShareModal';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
@@ -126,6 +129,11 @@ function pickAssignableRoleName(assignableRoles: AssignableRole[], preferred: st
     return '';
 }
 
+const headerIconBtnClass =
+    'relative inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
+const headerIconBtnActiveClass =
+    'border-teal-500 bg-teal-50 text-teal-800 dark:border-teal-600 dark:bg-teal-950/40 dark:text-teal-200';
+
 function firstFlatError(errors: Record<string, string | string[] | undefined>): string | null {
     for (const key of Object.keys(errors)) {
         const v = errors[key];
@@ -230,6 +238,10 @@ export default function Index({
     const [leaderShareChurch, setLeaderShareChurch] = useState<string>('');
     const [leaderLinkRotating, setLeaderLinkRotating] = useState(false);
     const [inviteModalOpen, setInviteModalOpen] = useState(false);
+    const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+    const [draftLeaderFilter, setDraftLeaderFilter] = useState(leaderFilter);
+    const [draftAppMembersFilter, setDraftAppMembersFilter] = useState(appMembersFilter);
+    const [draftMinistryFilter, setDraftMinistryFilter] = useState(ministryFilter);
 
     const inviteForm = useForm({
         email: '',
@@ -617,6 +629,98 @@ export default function Index({
         typeof flash?.success === 'string' && flash.success.trim() !== '' ? flash.success : null;
     const pageFlashError = typeof flash?.error === 'string' && flash.error.trim() !== '' ? flash.error : null;
 
+    const activeFilterCount =
+        (leaderFilter === '1' ? 1 : 0) + (appMembersFilter === '1' ? 1 : 0) + (ministryFilter !== '' ? 1 : 0);
+    const ministryFilterLabel =
+        ministryOptions.find((m) => String(m.id) === ministryFilter)?.name ?? null;
+    const activeFilterChips: Array<{ key: 'leaders' | 'app_members' | 'ministry'; label: string }> = [];
+    if (leaderFilter === '1') {
+        activeFilterChips.push({ key: 'leaders', label: 'Líderes de departamento' });
+    }
+    if (appMembersFilter === '1') {
+        activeFilterChips.push({ key: 'app_members', label: 'Só app (sem voluntário)' });
+    }
+    if (ministryFilter !== '' && ministryFilterLabel) {
+        activeFilterChips.push({ key: 'ministry', label: ministryFilterLabel });
+    }
+
+    const openFilterSheet = () => {
+        setDraftLeaderFilter(leaderFilter);
+        setDraftAppMembersFilter(appMembersFilter);
+        setDraftMinistryFilter(ministryFilter);
+        setFilterSheetOpen(true);
+    };
+
+    const submitFilters: FormEventHandler = (e) => {
+        e.preventDefault();
+        setLeaderFilter(draftLeaderFilter);
+        setAppMembersFilter(draftAppMembersFilter);
+        setMinistryFilter(draftMinistryFilter);
+        applyListFilters({
+            leaders_only: draftLeaderFilter,
+            app_members_only: draftAppMembersFilter,
+            ministry_id: draftMinistryFilter,
+        });
+        setFilterSheetOpen(false);
+    };
+
+    const clearFiltersAndApply = () => {
+        setLeaderFilter('');
+        setAppMembersFilter('');
+        setMinistryFilter('');
+        setDraftLeaderFilter('');
+        setDraftAppMembersFilter('');
+        setDraftMinistryFilter('');
+        applyListFilters({ leaders_only: '', app_members_only: '', ministry_id: '' });
+        setFilterSheetOpen(false);
+    };
+
+    const removeFilterChip = (key: 'leaders' | 'app_members' | 'ministry') => {
+        if (key === 'leaders') {
+            setLeaderFilter('');
+            applyListFilters({ leaders_only: '' });
+            return;
+        }
+        if (key === 'app_members') {
+            setAppMembersFilter('');
+            applyListFilters({ app_members_only: '' });
+            return;
+        }
+        setMinistryFilter('');
+        applyListFilters({ ministry_id: '' });
+    };
+
+    const memberActionButtons = (member: Member) => (
+        <div
+            className="flex items-center justify-end gap-0.5"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+        >
+            {canManageMembers ? (
+                <ListCardIconActionButton
+                    label="Editar"
+                    icon={<PencilIcon className="h-5 w-5" />}
+                    onClick={() => openEditModal(member)}
+                />
+            ) : null}
+            {canManageUsers && member.needs_registration ? (
+                <ListCardIconActionButton
+                    label="Convidar"
+                    icon={<LinkIcon className="h-5 w-5" />}
+                    onClick={() => router.post(route('users.invite', member.id))}
+                />
+            ) : null}
+            {canManageMembers ? (
+                <ListCardIconActionButton
+                    label="Excluir"
+                    tone="danger"
+                    icon={<TrashIcon className="h-5 w-5" />}
+                    onClick={() => void handleDelete(member.id)}
+                />
+            ) : null}
+        </div>
+    );
+
     return (
         <AdminLayout>
             <Head title="Usuários" />
@@ -631,11 +735,29 @@ export default function Index({
                     </>
                 }
                 actions={
-                    canManageMembers ? (
-                        <AddButton variant="icon" onClick={openCreateModal} title="Novo usuário">
-                            Novo usuário
-                        </AddButton>
-                    ) : null
+                    <div className="flex shrink-0 items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={openFilterSheet}
+                            title="Filtros"
+                            aria-label={
+                                activeFilterCount > 0 ? `Filtros (${activeFilterCount} ativos)` : 'Filtros'
+                            }
+                            className={`${headerIconBtnClass} ${activeFilterCount > 0 ? headerIconBtnActiveClass : ''}`}
+                        >
+                            <AdjustmentsHorizontalIcon className="h-5 w-5" aria-hidden />
+                            {activeFilterCount > 0 ? (
+                                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-zinc-900 px-1 text-[10px] font-bold text-white dark:bg-white dark:text-zinc-900">
+                                    {activeFilterCount > 9 ? '9+' : activeFilterCount}
+                                </span>
+                            ) : null}
+                        </button>
+                        {canManageMembers ? (
+                            <AddButton variant="icon" onClick={openCreateModal} title="Novo usuário">
+                                Novo usuário
+                            </AddButton>
+                        ) : null}
+                    </div>
                 }
             >
                 <div className="flex w-full flex-col gap-3">
@@ -651,82 +773,55 @@ export default function Index({
                             />
                             <ListSearchHint show={searchBelowMinimum} className="mt-1" />
                         </div>
-                        {canManageLeaderSignupLink && leaderLinkForModal ? (
-                            <SecondaryButton
-                                type="button"
-                                onClick={() => {
-                                    setLeaderShareUrl(null);
-                                    setLeaderShareChurch('');
-                                    setLeaderShareOpen(true);
-                                }}
-                                className="shrink-0 justify-center gap-2 sm:w-auto"
-                            >
-                                <UserGroupIcon className="h-5 w-5" />
-                                Link para líderes (WhatsApp)
-                            </SecondaryButton>
-                        ) : null}
-                        {canManageUsers ? (
-                            <SecondaryButton
-                                type="button"
-                                onClick={() => setInviteModalOpen(true)}
-                                className="shrink-0 justify-center gap-2 sm:w-auto"
-                            >
-                                <EnvelopeIcon className="h-5 w-5" />
-                                Convidar
-                            </SecondaryButton>
-                        ) : null}
-                    </div>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                        <div className="w-full sm:w-52">
-                            <InputLabel value="Líderes" className="mb-1" />
-                            <SelectInput
-                                value={leaderFilter}
-                                onChange={(e) => {
-                                    const v = e.target.value;
-                                    setLeaderFilter(v);
-                                    applyListFilters({ leaders_only: v });
-                                }}
-                                className="w-full"
-                            >
-                                <option value="">Todos os membros</option>
-                                <option value="1">Apenas líderes de departamento</option>
-                            </SelectInput>
-                        </div>
-                        <div className="w-full sm:w-52">
-                            <InputLabel value="Tipo" className="mb-1" />
-                            <SelectInput
-                                value={appMembersFilter}
-                                onChange={(e) => {
-                                    const v = e.target.value;
-                                    setAppMembersFilter(v);
-                                    applyListFilters({ app_members_only: v });
-                                }}
-                                className="w-full"
-                            >
-                                <option value="">Todos</option>
-                                <option value="1">Só app (sem voluntário)</option>
-                            </SelectInput>
-                        </div>
-                        <div className="w-full sm:flex-1 sm:max-w-xs">
-                            <InputLabel value="Departamento" className="mb-1" />
-                            <SelectInput
-                                value={ministryFilter}
-                                onChange={(e) => {
-                                    const v = e.target.value;
-                                    setMinistryFilter(v);
-                                    applyListFilters({ ministry_id: v });
-                                }}
-                                className="w-full"
-                            >
-                                <option value="">Todos os departamentos</option>
-                                {ministryOptions.map((m) => (
-                                    <option key={m.id} value={String(m.id)}>
-                                        {m.name}
-                                    </option>
-                                ))}
-                            </SelectInput>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {canManageLeaderSignupLink && leaderLinkForModal ? (
+                                <SecondaryButton
+                                    type="button"
+                                    onClick={() => {
+                                        setLeaderShareUrl(null);
+                                        setLeaderShareChurch('');
+                                        setLeaderShareOpen(true);
+                                    }}
+                                    className="shrink-0 justify-center gap-2 sm:w-auto"
+                                >
+                                    <UserGroupIcon className="h-5 w-5" />
+                                    <span className="hidden sm:inline">Link para líderes (WhatsApp)</span>
+                                    <span className="sm:hidden">Link líderes</span>
+                                </SecondaryButton>
+                            ) : null}
+                            {canManageUsers ? (
+                                <SecondaryButton
+                                    type="button"
+                                    onClick={() => setInviteModalOpen(true)}
+                                    className="shrink-0 justify-center gap-2 sm:w-auto"
+                                >
+                                    <EnvelopeIcon className="h-5 w-5" />
+                                    Convidar
+                                </SecondaryButton>
+                            ) : null}
                         </div>
                     </div>
+                    {activeFilterChips.length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                                Filtros
+                            </span>
+                            {activeFilterChips.map((c) => (
+                                <button
+                                    key={c.key}
+                                    type="button"
+                                    onClick={() => removeFilterChip(c.key)}
+                                    className="group inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 py-1 pl-3 pr-2 text-xs font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-white dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-200"
+                                    title="Remover filtro"
+                                >
+                                    <span className="truncate">{c.label}</span>
+                                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-zinc-400 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700">
+                                        ×
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
             </PageHeader>
 
@@ -763,42 +858,18 @@ export default function Index({
                 </div>
             ) : null}
 
-            <Card className="!p-0 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[980px] text-sm">
-                        <thead className="bg-zinc-50 border-b border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800">
-                            <tr>
-                                <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                                    Nome
-                                </th>
-                                <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                                    E-mail
-                                </th>
-                                <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                                    Perfil
-                                </th>
-                                <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                                    Telefone
-                                </th>
-                                <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                                    Voluntário
-                                </th>
-                                <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                                    Status
-                                </th>
-                                <th className="sticky right-0 z-20 w-[1%] whitespace-nowrap bg-zinc-50 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-zinc-500 shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.12)] dark:bg-zinc-900 dark:text-zinc-400 dark:shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.45)] sm:px-6">
-                                    Ações
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                            {members.data.map((member) => (
-                                <tr
-                                    key={member.id}
+            {members.data.length === 0 ? (
+                <Card className="p-12 text-center text-zinc-500 dark:text-zinc-400">
+                    Nenhum usuário encontrado.
+                </Card>
+            ) : (
+                <>
+                    <ul className="space-y-3 md:hidden">
+                        {members.data.map((member) => (
+                            <li key={member.id}>
+                                <div
                                     role="button"
                                     tabIndex={0}
-                                    title={canManageMembers ? 'Clique para editar' : 'Clique para ver detalhes'}
-                                    className="cursor-pointer bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors group"
                                     onClick={() => openEditModal(member)}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' || e.key === ' ') {
@@ -806,127 +877,190 @@ export default function Index({
                                             openEditModal(member);
                                         }
                                     }}
+                                    title={canManageMembers ? 'Toque para editar' : 'Toque para ver detalhes'}
+                                    className="w-full cursor-pointer touch-manipulation rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40"
                                 >
-                                    <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 align-top">
-                                        <div className="flex items-center gap-3">
-                                            <UserListAvatar name={member.name} photoUrl={member.photo_url} size="md" />
-                                            <div className="min-w-0">
-                                                <div className="text-base font-medium text-zinc-900 dark:text-white">{member.name}</div>
-                                                <div className="mt-1 text-xs text-zinc-500">
-                                                    Cadastrado em {new Date(member.created_at).toLocaleDateString('pt-BR')}
-                                                </div>
+                                    <div className="flex items-start gap-3">
+                                        <UserListAvatar name={member.name} photoUrl={member.photo_url} size="md" />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="text-base font-semibold text-zinc-900 dark:text-white">
+                                                {member.name}
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 align-top max-w-[14rem] sm:max-w-xs">
-                                        <div className="text-sm text-zinc-800 dark:text-zinc-100 break-all font-mono leading-snug">
-                                            {member.email?.trim() ? member.email : <span className="text-zinc-400 dark:text-zinc-500 font-sans">—</span>}
-                                        </div>
-                                    </td>
-                                    <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 align-top max-w-[10rem]">
-                                        <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200 leading-snug">
-                                            {member.role_label ?? '—'}
-                                        </span>
-                                    </td>
-                                    <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 align-top whitespace-nowrap">
-                                        <div className="text-sm text-zinc-800 dark:text-zinc-100 tabular-nums">
-                                            {member.phone?.trim() ? member.phone : <span className="text-zinc-400 dark:text-zinc-500">—</span>}
-                                        </div>
-                                    </td>
-                                    <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 whitespace-nowrap">
-                                        {member.profile_kind === 'volunteer' ? (
-                                            <div className="flex flex-col gap-1">
-                                                <span className="inline-flex w-fit rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-100">
-                                                    Também voluntário
+                                            <div className="mt-0.5 break-all font-mono text-xs leading-snug text-zinc-600 dark:text-zinc-300">
+                                                {member.email?.trim() ? (
+                                                    member.email
+                                                ) : (
+                                                    <span className="font-sans text-zinc-400 dark:text-zinc-500">—</span>
+                                                )}
+                                            </div>
+                                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                                                    {member.role_label ?? '—'}
                                                 </span>
-                                                {member.volunteer_profile_id ? (
-                                                    <Link
-                                                        href={route('volunteers.index', { voluntario: member.volunteer_profile_id })}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className="cursor-pointer text-xs text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
-                                                    >
-                                                        Ver cadastro
-                                                    </Link>
+                                                {member.phone?.trim() ? (
+                                                    <span className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
+                                                        {member.phone}
+                                                    </span>
                                                 ) : null}
                                             </div>
-                                        ) : (
-                                            <span className="inline-flex w-fit rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                                                Só app
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 whitespace-nowrap">
-                                        <span className={activeInactivePillClass(member.status === 'active')}>
-                                            {member.status === 'active' ? 'Ativo' : 'Inativo'}
-                                        </span>
-                                    </td>
-                                    <td
-                                        className="sticky right-0 z-10 cursor-default whitespace-nowrap bg-white px-4 py-4 text-right text-sm font-medium shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.12)] group-hover:bg-zinc-50 dark:bg-zinc-950 dark:shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.45)] dark:group-hover:bg-zinc-900 sm:px-6 sm:py-6"
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
-                                        <div className="flex items-center justify-end gap-1 sm:gap-2">
-                                            {canManageMembers ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openEditModal(member)}
-                                                    className="rounded-full p-2 text-zinc-600 transition-colors hover:bg-zinc-800 hover:text-white dark:text-zinc-300"
-                                                    title="Editar"
-                                                    aria-label="Editar"
+                                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                                {member.profile_kind === 'volunteer' ? (
+                                                    <span className="inline-flex w-fit rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-100">
+                                                        Também voluntário
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex w-fit rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                                        Só app
+                                                    </span>
+                                                )}
+                                                <span className={activeInactivePillClass(member.status === 'active')}>
+                                                    {member.status === 'active' ? 'Ativo' : 'Inativo'}
+                                                </span>
+                                            </div>
+                                            {member.profile_kind === 'volunteer' && member.volunteer_profile_id ? (
+                                                <Link
+                                                    href={route('volunteers.index', {
+                                                        voluntario: member.volunteer_profile_id,
+                                                    })}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="mt-2 inline-block cursor-pointer text-xs text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
                                                 >
-                                                    <PencilIcon className="h-5 w-5" />
-                                                </button>
+                                                    Ver cadastro de voluntário
+                                                </Link>
                                             ) : null}
-                                            {canManageUsers && member.needs_registration ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        router.post(route('users.invite', member.id));
-                                                    }}
-                                                    className="rounded-full p-2 text-zinc-600 transition-colors hover:bg-zinc-800 hover:text-green-400 dark:text-zinc-300"
-                                                    title="Gerar link de convite (WhatsApp) para finalizar cadastro"
-                                                    aria-label="Convidar"
-                                                >
-                                                    <LinkIcon className="h-5 w-5" />
-                                                </button>
-                                            ) : null}
-                                            {canManageMembers ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        void handleDelete(member.id);
-                                                    }}
-                                                    className="rounded-full p-2 text-zinc-600 transition-colors hover:bg-zinc-800 hover:text-red-400 dark:text-zinc-300"
-                                                    title="Excluir"
-                                                    aria-label="Excluir"
-                                                >
-                                                    <TrashIcon className="w-5 h-5" />
-                                                </button>
-                                            ) : null}
+                                            <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+                                                Cadastrado em {new Date(member.created_at).toLocaleDateString('pt-BR')}
+                                            </p>
                                         </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                
-                {members.data.length === 0 && (
-                    <div className="p-12 text-center text-zinc-500">
-                        Nenhum usuário encontrado.
-                    </div>
-                )}
-            </Card>
+                                        <ListCardActionRow className="-mr-2 -mt-1 self-start">
+                                            {memberActionButtons(member)}
+                                        </ListCardActionRow>
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
 
-            <div className="mt-6 flex justify-end overflow-x-auto pb-1">
-                <nav className="inline-flex shrink-0 rounded-full shadow-sm border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
+                    <Card className="hidden !p-0 overflow-hidden md:block">
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-full text-sm">
+                                <thead className="bg-zinc-50 border-b border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800">
+                                    <tr>
+                                        <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                            Nome
+                                        </th>
+                                        <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                            E-mail
+                                        </th>
+                                        <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                            Perfil
+                                        </th>
+                                        <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                            Telefone
+                                        </th>
+                                        <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                            Voluntário
+                                        </th>
+                                        <th className="px-4 py-3 sm:px-6 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                            Status
+                                        </th>
+                                        <th className="sticky right-0 z-20 w-[1%] whitespace-nowrap bg-zinc-50 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-zinc-500 shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.12)] dark:bg-zinc-900 dark:text-zinc-400 dark:shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.45)] sm:px-6">
+                                            Ações
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                    {members.data.map((member) => (
+                                        <tr
+                                            key={member.id}
+                                            role="button"
+                                            tabIndex={0}
+                                            title={canManageMembers ? 'Clique para editar' : 'Clique para ver detalhes'}
+                                            className="cursor-pointer bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors group"
+                                            onClick={() => openEditModal(member)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    openEditModal(member);
+                                                }
+                                            }}
+                                        >
+                                            <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 align-top">
+                                                <div className="flex items-center gap-3">
+                                                    <UserListAvatar name={member.name} photoUrl={member.photo_url} size="md" />
+                                                    <div className="min-w-0">
+                                                        <div className="text-base font-medium text-zinc-900 dark:text-white">{member.name}</div>
+                                                        <div className="mt-1 text-xs text-zinc-500">
+                                                            Cadastrado em {new Date(member.created_at).toLocaleDateString('pt-BR')}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 align-top max-w-[14rem] sm:max-w-xs">
+                                                <div className="text-sm text-zinc-800 dark:text-zinc-100 break-all font-mono leading-snug">
+                                                    {member.email?.trim() ? member.email : <span className="text-zinc-400 dark:text-zinc-500 font-sans">—</span>}
+                                                </div>
+                                            </td>
+                                            <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 align-top max-w-[10rem]">
+                                                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200 leading-snug">
+                                                    {member.role_label ?? '—'}
+                                                </span>
+                                            </td>
+                                            <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 align-top whitespace-nowrap">
+                                                <div className="text-sm text-zinc-800 dark:text-zinc-100 tabular-nums">
+                                                    {member.phone?.trim() ? member.phone : <span className="text-zinc-400 dark:text-zinc-500">—</span>}
+                                                </div>
+                                            </td>
+                                            <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 whitespace-nowrap">
+                                                {member.profile_kind === 'volunteer' ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="inline-flex w-fit rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-100">
+                                                            Também voluntário
+                                                        </span>
+                                                        {member.volunteer_profile_id ? (
+                                                            <Link
+                                                                href={route('volunteers.index', { voluntario: member.volunteer_profile_id })}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="cursor-pointer text-xs text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
+                                                            >
+                                                                Ver cadastro
+                                                            </Link>
+                                                        ) : null}
+                                                    </div>
+                                                ) : (
+                                                    <span className="inline-flex w-fit rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                                        Só app
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="cursor-pointer px-4 py-4 sm:px-6 sm:py-6 whitespace-nowrap">
+                                                <span className={activeInactivePillClass(member.status === 'active')}>
+                                                    {member.status === 'active' ? 'Ativo' : 'Inativo'}
+                                                </span>
+                                            </td>
+                                            <td
+                                                className="sticky right-0 z-10 cursor-default whitespace-nowrap bg-white px-4 py-4 text-right text-sm font-medium shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.12)] group-hover:bg-zinc-50 dark:bg-zinc-950 dark:shadow-[-6px_0_12px_-6px_rgba(0,0,0,0.45)] dark:group-hover:bg-zinc-900 sm:px-6 sm:py-6"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                {memberActionButtons(member)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                </>
+            )}
+
+            <div className="mt-6 flex flex-wrap justify-center gap-1 pb-1 sm:justify-end">
+                <nav className="inline-flex max-w-full flex-wrap justify-center overflow-hidden rounded-full border border-zinc-300 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                     {members.links.map((link, index) => (
                         <button
                             key={index}
                             disabled={!link.url}
                             onClick={() => link.url && router.visit(link.url)}
-                            className={`px-4 py-2 text-xs md:text-sm border-l border-zinc-300 dark:border-zinc-700 first:border-l-0 first:rounded-l-full last:rounded-r-full transition-colors ${
+                                            className={`cursor-pointer px-4 py-2 text-xs md:text-sm border-l border-zinc-300 dark:border-zinc-700 first:border-l-0 first:rounded-l-full last:rounded-r-full transition-colors ${
                                 link.active
                                     ? 'bg-zinc-900 text-white dark:bg-white dark:text-black font-semibold'
                                     : !link.url
@@ -947,96 +1081,232 @@ export default function Index({
                             Envie o link do convite para a pessoa se cadastrar. O link vale 7 dias.
                         </p>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead className="bg-zinc-50 dark:bg-zinc-800/50">
-                                <tr>
-                                    <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">
-                                        Convidado
-                                    </th>
-                                    <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">
-                                        Papel
-                                    </th>
-                                    <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">
-                                        Status
-                                    </th>
-                                    <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">
-                                        Link
-                                    </th>
-                                    <th className="px-4 md:px-6 py-3 text-right text-xs font-semibold text-zinc-500 uppercase">
-                                        Ações
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {invitations.length === 0 ? (
+                        <div className="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400">
+                            Nenhum convite. Clique em &quot;Convidar&quot; para gerar um link.
+                        </div>
+                    ) : (
+                        <>
+                            <ul className="space-y-3 p-4 md:hidden">
                                 {invitations.map((i) => {
                                     const used = !!i.used_at;
                                     const expired = i.expires_at && new Date(i.expires_at) < new Date();
                                     const status = used ? 'Usado' : expired ? 'Expirado' : 'Pendente';
                                     return (
-                                        <tr key={i.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
-                                            <td className="px-4 md:px-6 py-3 text-zinc-900 dark:text-white">
-                                                {i.user_name ?? i.email ?? '—'}
-                                            </td>
-                                            <td className="px-4 md:px-6 py-3 text-zinc-600 dark:text-zinc-300">{i.role ?? '—'}</td>
-                                            <td className="px-4 md:px-6 py-3">
-                                                <span
-                                                    className={`text-xs px-2 py-0.5 rounded ${
-                                                        used
-                                                            ? 'bg-zinc-200 dark:bg-zinc-700'
-                                                            : expired
-                                                              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'
-                                                              : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
-                                                    }`}
-                                                >
-                                                    {status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 md:px-6 py-3">
-                                                {!used && !expired ? (
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => copyLink(i.link)}
-                                                            className="text-sm text-zinc-600 dark:text-zinc-400 hover:underline"
-                                                        >
-                                                            Copiar link
-                                                        </button>
-                                                        <span className="text-zinc-400">|</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => copyForWhatsApp(i.link)}
-                                                            className="text-sm text-green-600 dark:text-green-400 hover:underline inline-flex items-center gap-1"
-                                                            title="Copiar mensagem com instruções para colar no WhatsApp"
-                                                        >
-                                                            <DevicePhoneMobileIcon className="w-4 h-4" /> WhatsApp
-                                                        </button>
-                                                    </div>
-                                                ) : null}
-                                            </td>
-                                            <td className="px-4 md:px-6 py-3 text-right">
-                                                <button
-                                                    type="button"
+                                        <li
+                                            key={i.id}
+                                            className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="font-medium text-zinc-900 dark:text-white">
+                                                        {i.user_name ?? i.email ?? '—'}
+                                                    </p>
+                                                    <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+                                                        {i.role ?? '—'}
+                                                    </p>
+                                                    <span
+                                                        className={`mt-2 inline-flex text-xs px-2 py-0.5 rounded ${
+                                                            used
+                                                                ? 'bg-zinc-200 dark:bg-zinc-700'
+                                                                : expired
+                                                                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'
+                                                                  : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                                                        }`}
+                                                    >
+                                                        {status}
+                                                    </span>
+                                                    {!used && !expired ? (
+                                                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => copyLink(i.link)}
+                                                                className="cursor-pointer text-sm font-medium text-zinc-600 underline-offset-2 hover:underline dark:text-zinc-300"
+                                                            >
+                                                                Copiar link
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => copyForWhatsApp(i.link)}
+                                                                className="inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-green-600 underline-offset-2 hover:underline dark:text-green-400"
+                                                            >
+                                                                <DevicePhoneMobileIcon className="h-4 w-4" /> WhatsApp
+                                                            </button>
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                                <ListCardIconActionButton
+                                                    label="Remover"
+                                                    tone="danger"
+                                                    icon={<TrashIcon className="h-5 w-5" />}
                                                     onClick={() => void handleRemoveInvitation(i.id)}
-                                                    className="p-2 text-zinc-500 hover:text-red-600 rounded-lg"
-                                                    title="Remover"
-                                                >
-                                                    <TrashIcon className="w-4 h-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
+                                                />
+                                            </div>
+                                        </li>
                                     );
                                 })}
-                            </tbody>
-                        </table>
-                    </div>
-                    {invitations.length === 0 ? (
-                        <div className="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400">
-                            Nenhum convite. Clique em &quot;Convidar&quot; para gerar um link.
-                        </div>
-                    ) : null}
+                            </ul>
+                            <div className="hidden overflow-x-auto md:block">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-zinc-50 dark:bg-zinc-800/50">
+                                        <tr>
+                                            <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">
+                                                Convidado
+                                            </th>
+                                            <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">
+                                                Papel
+                                            </th>
+                                            <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">
+                                                Status
+                                            </th>
+                                            <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase">
+                                                Link
+                                            </th>
+                                            <th className="px-4 md:px-6 py-3 text-right text-xs font-semibold text-zinc-500 uppercase">
+                                                Ações
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                        {invitations.map((i) => {
+                                            const used = !!i.used_at;
+                                            const expired = i.expires_at && new Date(i.expires_at) < new Date();
+                                            const status = used ? 'Usado' : expired ? 'Expirado' : 'Pendente';
+                                            return (
+                                                <tr key={i.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                                                    <td className="px-4 md:px-6 py-3 text-zinc-900 dark:text-white">
+                                                        {i.user_name ?? i.email ?? '—'}
+                                                    </td>
+                                                    <td className="px-4 md:px-6 py-3 text-zinc-600 dark:text-zinc-300">{i.role ?? '—'}</td>
+                                                    <td className="px-4 md:px-6 py-3">
+                                                        <span
+                                                            className={`text-xs px-2 py-0.5 rounded ${
+                                                                used
+                                                                    ? 'bg-zinc-200 dark:bg-zinc-700'
+                                                                    : expired
+                                                                      ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'
+                                                                      : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                                                            }`}
+                                                        >
+                                                            {status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 md:px-6 py-3">
+                                                        {!used && !expired ? (
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => copyLink(i.link)}
+                                                                    className="cursor-pointer text-sm text-zinc-600 dark:text-zinc-400 hover:underline"
+                                                                >
+                                                                    Copiar link
+                                                                </button>
+                                                                <span className="text-zinc-400">|</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => copyForWhatsApp(i.link)}
+                                                                    className="inline-flex cursor-pointer items-center gap-1 text-sm text-green-600 dark:text-green-400 hover:underline"
+                                                                    title="Copiar mensagem com instruções para colar no WhatsApp"
+                                                                >
+                                                                    <DevicePhoneMobileIcon className="w-4 h-4" /> WhatsApp
+                                                                </button>
+                                                            </div>
+                                                        ) : null}
+                                                    </td>
+                                                    <td className="px-4 md:px-6 py-3 text-right">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void handleRemoveInvitation(i.id)}
+                                                            className="cursor-pointer rounded-lg p-2 text-zinc-500 hover:text-red-600"
+                                                            title="Remover"
+                                                        >
+                                                            <TrashIcon className="w-4 h-4" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    )}
                 </section>
             ) : null}
+
+            <Modal
+                show={filterSheetOpen}
+                onClose={() => setFilterSheetOpen(false)}
+                maxWidth="md"
+                footer={
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <button
+                            type="button"
+                            onClick={clearFiltersAndApply}
+                            className="cursor-pointer text-center text-sm font-medium text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400"
+                        >
+                            Limpar filtros
+                        </button>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                            <SecondaryButton type="button" onClick={() => setFilterSheetOpen(false)}>
+                                Fechar
+                            </SecondaryButton>
+                            <PrimaryButton type="submit" form="users-filter-form" className="justify-center sm:w-auto">
+                                Aplicar
+                            </PrimaryButton>
+                        </div>
+                    </div>
+                }
+            >
+                <div className="px-5 pb-2 pt-14 sm:px-6 sm:pt-16">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Filtros</h2>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        Refine a lista por tipo de conta, líderes ou departamento.
+                    </p>
+                </div>
+                <form id="users-filter-form" onSubmit={submitFilters} className="space-y-4 px-5 pb-6 sm:px-6">
+                    <div>
+                        <InputLabel htmlFor="users_f_leaders" value="Líderes" />
+                        <SelectInput
+                            id="users_f_leaders"
+                            className="mt-1 block w-full"
+                            value={draftLeaderFilter}
+                            onChange={(e) => setDraftLeaderFilter(e.target.value)}
+                        >
+                            <option value="">Todos os membros</option>
+                            <option value="1">Apenas líderes de departamento</option>
+                        </SelectInput>
+                    </div>
+                    <div>
+                        <InputLabel htmlFor="users_f_type" value="Tipo" />
+                        <SelectInput
+                            id="users_f_type"
+                            className="mt-1 block w-full"
+                            value={draftAppMembersFilter}
+                            onChange={(e) => setDraftAppMembersFilter(e.target.value)}
+                        >
+                            <option value="">Todos</option>
+                            <option value="1">Só app (sem voluntário)</option>
+                        </SelectInput>
+                    </div>
+                    <div>
+                        <InputLabel htmlFor="users_f_ministry" value="Departamento" />
+                        <SelectInput
+                            id="users_f_ministry"
+                            className="mt-1 block w-full"
+                            value={draftMinistryFilter}
+                            onChange={(e) => setDraftMinistryFilter(e.target.value)}
+                        >
+                            <option value="">Todos os departamentos</option>
+                            {ministryOptions.map((m) => (
+                                <option key={m.id} value={String(m.id)}>
+                                    {m.name}
+                                </option>
+                            ))}
+                        </SelectInput>
+                    </div>
+                </form>
+            </Modal>
 
             <Modal show={isModalOpen} onClose={closeModal} maxWidth="lg" disableBodyScroll>
                 <div className="flex max-h-[min(92dvh,calc(100dvh-1rem))] min-h-0 flex-col bg-white dark:bg-zinc-900">

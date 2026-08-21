@@ -621,8 +621,93 @@ export default function Board({
                 </SecondaryButton>
             </div>
 
-            <Card>
-                <div className="overflow-x-auto">
+            <Card className="!p-0 overflow-hidden">
+                {volunteers.data.length === 0 ? (
+                    <p className="p-8 text-center text-sm text-zinc-500">Nenhum cadastro nesta lista.</p>
+                ) : (
+                    <>
+                <ul className="space-y-3 p-4 md:hidden">
+                    {volunteers.data.map((v) => (
+                        <li
+                            key={v.id}
+                            className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
+                        >
+                            <p className="font-semibold text-zinc-900 dark:text-white">{v.name ?? '—'}</p>
+                            <p className="mt-0.5 text-xs text-zinc-500">Cadastro {formatShortDate(v.createdAt)}</p>
+                            <p className="mt-2 break-all text-sm text-zinc-600 dark:text-zinc-300">{v.email ?? '—'}</p>
+                            {v.phone ? <p className="text-xs text-zinc-500">{v.phone}</p> : null}
+                            <p className="mt-2 line-clamp-2 text-xs text-zinc-600 dark:text-zinc-400">
+                                {v.interestPreview ?? '—'}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                                {v.signals.memberNs ? (
+                                    <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100">
+                                        NS
+                                    </span>
+                                ) : null}
+                                {v.signals.sixMonthsInChurchOrLetter ? (
+                                    <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-900 dark:bg-sky-900/50 dark:text-sky-100">
+                                        ≥6m
+                                    </span>
+                                ) : null}
+                                {v.signals.ministryExperienceDeclared ? (
+                                    <span className="rounded bg-violet-100 px-1.5 py-0.5 text-xs text-violet-900 dark:bg-violet-900/50 dark:text-violet-100">
+                                        Exp.
+                                    </span>
+                                ) : null}
+                            </div>
+                            <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+                                {formatListPreview(v.ministryNames) || 'Sem ministérios'}
+                            </p>
+                            <p className="mt-1 text-sm">
+                                Neste ministério:{' '}
+                                {v.inThisMinistry ? (
+                                    <span className="font-medium text-emerald-700 dark:text-emerald-300">Sim</span>
+                                ) : (
+                                    <span className="font-medium text-amber-700 dark:text-amber-300">Não</span>
+                                )}
+                            </p>
+                            {v.inThisMinistry ? (
+                                <div className="mt-1">
+                                    <span
+                                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                                            v.clearanceStatus === 'cleared'
+                                                ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100'
+                                                : v.clearanceStatus === 'blocked'
+                                                  ? 'bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-100'
+                                                  : 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100'
+                                        }`}
+                                    >
+                                        {clearanceLabel(v.clearanceStatus)}
+                                    </span>
+                                    <span className="ml-2 text-xs text-zinc-500">
+                                        {v.criteriaMet}/{v.criteriaTotal} critérios
+                                    </span>
+                                </div>
+                            ) : null}
+                            <div className="mt-3">
+                                {v.inThisMinistry && v.showUrl ? (
+                                    <Link
+                                        href={v.showUrl}
+                                        className="cursor-pointer text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400"
+                                    >
+                                        Ver ficha
+                                    </Link>
+                                ) : (
+                                    <PrimaryButton
+                                        type="button"
+                                        className="text-xs"
+                                        disabled={forwardingId === v.id}
+                                        onClick={() => forwardOne(v.id)}
+                                    >
+                                        {forwardingId === v.id ? '…' : 'Encaminhar'}
+                                    </PrimaryButton>
+                                )}
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+                <div className="hidden overflow-x-auto p-6 md:block">
                     <table className="min-w-full text-sm">
                         <thead>
                             <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
@@ -724,6 +809,8 @@ export default function Board({
                         </tbody>
                     </table>
                 </div>
+                    </>
+                )}
                 {volunteers.links.length > 3 ? (
                     <nav className="mt-4 flex flex-wrap gap-1">
                         {volunteers.links.map((l, i) =>

@@ -638,7 +638,66 @@ export default function VersiculosCaixinhaIndex({
                             <p className="mt-1 text-sm text-zinc-500">Adicione manualmente ou importe versículos populares.</p>
                         </div>
                     ) : (
-                        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                        <>
+                            <div className="mb-3 text-sm text-zinc-500 dark:text-zinc-400 md:hidden">
+                                Exibindo {filteredCount} promessa(s)
+                            </div>
+                            <ul className="space-y-3 md:hidden">
+                                {rows.map((row) => (
+                                    <li
+                                        key={row.id}
+                                        className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-semibold text-zinc-900 dark:text-white">{row.ref}</p>
+                                                <p className="mt-1 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-300">
+                                                    {row.textPreview ? (
+                                                        row.textPreview
+                                                    ) : (
+                                                        <span className="italic text-zinc-400">Texto não encontrado na Bíblia</span>
+                                                    )}
+                                                </p>
+                                                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                                                    <span>{row.categoria}</span>
+                                                    {row.nota ? <span>{row.nota}</span> : null}
+                                                    <span>Peso {row.peso}</span>
+                                                    <span
+                                                        className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                                            row.ativo
+                                                                ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
+                                                                : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+                                                        }`}
+                                                    >
+                                                        {row.ativo ? 'Ativo' : 'Inativo'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openEditModal(row)}
+                                                    className="cursor-pointer rounded-xl p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800"
+                                                    title="Editar"
+                                                    aria-label="Editar"
+                                                >
+                                                    <PencilIcon className="h-5 w-5" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDelete(row.id)}
+                                                    className="cursor-pointer rounded-xl p-2 text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:hover:bg-zinc-800"
+                                                    title="Excluir"
+                                                    aria-label="Excluir"
+                                                >
+                                                    <TrashIcon className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                            <div className="hidden overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 md:block">
                             <div className="border-b border-zinc-100 px-4 py-3 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                                 Exibindo {filteredCount} promessa(s)
                             </div>
@@ -706,6 +765,7 @@ export default function VersiculosCaixinhaIndex({
                                 </table>
                             </div>
                         </div>
+                        </>
                     )}
                 </>
             )}

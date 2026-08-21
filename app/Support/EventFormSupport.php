@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Models\Event;
 use App\Models\Musica;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -47,13 +49,60 @@ class EventFormSupport
         if (! is_string($rawVideoType) || trim($rawVideoType) === '') {
             $request->merge(['video_type' => null, 'video_url' => null]);
         }
+        $request->merge(['all_day' => $request->boolean('all_day')]);
+    }
+
+    /**
+     * Interpreta datetime-local / date do formulário no fuso da aplicação (America/Sao_Paulo).
+     * Sem isto, `2026-08-01T14:00` pode ser lido como UTC e voltar no modal com outro horário.
+     */
+    public static function parseFormDateTime(mixed $value, bool $endOfDay = false): ?CarbonInterface
+    {
+        if ($value instanceof CarbonInterface) {
+            return $value;
+        }
+        if (! is_string($value)) {
+            return null;
+        }
+        $raw = trim($value);
+        if ($raw === '') {
+            return null;
+        }
+
+        $tz = (string) config('app.timezone', 'America/Sao_Paulo');
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) === 1) {
+            $date = Carbon::createFromFormat('Y-m-d', $raw, $tz);
+            if ($date === false) {
+                return null;
+            }
+
+            return $endOfDay ? $date->copy()->endOfDay() : $date->copy()->startOfDay();
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $raw) === 1) {
+            $date = Carbon::createFromFormat('Y-m-d\TH:i', $raw, $tz);
+
+            return $date === false ? null : $date;
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/', $raw) === 1) {
+            $date = Carbon::createFromFormat('Y-m-d\TH:i:s', $raw, $tz);
+
+            return $date === false ? null : $date;
+        }
+
+        return Carbon::parse($raw, $tz);
     }
 
     /** @param  array<string, mixed>  $data */
     public static function normalizeValidatedPayload(array &$data): void
     {
-        $data['ends_at'] = $data['ends_at'] ?? null;
-        $data['published_at'] = $data['published_at'] ?? null;
+        $allDay = (bool) ($data['all_day'] ?? false);
+        $data['all_day'] = $allDay;
+        $data['starts_at'] = self::parseFormDateTime($data['starts_at'] ?? null, false);
+        $data['ends_at'] = self::parseFormDateTime($data['ends_at'] ?? null, $allDay);
+        $data['published_at'] = self::parseFormDateTime($data['published_at'] ?? null);
         $rawPrice = $data['price'] ?? null;
         $data['price'] = is_string($rawPrice) && trim($rawPrice) !== '' ? trim($rawPrice) : null;
 

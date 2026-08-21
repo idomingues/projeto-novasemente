@@ -59,11 +59,61 @@ export default function MissionUsers({ users, phases, canManage, updateUrlPatter
 
                 <MissionAdminTabs active="usuarios" />
 
-                <Card className="overflow-x-auto">
+                <Card className="!p-0 overflow-hidden">
                     {users.length === 0 ? (
                         <p className="p-6 text-sm text-zinc-500">Nenhum cadastro missionário nesta igreja.</p>
                     ) : (
-                        <table className="min-w-full text-sm">
+                        <>
+                            <ul className="space-y-3 p-4 md:hidden">
+                                {users.map((user) => (
+                                    <li
+                                        key={user.volunteer_id}
+                                        className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <UserListAvatar name={user.name} photoUrl={user.photoUrl} size="md" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-medium text-zinc-900 dark:text-white">{user.name}</p>
+                                                <p className="text-xs text-zinc-500">{user.email ?? 'Sem e-mail'}</p>
+                                                {!user.has_app_account ? (
+                                                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                                                        Sem conta no aplicativo
+                                                    </p>
+                                                ) : null}
+                                                <div className="mt-2">
+                                                    {user.is_phase_leader && user.phase_labels.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {user.phase_labels.map((label) => (
+                                                                <span
+                                                                    key={label}
+                                                                    className="inline-flex rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-800 dark:bg-teal-950/50 dark:text-teal-200"
+                                                                >
+                                                                    {label}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-zinc-500">Sem liderança de fase</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {canManage && user.has_app_account && user.id !== null ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openLeaderModal(user)}
+                                                    className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+                                                    title="Definir líder de fase"
+                                                    aria-label={`Definir liderança de fase de ${user.name}`}
+                                                >
+                                                    <ShieldCheckIcon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                            <div className="hidden overflow-x-auto md:block">
+                                <table className="min-w-full text-sm">
                             <thead>
                                 <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
                                     <th className="p-3">Usuário</th>
@@ -125,6 +175,8 @@ export default function MissionUsers({ users, phases, canManage, updateUrlPatter
                                 ))}
                             </tbody>
                         </table>
+                            </div>
+                        </>
                     )}
                 </Card>
 

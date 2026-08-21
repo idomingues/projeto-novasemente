@@ -328,7 +328,115 @@ export default function DonationTreasurerDashboard({
                     </p>
                 </div>
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                <>
+                    <ul className="space-y-3 md:hidden">
+                        {donations.data.map((d) => (
+                            <li
+                                key={d.id}
+                                className={`rounded-2xl border p-4 shadow-sm ${
+                                    (campaignType === 'items' ? d.status === 'pledged' : d.dispute_status === 'pending')
+                                        ? 'border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20'
+                                        : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
+                                }`}
+                            >
+                                <p className="text-xs text-zinc-500">
+                                    {new Date((d.received_at ?? d.pledged_at ?? d.confirmed_at) as string).toLocaleString('pt-BR')}
+                                </p>
+                                <p className="mt-1 font-semibold text-zinc-900 dark:text-white">{d.donor_name}</p>
+                                <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-300">{d.campaign_title}</p>
+                                {campaignType === 'items' ? (
+                                    <>
+                                        <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-200">{d.item_description}</p>
+                                        <p className="mt-1 font-medium">
+                                            {formatQuantity(d.quantity ?? 0, d.unit_label)}
+                                        </p>
+                                        <span className="mt-2 inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                                            {d.status === 'received'
+                                                ? 'Recebido'
+                                                : d.status === 'cancelled'
+                                                  ? 'Cancelado'
+                                                  : 'Pendente'}
+                                        </span>
+                                        {canManageDonations ? (
+                                            <div className="mt-3 flex flex-col items-start gap-2">
+                                                {d.status === 'pledged' ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => receiveItem(d)}
+                                                        className="cursor-pointer text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-300"
+                                                    >
+                                                        Confirmar recebimento
+                                                    </button>
+                                                ) : null}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openAdjustItem(d)}
+                                                    className="inline-flex cursor-pointer items-center text-xs font-medium text-zinc-700 hover:underline dark:text-zinc-300"
+                                                >
+                                                    <PencilSquareIcon className="mr-1 h-3.5 w-3.5" />
+                                                    Ajustar compromisso
+                                                </button>
+                                                {d.status === 'pledged' ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => cancelItem(d)}
+                                                        className="cursor-pointer text-xs font-medium text-amber-700 hover:underline dark:text-amber-300"
+                                                    >
+                                                        Cancelar compromisso
+                                                    </button>
+                                                ) : null}
+                                            </div>
+                                        ) : null}
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="mt-2 font-medium text-zinc-900 dark:text-white">
+                                            {formatBrl(d.amount ?? 0)}
+                                        </p>
+                                        {d.dispute_status === 'pending' ? (
+                                            <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                                                Reclamação pendente
+                                            </span>
+                                        ) : null}
+                                        <div className="mt-3 flex flex-wrap gap-3">
+                                            {d.receipt_url ? (
+                                                <a
+                                                    href={d.receipt_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="cursor-pointer text-xs font-medium text-brand-600 hover:underline"
+                                                >
+                                                    Comprovante
+                                                </a>
+                                            ) : null}
+                                            {canManageDonations ? (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openAdjust(d)}
+                                                        className="inline-flex cursor-pointer items-center text-xs font-medium text-zinc-700 hover:underline dark:text-zinc-300"
+                                                    >
+                                                        <PencilSquareIcon className="mr-1 h-3.5 w-3.5" />
+                                                        Ajustar valor
+                                                    </button>
+                                                    {d.dispute_status === 'pending' ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openResolve(d)}
+                                                            className="cursor-pointer text-xs font-medium text-amber-700 hover:underline dark:text-amber-300"
+                                                        >
+                                                            Resolver reclamação
+                                                        </button>
+                                                    ) : null}
+                                                </>
+                                            ) : null}
+                                        </div>
+                                    </>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="hidden overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 md:block">
                     <div className="overflow-x-auto">
                         <table className="min-w-full text-sm">
                             <thead className="border-b border-zinc-200 bg-zinc-50 text-left text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/50">
@@ -561,6 +669,32 @@ export default function DonationTreasurerDashboard({
                         </div>
                     )}
                 </div>
+                {donations.last_page > 1 ? (
+                    <div className="mt-4 flex flex-wrap gap-2 md:hidden">
+                        {donations.links.map((link, i) =>
+                            link.url ? (
+                                <button
+                                    key={`m-${link.label}-${i}`}
+                                    type="button"
+                                    onClick={() => router.get(link.url!)}
+                                    className={`cursor-pointer rounded-lg px-3 py-1 text-sm ${
+                                        link.active
+                                            ? 'bg-brand-600 text-white'
+                                            : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                                    }`}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ) : (
+                                <span
+                                    key={`m-${link.label}-${i}`}
+                                    className="rounded-lg px-3 py-1 text-sm text-zinc-400"
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ),
+                        )}
+                    </div>
+                ) : null}
+                </>
             )}
 
             <Modal show={adjustDonation !== null} onClose={() => setAdjustDonation(null)} maxWidth="md">

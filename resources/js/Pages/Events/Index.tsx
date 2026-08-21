@@ -29,9 +29,23 @@ import InputError from '@/Components/InputError';
 import SelectInput from '@/Components/SelectInput';
 import NewsPostCover from '@/Components/News/NewsPostCover';
 import { EVENT_COVER_SPECS } from '@/constants/mediaCoverSpecs';
-import { useState, FormEventHandler, useMemo } from 'react';
+import { useState, FormEventHandler, useMemo, useCallback } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
-import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import {
+    applyListModalFormErrors,
+    editIdFromListModalRedirect,
+    reloadListModalProps,
+} from '@/utils/listModalFetchSave';
+import {
+    submitVolunteerModalFormDataPost,
+    submitVolunteerModalFormDataPut,
+} from '@/utils/volunteerPipelineModalSave';
+import {
+    useListModalEditUrl,
+    useListModalFromUrl,
+    useListModalSaveMessage,
+    useSyncFormAfterListReload,
+} from '@/hooks/useListModalEditUrl';
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 
 /** Cores sugeridas (hex) — complementam o código livre e o seletor nativo. */
@@ -97,25 +111,39 @@ const MONTH_NAMES = [
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ];
 
+const EVENT_TZ = 'America/Sao_Paulo';
+const tzOpts = { timeZone: EVENT_TZ };
+
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
     if (url.startsWith('/')) return `${appUrl}${url}`;
     return url;
 }
 
-/** Valor para input datetime-local no fuso do navegador (evita toISOString em UTC). */
+function tzDateParts(d: Date): Record<string, string> {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: EVENT_TZ,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+    }).formatToParts(d);
+
+    return Object.fromEntries(parts.filter((p) => p.type !== 'literal').map((p) => [p.type, p.value]));
+}
+
+/** Valor para input datetime-local no fuso da igreja (evita toISOString em UTC). */
 function toDatetimeLocalString(d: Date): string {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const p = tzDateParts(d);
+    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
 function toDateInputValue(d: Date): string {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const p = tzDateParts(d);
+    return `${p.year}-${p.month}-${p.day}`;
 }
-
-const EVENT_TZ = 'America/Sao_Paulo';
-const tzOpts = { timeZone: EVENT_TZ };
 
 function formatTime(iso: string): string {
     const d = new Date(iso);
@@ -147,15 +175,131 @@ function formatDateTime(iso: string, allDay: boolean): string {
     });
 }
 
+function startOfLocalDay(d: Date): Date {
+    const x = new Date(d);
+    x.setHours(0, 0, 0, 0);
+    return x;
+}
+
+function parseFormDateTime(value: string, allDay: boolean, endOfDay = false): Date | null {
+    const v = value.trim();
+    if (!v) {
+        return null;
+    }
+    const d = allDay
+        ? new Date(`${v.slice(0, 10)}T${endOfDay ? '23:59:59' : '00:00:00'}`)
+        : new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Motivo pelo qual o evento não entra na lista do app (null = visível). */
+function eventHiddenFromAppReason(opts: {
+    startsAt: Date | null;
+    endsAt: Date | null;
+    publishedAt: Date | null;
+    isActive?: boolean;
+}): string | null {
+    if (opts.isActive === false) {
+        return 'Este evento está inativo e não aparece no app. Use Ativar na lista.';
+    }
+    const now = new Date();
+    if (opts.publishedAt && opts.publishedAt.getTime() > now.getTime()) {
+        return 'Este evento ainda não aparece no app: a data de publicação está no futuro.';
+    }
+    if (!opts.startsAt) {
+        return null;
+    }
+    if (opts.endsAt) {
+        if (opts.endsAt.getTime() < now.getTime()) {
+            return 'Este evento não aparece no app porque a data de término já passou. O app só lista eventos atuais e futuros.';
+        }
+        return null;
+    }
+    if (opts.startsAt.getTime() < startOfLocalDay(now).getTime()) {
+        return 'Este evento não aparece no app porque a data de início já passou e o Fim está vazio. Ajuste Início para o dia em que o evento acontece, ou preencha Fim.';
+    }
+    return null;
+}
+
+function listHiddenBadge(ev: EventItem): 'Agendado' | 'Já passou' | null {
+    if (!ev.is_active) {
+        return null;
+    }
+    const start = new Date(ev.starts_at);
+    const end = ev.ends_at ? new Date(ev.ends_at) : null;
+    const published = ev.published_at ? new Date(ev.published_at) : null;
+    const reason = eventHiddenFromAppReason({
+        startsAt: Number.isNaN(start.getTime()) ? null : start,
+        endsAt: end && !Number.isNaN(end.getTime()) ? end : null,
+        publishedAt: published && !Number.isNaN(published.getTime()) ? published : null,
+        isActive: ev.is_active,
+    });
+    if (!reason) {
+        return null;
+    }
+    if (published && published.getTime() > Date.now()) {
+        return 'Agendado';
+    }
+    return 'Já passou';
+}
+
+function buildEventFormData(data: {
+    title: string;
+    description: string;
+    starts_at: string;
+    ends_at: string;
+    published_at: string;
+    all_day: boolean;
+    location: string;
+    price: string;
+    purchase_url: string;
+    video_type: EventVideoType;
+    video_url: string;
+    image_url: string;
+    image_file: File | null;
+    color: string;
+}): FormData {
+    const formData = new FormData();
+    formData.append('title', data.title);
+    formData.append('description', data.description);
+    formData.append('starts_at', data.starts_at);
+    if (data.ends_at.trim() !== '') {
+        formData.append('ends_at', data.ends_at);
+    }
+    if (data.published_at.trim() !== '') {
+        formData.append('published_at', data.published_at);
+    }
+    formData.append('all_day', data.all_day ? '1' : '0');
+    formData.append('location', data.location);
+    formData.append('price', data.price);
+    formData.append('purchase_url', data.purchase_url);
+    formData.append('video_type', data.video_type);
+    formData.append('video_url', data.video_url);
+    formData.append('image_url', data.image_url);
+    formData.append('color', data.color);
+    if (data.image_file instanceof File) {
+        formData.append('image_file', data.image_file);
+    }
+
+    return formData;
+}
+
 export default function Index({ events, eventsForMonth, month, year, canManage }: Props) {
-    const appUrl = (usePage().props as { appUrl?: string }).appUrl ?? '';
+    const page = usePage();
+    const appUrl = (page.props as { appUrl?: string }).appUrl ?? '';
+    const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
     const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [activatingId, setActivatingId] = useState<number | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [saveMessage, setSaveMessage] = useState<string | null>(null);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const { syncListModalEditUrl } = useListModalEditUrl();
+    const showSaveMessage = useListModalSaveMessage();
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, errors, reset, clearErrors, setError } = useForm({
         title: '',
         description: '',
         starts_at: '',
@@ -172,9 +316,59 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
         color: '',
     });
 
+    const appHiddenWarning = useMemo(
+        () =>
+            eventHiddenFromAppReason({
+                startsAt: parseFormDateTime(data.starts_at, data.all_day),
+                endsAt: parseFormDateTime(data.ends_at, data.all_day, true),
+                publishedAt: parseFormDateTime(data.published_at, false),
+            }),
+        [data.starts_at, data.ends_at, data.published_at, data.all_day],
+    );
+
+    const applyEventToForm = useCallback(
+        (ev: EventItem) => {
+            const start = new Date(ev.starts_at);
+            const end = ev.ends_at ? new Date(ev.ends_at) : null;
+            const published = ev.published_at ? new Date(ev.published_at) : null;
+            setData({
+                title: ev.title,
+                description: ev.description ?? '',
+                starts_at: ev.all_day ? toDateInputValue(start) : toDatetimeLocalString(start),
+                ends_at: end
+                    ? ev.all_day
+                        ? toDateInputValue(end)
+                        : toDatetimeLocalString(end)
+                    : '',
+                published_at:
+                    published && !Number.isNaN(published.getTime()) ? toDatetimeLocalString(published) : '',
+                all_day: ev.all_day,
+                location: ev.location ?? '',
+                price: ev.price ?? '',
+                purchase_url: ev.purchase_url ?? '',
+                video_type: (ev.video_type ?? '') as EventVideoType,
+                video_url: ev.video_url ?? '',
+                image_url: ev.image_url ?? '',
+                image_file: null,
+                color: ev.color ?? '',
+            });
+        },
+        [setData],
+    );
+
+    const { markSyncAfterReload } = useSyncFormAfterListReload(
+        events,
+        editingId,
+        isModalOpen,
+        applyEventToForm,
+    );
+
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
+        setSaveMessage(null);
+        setSaveError(null);
+        syncListModalEditUrl(null);
         const now = new Date();
         const start = new Date(now);
         start.setMinutes(0, 0, 0);
@@ -198,48 +392,85 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
         setIsModalOpen(true);
     };
 
-    const openEditModal = (ev: EventItem) => {
-        setIsEditing(true);
-        setEditingId(ev.id);
-        const start = new Date(ev.starts_at);
-        const end = ev.ends_at ? new Date(ev.ends_at) : null;
-        setData({
-            title: ev.title,
-            description: ev.description ?? '',
-            starts_at: ev.all_day ? toDateInputValue(start) : toDatetimeLocalString(start),
-            ends_at: end
-                ? ev.all_day
-                    ? toDateInputValue(end)
-                    : toDatetimeLocalString(end)
-                : '',
-            published_at: ev.published_at ? ev.published_at.substring(0, 16) : '',
-            all_day: ev.all_day,
-            location: ev.location ?? '',
-            price: ev.price ?? '',
-            purchase_url: ev.purchase_url ?? '',
-            video_type: (ev.video_type ?? '') as EventVideoType,
-            video_url: ev.video_url ?? '',
-            image_url: ev.image_url ?? '',
-            color: ev.color ?? '',
-        });
-        setData('image_file', null);
-        clearErrors();
-        setIsModalOpen(true);
-    };
+    const openEditModal = useCallback(
+        (ev: EventItem) => {
+            setIsEditing(true);
+            setEditingId(ev.id);
+            setSaveMessage(null);
+            setSaveError(null);
+            syncListModalEditUrl(ev.id);
+            applyEventToForm(ev);
+            clearErrors();
+            setIsModalOpen(true);
+        },
+        [applyEventToForm, clearErrors, syncListModalEditUrl],
+    );
+
+    useListModalFromUrl(events, isModalOpen, editingId, openEditModal);
 
     const closeModal = () => {
         setIsModalOpen(false);
+        setSaveMessage(null);
+        setSaveError(null);
+        syncListModalEditUrl(null);
         reset();
         setData('image_file', null);
+        setEditingId(null);
+        setIsEditing(false);
     };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        if (isEditing && editingId) {
-            put(route('events.update', editingId), { ...inertiaListModalSave, forceFormData: true });
-        } else {
-            post(route('events.store'), { ...inertiaListModalSave, forceFormData: true });
-        }
+        void (async () => {
+            if (saving) {
+                return;
+            }
+            clearErrors();
+            setSaveError(null);
+            setSaveMessage(null);
+            setSaving(true);
+            try {
+                const formData = buildEventFormData(data);
+                const result =
+                    isEditing && editingId
+                        ? await submitVolunteerModalFormDataPut(route('events.update', editingId), formData, csrf)
+                        : await submitVolunteerModalFormDataPost(route('events.store'), formData, csrf);
+
+                if (!result.ok) {
+                    applyListModalFormErrors(result.errors, setError);
+                    const firstFieldError = Object.values(result.errors)
+                        .map((message) => (Array.isArray(message) ? message[0] : message))
+                        .find(Boolean);
+                    setSaveError(
+                        result.message ??
+                            firstFieldError ??
+                            'Não foi possível salvar. Revise as datas e tente novamente.',
+                    );
+                    return;
+                }
+
+                await reloadListModalProps(['events', 'eventsForMonth']);
+
+                if (isEditing) {
+                    showSaveMessage(setSaveMessage, 'Evento atualizado com sucesso.');
+                    markSyncAfterReload();
+                    return;
+                }
+
+                showSaveMessage(setSaveMessage, 'Evento criado com sucesso.');
+                const createdId = editIdFromListModalRedirect(result.redirectLocation ?? null);
+                if (createdId) {
+                    markSyncAfterReload();
+                    setIsEditing(true);
+                    setEditingId(createdId);
+                    syncListModalEditUrl(createdId);
+                }
+            } catch {
+                setSaveError('Erro de rede ao salvar. Verifique a conexão e tente novamente.');
+            } finally {
+                setSaving(false);
+            }
+        })();
     };
 
     const handleDelete = async (id: number) => {
@@ -509,6 +740,17 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                                         Inativo
                                                     </span>
                                                 )}
+                                                {(() => {
+                                                    const hiddenBadge = listHiddenBadge(ev);
+                                                    return hiddenBadge ? (
+                                                        <span
+                                                            className="ml-2 inline-flex align-middle items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+                                                            title="Não aparece na lista de eventos do app"
+                                                        >
+                                                            {hiddenBadge}
+                                                        </span>
+                                                    ) : null;
+                                                })()}
                                             </h3>
                                             {canManage && (
                                                 <ListCardActionRow className="-ml-1 self-end sm:-mr-1 sm:-mt-1 sm:ml-0 sm:self-auto">
@@ -577,6 +819,21 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                     <h2 className="mb-4 pr-10 text-lg font-semibold text-gray-900 dark:text-white">
                         {isEditing ? 'Editar evento' : 'Novo evento'}
                     </h2>
+                    {saveMessage ? (
+                        <p className="mb-4 text-sm font-medium text-emerald-700 dark:text-emerald-300" role="status">
+                            {saveMessage}
+                        </p>
+                    ) : null}
+                    {saveError ? (
+                        <p className="mb-4 text-sm font-medium text-red-700 dark:text-red-300" role="alert">
+                            {saveError}
+                        </p>
+                    ) : null}
+                    {appHiddenWarning && (
+                        <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+                            {appHiddenWarning}
+                        </p>
+                    )}
                     <div className="min-w-0 space-y-4">
                         <div className="min-w-0">
                             <InputLabel htmlFor="title">Título *</InputLabel>
@@ -618,6 +875,9 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                         <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="min-w-0">
                                 <InputLabel htmlFor="starts_at">Início *</InputLabel>
+                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    Data e hora em que o evento acontece. O app só lista eventos atuais e futuros: se o início já passou e o Fim estiver vazio, o evento some da lista.
+                                </p>
                                 <TextInput
                                     id="starts_at"
                                     type={data.all_day ? 'date' : 'datetime-local'}
@@ -881,7 +1141,7 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                         <SecondaryButton type="button" onClick={closeModal}>
                             Cancelar
                         </SecondaryButton>
-                        <PrimaryButton type="submit" disabled={processing}>
+                        <PrimaryButton type="submit" disabled={saving}>
                             {isEditing ? 'Salvar' : 'Criar'}
                         </PrimaryButton>
                     </div>

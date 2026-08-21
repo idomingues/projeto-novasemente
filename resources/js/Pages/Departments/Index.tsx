@@ -63,8 +63,39 @@ import { volunteerDetailSections } from '@/utils/volunteerDetailRows';
 interface PersonRef {
     id: number;
     name: string;
+    email?: string | null;
+    volunteer_id?: number | null;
     /** ISO 8601 — quando foi vinculado ao departamento (pivot) */
     addedAt?: string | null;
+}
+
+function toPersonId(value: number | string): number {
+    return Number(value);
+}
+
+function normalizePersonIds(ids: Array<number | string>): number[] {
+    return ids.map(toPersonId).filter((id) => Number.isFinite(id) && id > 0);
+}
+
+function mergePersonOptions(options: PersonOption[], extra: PersonRef[]): PersonOption[] {
+    const byId = new Map<number, PersonOption>();
+    const upsert = (person: PersonOption | PersonRef) => {
+        const id = toPersonId(person.id);
+        if (!Number.isFinite(id) || id <= 0) {
+            return;
+        }
+        const prev = byId.get(id);
+        byId.set(id, {
+            id,
+            name: (person.name || prev?.name || '').trim() || `Pessoa #${id}`,
+            email: person.email ?? prev?.email ?? null,
+            volunteer_id: person.volunteer_id ?? prev?.volunteer_id ?? null,
+            addedAt: person.addedAt ?? prev?.addedAt,
+        });
+    };
+    extra.forEach(upsert);
+    options.forEach(upsert);
+    return Array.from(byId.values());
 }
 
 function formatMemberAddedAt(iso: string | null | undefined): string | null {
@@ -154,6 +185,7 @@ function personAddedAtMap(people: PersonRef[]): Record<number, string> {
 
 function PersonPicker({
     options,
+    selectedPeople = [],
     selectedIds,
     onChange,
     memberRole,
@@ -163,6 +195,8 @@ function PersonPicker({
     error,
 }: {
     options: PersonOption[];
+    /** Já vinculados ao departamento — entram na lista mesmo se faltarem em `options`. */
+    selectedPeople?: PersonRef[];
     selectedIds: number[];
     onChange: (ids: number[]) => void;
     /** Rótulo para confirmação ao desmarcar (ex.: líder, voluntário) */
@@ -173,9 +207,13 @@ function PersonPicker({
     addedAtById?: Record<number, string>;
     error?: string;
 }) {
-    const [availableFilter, setAvailableFilter] = useState('');
-    const [selectedFilter, setSelectedFilter] = useState('');
+    const [filter, setFilter] = useState('');
     const [sessionAddedAtById, setSessionAddedAtById] = useState<Record<number, string>>({});
+    const normalizedSelectedIds = useMemo(() => normalizePersonIds(selectedIds), [selectedIds]);
+    const mergedOptions = useMemo(
+        () => mergePersonOptions(options, selectedPeople),
+        [options, selectedPeople],
+    );
     const detailIdFor = (option: PersonOption): number | null =>
         resolveDetailId ? resolveDetailId(option) : option.id;
 
@@ -187,36 +225,23 @@ function PersonPicker({
         [addedAtById, sessionAddedAtById],
     );
 
-    const selectedListOptions = useMemo(() => {
-        const selectedSet = new Set(selectedIds);
-        const q = selectedFilter.trim();
-        return options
-            .filter((o) => selectedSet.has(o.id))
-            .filter((o) => !q || textMatchesSearchFields(q, o.name, o.email))
-            .map((o) => {
-                const addedLabel = formatMemberAddedAt(mergedAddedAtById[o.id]);
-                return {
-                    id: o.id,
-                    name: o.name,
-                    subline: o.email ?? null,
-                    metaSubline: addedLabel,
-                };
-            });
-    }, [options, selectedIds, selectedFilter, mergedAddedAtById]);
+    const listOptions = useMemo(() => {
+        const q = filter.trim();
+        const filtered = q
+            ? mergedOptions.filter((o) => textMatchesSearchFields(q, o.name, o.email))
+            : mergedOptions;
+        return filtered.map((o) => {
+            const addedLabel = formatMemberAddedAt(mergedAddedAtById[o.id]);
+            return {
+                id: o.id,
+                name: o.name,
+                subline: o.email ?? null,
+                metaSubline: addedLabel,
+            };
+        });
+    }, [mergedOptions, filter, mergedAddedAtById]);
 
-    const filteredOtherListOptions = useMemo(() => {
-        const q = availableFilter.trim();
-        const selectedSet = new Set(selectedIds);
-        const base = options.filter((o) => !selectedSet.has(o.id));
-        const filtered = q ? base.filter((o) => textMatchesSearchFields(q, o.name, o.email)) : base;
-        return filtered.map((o) => ({
-            id: o.id,
-            name: o.name,
-            subline: o.email ?? null,
-        }));
-    }, [options, availableFilter, selectedIds]);
-
-    const optionById = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
+    const optionById = useMemo(() => new Map(mergedOptions.map((o) => [o.id, o])), [mergedOptions]);
 
     const confirmMemberChange = useCallback(
         async (action: 'add' | 'remove', ids: number[]): Promise<boolean> => {
@@ -256,12 +281,14 @@ function PersonPicker({
 
     const handleSelectionChange = useCallback(
         async (nextIds: number[]) => {
-            const nextSet = new Set(nextIds);
-            const removed = selectedIds.filter((id) => !nextSet.has(id));
-            const added = nextIds.filter((id) => !selectedIds.includes(id));
+            const nextNormalized = normalizePersonIds(nextIds);
+            const nextSet = new Set(nextNormalized);
+            const currentSet = new Set(normalizedSelectedIds);
+            const removed = normalizedSelectedIds.filter((id) => !nextSet.has(id));
+            const added = nextNormalized.filter((id) => !currentSet.has(id));
 
             if (removed.length === 0 && added.length === 0) {
-                onChange(nextIds);
+                onChange(nextNormalized);
                 return;
             }
 
@@ -299,12 +326,10 @@ function PersonPicker({
                 });
             }
 
-            onChange(nextIds);
+            onChange(nextNormalized);
         },
-        [confirmMemberChange, mergedAddedAtById, onChange, selectedIds],
+        [confirmMemberChange, mergedAddedAtById, normalizedSelectedIds, onChange],
     );
-
-    const paneMaxHeight = 'max-h-[min(52vh,460px)]';
 
     const renderTrailingAction = (row: { id: number; name: string }) => {
         const o = optionById.get(row.id);
@@ -331,75 +356,33 @@ function PersonPicker({
         );
     };
 
+    const searchNoun = memberRole === 'líder' ? 'líderes' : 'voluntários';
+
     return (
         <div className="mt-3">
-            <div className="mx-auto grid min-h-0 w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="flex min-h-0 min-w-0 flex-col">
-                    <p className="shrink-0 px-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                        Disponíveis
-                        <span className="ml-1.5 font-normal text-zinc-500 dark:text-zinc-400">
-                            ({filteredOtherListOptions.length})
-                        </span>
-                    </p>
-                    <TextInput
-                        value={availableFilter}
-                        onChange={(e) => setAvailableFilter(e.target.value)}
-                        className="mt-1.5 block w-full"
-                        placeholder="Buscar disponíveis…"
-                        aria-label="Buscar disponíveis por nome ou e-mail"
-                    />
-                    <SortedMultiCheckboxList
-                        className="mt-1.5 min-h-0 flex-1"
-                        options={filteredOtherListOptions}
-                        selectedIds={selectedIds}
-                        onChange={handleSelectionChange}
-                        maxHeightClass={paneMaxHeight}
-                        hideSectionLabels
-                        emptyMessage={
-                            availableFilter.trim()
-                                ? 'Nenhum resultado para esta busca.'
-                                : 'Todos já foram selecionados.'
-                        }
-                        showSelectedCount={false}
-                        renderTrailingAction={renderTrailingAction}
-                    />
-                </div>
-
-                <div className="flex min-h-0 min-w-0 flex-col sm:border-l sm:border-zinc-200 sm:pl-4 dark:sm:border-zinc-700">
-                    <p className="shrink-0 px-1 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                        Selecionados
-                        <span className="ml-1.5 font-normal text-zinc-500 dark:text-zinc-400">
-                            ({selectedListOptions.length}
-                            {selectedFilter.trim() && selectedListOptions.length !== selectedIds.length
-                                ? ` de ${selectedIds.length}`
-                                : ''}
-                            )
-                        </span>
-                    </p>
-                    <TextInput
-                        value={selectedFilter}
-                        onChange={(e) => setSelectedFilter(e.target.value)}
-                        className="mt-1.5 block w-full"
-                        placeholder="Buscar selecionados…"
-                        aria-label="Buscar selecionados por nome ou e-mail"
-                    />
-                    <SortedMultiCheckboxList
-                        className="mt-1.5 min-h-0 flex-1"
-                        options={selectedListOptions}
-                        selectedIds={selectedIds}
-                        onChange={handleSelectionChange}
-                        maxHeightClass={paneMaxHeight}
-                        hideSectionLabels
-                        emptyMessage={
-                            selectedFilter.trim()
-                                ? 'Nenhum selecionado corresponde a esta busca.'
-                                : 'Nenhum selecionado.'
-                        }
-                        showSelectedCount={false}
-                        renderTrailingAction={renderTrailingAction}
-                    />
-                </div>
-            </div>
+            <TextInput
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="block w-full"
+                placeholder={`Buscar ${searchNoun} por nome ou e-mail…`}
+                aria-label={`Buscar ${searchNoun} por nome ou e-mail`}
+            />
+            <SortedMultiCheckboxList
+                className="mt-1.5"
+                options={listOptions}
+                selectedIds={normalizedSelectedIds}
+                onChange={handleSelectionChange}
+                maxHeightClass="max-h-[min(52vh,460px)]"
+                emptyMessage={
+                    filter.trim()
+                        ? 'Nenhum resultado para esta busca.'
+                        : memberRole === 'líder'
+                          ? 'Nenhum líder disponível.'
+                          : 'Nenhum voluntário disponível.'
+                }
+                showSelectedCount={false}
+                renderTrailingAction={renderTrailingAction}
+            />
             {error ? <InputError message={error} className="mt-1" /> : null}
         </div>
     );
@@ -490,8 +473,8 @@ export default function Index({
             setData({
                 name: d.name,
                 icon: d.icon ?? '',
-                leader_user_ids: d.leaders.map((l) => l.id),
-                volunteer_ids: d.volunteers.map((v) => v.id),
+                leader_user_ids: normalizePersonIds(d.leaders.map((l) => l.id)),
+                volunteer_ids: normalizePersonIds(d.volunteers.map((v) => v.id)),
             });
             clearErrors();
         },
@@ -782,8 +765,8 @@ export default function Index({
         const payload = {
             name: data.name,
             icon: data.icon || null,
-            leader_user_ids: data.leader_user_ids,
-            volunteer_ids: data.volunteer_ids,
+            leader_user_ids: normalizePersonIds(data.leader_user_ids),
+            volunteer_ids: normalizePersonIds(data.volunteer_ids),
         };
         try {
             if (isEditing && editingId) {
@@ -1169,6 +1152,9 @@ export default function Index({
                                     key={`leaders-${editingId ?? 'new'}`}
                                     memberRole="líder"
                                     options={leaderOptions}
+                                    selectedPeople={
+                                        departments.find((d) => d.id === editingId)?.leaders ?? []
+                                    }
                                     selectedIds={data.leader_user_ids}
                                     onChange={(ids) => setData('leader_user_ids', ids)}
                                     addedAtById={leaderAddedAtById}
@@ -1181,6 +1167,9 @@ export default function Index({
                                     key={`volunteers-${editingId ?? 'new'}`}
                                     memberRole="voluntário"
                                     options={volunteerOptions}
+                                    selectedPeople={
+                                        departments.find((d) => d.id === editingId)?.volunteers ?? []
+                                    }
                                     selectedIds={data.volunteer_ids}
                                     onChange={(ids) => setData('volunteer_ids', ids)}
                                     addedAtById={volunteerAddedAtById}

@@ -584,9 +584,129 @@ export default function Index({
                 </div>
             )}
 
-            <Card className="!p-0 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+            {volunteers.data.length === 0 ? (
+                <Card className="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400 md:px-8">
+                    Nenhum voluntário cadastrado. Clique em Novo Voluntário para começar.
+                </Card>
+            ) : (
+                <>
+                    <ul className="space-y-3 md:hidden">
+                        {volunteers.data.map((v) => {
+                            const displayName = v.name ?? '—';
+                            return (
+                                <li key={v.id}>
+                                    <div
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => void openDetail(v.id)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                void openDetail(v.id);
+                                            }
+                                        }}
+                                        className="w-full cursor-pointer touch-manipulation rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <UserListAvatar name={displayName} photoUrl={v.user?.photo_url} />
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <span className="font-semibold text-zinc-900 dark:text-white">
+                                                        {displayName}
+                                                    </span>
+                                                    {v.app_access_only ? (
+                                                        <span className="inline-flex shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-800 dark:bg-violet-950/60 dark:text-violet-200">
+                                                            Usuário (app)
+                                                        </span>
+                                                    ) : null}
+                                                    <span className={activeInactivePillClass(v.active)}>
+                                                        {v.active ? 'Ativo' : 'Inativo'}
+                                                    </span>
+                                                </div>
+                                                {v.role ? (
+                                                    <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-300">{v.role}</p>
+                                                ) : null}
+                                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                                    {(v.ministries ?? []).map((min) => {
+                                                        const Icon = getMinistryIcon(min.name);
+                                                        return (
+                                                            <span
+                                                                key={min.id}
+                                                                className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-700"
+                                                            >
+                                                                <Icon className="h-3.5 w-3.5 shrink-0" />
+                                                                {min.name}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {!v.user ? (
+                                                        'Sem conta no app'
+                                                    ) : !v.user.email ? (
+                                                        'Convite pendente — aguarda e-mail'
+                                                    ) : (
+                                                        <span className="break-all">{v.user.email}</span>
+                                                    )}
+                                                </div>
+                                                {!v.user?.email ? (
+                                                    <div
+                                                        className="mt-3"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        onKeyDown={(e) => e.stopPropagation()}
+                                                    >
+                                                        <VolunteerAppInviteButton
+                                                            className="w-full"
+                                                            disabled={invitingVolunteerId === v.id}
+                                                            onClick={() => {
+                                                                setInvitingVolunteerId(v.id);
+                                                                router.post(
+                                                                    route('volunteers.invite', v.id),
+                                                                    {},
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                        onFinish: () => setInvitingVolunteerId(null),
+                                                                    },
+                                                                );
+                                                            }}
+                                                        />
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                            <div
+                                                className="flex shrink-0 items-center"
+                                                onClick={(e) => e.stopPropagation()}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openEditModal(v)}
+                                                    className="cursor-pointer rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-700 dark:hover:text-zinc-300"
+                                                    title="Editar"
+                                                    aria-label="Editar"
+                                                >
+                                                    <PencilIcon className="h-5 w-5" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDeleteTarget(v)}
+                                                    className="cursor-pointer rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:hover:bg-zinc-700 dark:hover:text-red-400"
+                                                    title="Excluir"
+                                                    aria-label="Excluir"
+                                                >
+                                                    <TrashIcon className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+
+                    <Card className="hidden !p-0 overflow-hidden md:block">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
                         <thead className="bg-zinc-50 border-b border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800">
                             <tr>
                                 <th className="px-4 md:px-8 py-3 md:py-4 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Voluntário</th>
@@ -733,28 +853,27 @@ export default function Index({
                         </tbody>
                     </table>
                 </div>
-                {volunteers.data.length === 0 && (
-                    <div className="px-4 md:px-8 py-12 text-center text-zinc-500 dark:text-zinc-400">Nenhum voluntário cadastrado. Clique em Novo Voluntário para começar.</div>
-                )}
-                {volunteers.links.length > 1 && (
-                    <div className="px-4 md:px-8 py-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-center gap-2 flex-wrap">
-                        {volunteers.links.map((link, i) => (
-                            <Link
-                                key={i}
-                                href={link.url || '#'}
-                                className={`px-3 py-1 rounded-lg text-sm ${
-                                    link.active
-                                        ? 'bg-zinc-900 text-white dark:bg-white dark:text-black'
-                                        : link.url
-                                        ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-default'
-                                }`}
-                                dangerouslySetInnerHTML={{ __html: link.label }}
-                            />
-                        ))}
-                    </div>
-                )}
-            </Card>
+                    </Card>
+                    {volunteers.links.length > 1 ? (
+                        <div className="mt-4 flex flex-wrap justify-center gap-2">
+                            {volunteers.links.map((link, i) => (
+                                <Link
+                                    key={i}
+                                    href={link.url || '#'}
+                                    className={`cursor-pointer rounded-lg px-3 py-1 text-sm ${
+                                        link.active
+                                            ? 'bg-zinc-900 text-white dark:bg-white dark:text-black'
+                                            : link.url
+                                              ? 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
+                                              : 'cursor-default bg-zinc-100 text-zinc-400 dark:bg-zinc-800'
+                                    }`}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ))}
+                        </div>
+                    ) : null}
+                </>
+            )}
 
             <Modal show={isModalOpen} onClose={closeModal} maxWidth="lg" disableBodyScroll>
                 <div className="flex max-h-[min(92dvh,calc(100dvh-1rem))] min-h-0 flex-col bg-white dark:bg-zinc-900">

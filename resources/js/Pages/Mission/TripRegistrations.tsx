@@ -95,7 +95,7 @@ export default function MissionTripRegistrations({ registrations, filters, expor
                     </a>
                 </div>
 
-                <Card className="overflow-x-auto">
+                <Card className="!p-0 overflow-hidden">
                     {registrations.data.length === 0 ? (
                         <div className="space-y-2 p-6 text-sm text-zinc-500">
                             <p>Nenhuma inscrição encontrada.</p>
@@ -113,7 +113,32 @@ export default function MissionTripRegistrations({ registrations, filters, expor
                             </a>
                         </div>
                     ) : (
-                        <table className="min-w-full text-sm">
+                        <>
+                            <ul className="space-y-3 p-4 md:hidden">
+                                {registrations.data.map((row) => (
+                                    <li key={row.id}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelected(row)}
+                                            className="w-full cursor-pointer touch-manipulation rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800/50"
+                                        >
+                                            <p className="font-semibold text-zinc-900 dark:text-white">{row.fullName}</p>
+                                            {row.instagram ? (
+                                                <p className="mt-0.5 text-xs text-zinc-500">{row.instagram}</p>
+                                            ) : null}
+                                            <p className="mt-2 break-all text-sm text-zinc-600 dark:text-zinc-300">{row.email}</p>
+                                            <p className="mt-0.5 text-xs text-zinc-500">{row.phone}</p>
+                                            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500">
+                                                <span>{row.professionLabel}</span>
+                                                <span>Passaporte: {row.hasPassportLabel}</span>
+                                                <span>{row.createdAtLabel ?? '—'}</span>
+                                            </div>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                            <div className="hidden overflow-x-auto md:block">
+                                <table className="min-w-full text-sm">
                             <thead>
                                 <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
                                     <th className="p-3">Inscrito</th>
@@ -147,6 +172,8 @@ export default function MissionTripRegistrations({ registrations, filters, expor
                                 ))}
                             </tbody>
                         </table>
+                            </div>
+                        </>
                     )}
                 </Card>
 

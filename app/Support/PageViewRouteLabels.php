@@ -185,6 +185,8 @@ final class PageViewRouteLabels
         'roles.index' => 'Perfis',
         'churches.index' => 'Igrejas',
         'rooms.index' => 'Salas (cadastro)',
+        'conviva.index' => 'CONVIVA',
+        'mobile.conviva.checkin' => 'CONVIVA — check-in',
         'departments.index' => 'Departamentos',
         'pastors.index' => 'Pastores',
         'events.index' => 'Eventos (painel)',

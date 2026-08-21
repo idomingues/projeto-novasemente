@@ -191,6 +191,11 @@ return [
             'group' => 'menu_mais',
             'routes' => ['varios.classe-comecos', 'mobile.classe-comecos'],
         ],
+        'conviva' => [
+            'label' => 'CONVIVA',
+            'group' => 'menu_mais',
+            'routes' => ['mobile.conviva.checkin', 'mobile.conviva.checkin.store'],
+        ],
         'support' => [
             'label' => 'Suporte APP',
             'group' => 'menu_mais',

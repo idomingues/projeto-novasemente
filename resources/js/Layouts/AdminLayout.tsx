@@ -34,7 +34,7 @@ export default function AdminLayout({
         ? 'overflow-hidden p-0'
         : compactChrome
           ? 'flex flex-col overflow-hidden pt-[calc(4rem+env(safe-area-inset-top,0px))] px-3 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pt-24 md:px-4 md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]'
-          : 'overflow-y-auto overflow-x-hidden pt-[calc(4rem+env(safe-area-inset-top,0px))] px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:px-6 md:pt-24 md:px-6 md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:px-8';
+          : 'overflow-y-auto overflow-x-clip pt-[calc(4rem+env(safe-area-inset-top,0px))] px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:px-6 md:pt-24 md:px-6 md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:px-8';
 
     const innerClassName = modalOverlayOpen
         ? ''
@@ -43,7 +43,7 @@ export default function AdminLayout({
           : 'pt-6';
 
     return (
-        <div className="ns-app-shell fixed inset-0 z-0 h-[100dvh] max-h-[100dvh] w-full max-w-full min-w-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
+        <div className="ns-app-shell fixed inset-0 z-0 h-[100dvh] max-h-[100dvh] w-full max-w-full min-w-0 overflow-hidden overflow-x-clip overscroll-none bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
             {showAdminSidebar ? (
                 <Sidebar
                     mobileOpen={menuOpen}
@@ -57,9 +57,9 @@ export default function AdminLayout({
                     <Topbar onMenuClick={showAdminSidebar ? () => setMenuOpen(true) : undefined} />
                 ) : null}
 
-                <main className={`min-h-0 flex-1 overflow-x-hidden overscroll-y-none overscroll-x-none md:[scrollbar-gutter:stable] ${mainClassName}`}>
+                <main className={`min-h-0 flex-1 overflow-x-clip overscroll-none touch-pan-y md:[scrollbar-gutter:stable] ${mainClassName}`}>
                     <div
-                        className={`mx-auto w-full min-w-0 ${innerClassName} ${wideLayout ? 'max-w-none' : 'max-w-7xl xl:max-w-[90rem]'}`}
+                        className={`mx-auto w-full min-w-0 overflow-x-clip ${innerClassName} ${wideLayout ? 'max-w-none' : 'max-w-7xl xl:max-w-[90rem]'}`}
                     >
                         {children}
                     </div>

@@ -1,33 +1,38 @@
 ---
-description: Shell mobile fixo estilo app — sem rubber-band / “sambar”
+description: Telas fixas como app — não passeiam, não sambam; só o miolo rola
 alwaysApply: true
 ---
 
-# Shell mobile fixo (estilo app nativo)
+# Telas fixas como um app
 
-A app móvel (e o painel com a mesma chrome) **não deve “sambar”**: Topbar e bottom nav ficam fixos; **só o conteúdo do meio** rola. Sensação de app, não de página web.
+No projeto Nova Semente, **as telas não podem passear nem se mover**. Topbar e barra inferior ficam **fixos**; só o conteúdo do meio rola. Sensação de **app nativo**, não de página web.
+
+Vale para o app móvel **e** para o painel admin no celular.
 
 ## Princípio
 
-1. **Documento travado:** `html` / `body` / `#app` com `height: 100dvh` + `overflow: hidden` + `overscroll-behavior: none` (ver `resources/css/app.css`).
-2. **Shell `ns-app-shell`:** layout raiz `fixed inset-0` (ou equivalente `h-[100dvh] overflow-hidden`) — `MobileLayout`, `AdminLayout`, `GuestLayout`.
-3. **Scroll só no `main`** (ou painel interno): `flex-1 min-h-0 overflow-y-auto overscroll-y-none`.
+1. **Documento travado:** `html` / `body` / `#app` com `height: 100dvh` + `overflow: hidden` + `overflow-x: clip` + `overscroll-behavior: none` (ver `resources/css/app.css`).
+2. **Shell `ns-app-shell`:** layout raiz `fixed inset-0` (`h-[100dvh] overflow-hidden overflow-x-clip overscroll-none`) — `MobileLayout`, `AdminLayout`, `GuestLayout`.
+3. **Scroll só no `main`:** `flex-1 min-h-0 overflow-y-auto overflow-x-clip overscroll-none`. Um único eixo vertical.
 4. **Chrome fixa:** `Topbar` (`fixed top-0`) e `MobileBottomNav` (`fixed bottom-0`) com `safe-area` — nunca rolam com o conteúdo.
+5. **Sem passeio horizontal:** conteúdo com `min-w-0`; paginação com `flex-wrap`. Tabela larga só em `hidden md:block`. Nunca `overflow-x-auto` visível no celular (no iOS isso arrasta a tela inteira).
 
 ## O que fazer
 
-- Novas telas mobile: usar `MobileLayout` (não inventar outro wrapper com `min-h-screen` no `body`).
-- Listas longas: scroll no `main` do layout ou num filho `min-h-0 flex-1 overflow-y-auto`, não no documento.
-- Páginas full-bleed (chat): prop `flush` do `MobileLayout`.
+- Telas novas: `MobileLayout` ou `AdminLayout` — não inventar wrapper com `min-h-screen` no `body`.
+- Listas longas: scroll no `main` (ou um filho `min-h-0 flex-1 overflow-y-auto`), nunca no documento.
+- Chat / full-bleed: prop `flush` do `MobileLayout`.
+- Antes de concluir: no celular, arrastar nas bordas e no fim da lista — **topo e menu de baixo não se movem**.
 
 ## Evitar
 
-- `min-h-screen` / conteúdo que estica o `body` e habilita rubber-band no Safari/Capacitor.
-- Scroll no `window`/`document` / `body` com Topbar/nav `fixed` (eles “dançam” no overscroll do iOS).
-- Nested scroll desnecessário: um único eixo vertical no shell.
+- `min-h-screen` / conteúdo que estica o `body` (rubber-band no Safari/Capacitor).
+- Scroll no `window` / `document` / `body` com chrome `fixed` (eles dançam no overscroll do iOS).
+- Dois eixos de scroll aninhados sem necessidade.
+- `overflow-x-auto` na superfície visível (paginação, tabela, card).
 
 ## Referência
 
-- Layout: `resources/js/Layouts/MobileLayout.tsx`
-- CSS base: `resources/css/app.css` (`html`/`body`/`#app`)
-- Exemplo de tela: `resources/js/Pages/Mobile/Profile.tsx`
+- Layout: `resources/js/Layouts/MobileLayout.tsx`, `AdminLayout.tsx`
+- CSS: `resources/css/app.css` (`html` / `body` / `#app` / `.ns-app-shell`)
+- Exemplo: `resources/js/Pages/Mobile/Profile.tsx`

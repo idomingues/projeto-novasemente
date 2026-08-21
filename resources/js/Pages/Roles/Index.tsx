@@ -119,6 +119,8 @@ const PERMISSION_MENU: Record<string, { section: MenuSection; screen: string; ac
     'departments.manage': { section: 'cadastro', screen: 'Departamentos', action: 'Gerenciar' },
     'rooms.view': { section: 'cadastro', screen: 'Salas', action: 'Visualizar cadastro' },
     'rooms.manage': { section: 'cadastro', screen: 'Salas', action: 'Gerenciar cadastro' },
+    'conviva.view': { section: 'cadastro', screen: 'CONVIVA', action: 'Visualizar' },
+    'conviva.manage': { section: 'cadastro', screen: 'CONVIVA', action: 'Gerenciar' },
     'pastors.view': { section: 'cadastro', screen: 'Pastores', action: 'Visualizar' },
     'pastors.manage': { section: 'cadastro', screen: 'Pastores', action: 'Gerenciar' },
     'programacao.view': { section: 'cadastro', screen: 'Programação', action: 'Visualizar' },

@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             ScheduleRoleSeeder::class,
             MemberSeeder::class,
             VolunteerSeeder::class,
+            ConvivaClassSeeder::class,
         ]);
 
         $user = User::query()->firstOrCreate(

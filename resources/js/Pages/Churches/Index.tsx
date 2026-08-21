@@ -159,7 +159,93 @@ export default function Index({ churches }: Props) {
                 actions={<AddButton variant="icon" onClick={openCreateModal} title="Nova igreja">Nova Igreja</AddButton>}
             />
 
-            <Card className="!p-0 overflow-hidden">
+            {churches.length === 0 ? (
+                <Card className="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400">
+                    Nenhuma igreja cadastrada. Clique em &quot;Nova Igreja&quot; para começar.
+                </Card>
+            ) : (
+                <>
+                    <ul className="space-y-3 md:hidden">
+                        {churches.map((church) => (
+                            <li key={church.id}>
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => openEditModal(church)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            openEditModal(church);
+                                        }
+                                    }}
+                                    className="w-full cursor-pointer touch-manipulation rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40"
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+                                            {church.logo_url ? (
+                                                <img src={church.logo_url} alt="" className="h-full w-full object-cover" />
+                                            ) : (
+                                                <div className="flex h-full w-full items-center justify-center">
+                                                    <BuildingOfficeIcon className="h-5 w-5 text-zinc-500" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-semibold text-zinc-900 dark:text-white">{church.name}</p>
+                                            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                                {[church.city, church.state, church.country].filter(Boolean).join(' • ') || '—'}
+                                            </p>
+                                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                <span
+                                                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                                                        church.active
+                                                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                                                            : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+                                                    }`}
+                                                >
+                                                    {church.active ? 'Ativa' : 'Inativa'}
+                                                </span>
+                                                <Link
+                                                    href={route('churches.services.index', church.id)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="inline-flex cursor-pointer items-center gap-1 text-sm text-primary-600 hover:underline dark:text-primary-400"
+                                                >
+                                                    <ClockIcon className="h-4 w-4" />
+                                                    Cultos
+                                                </Link>
+                                            </div>
+                                        </div>
+                                        <div
+                                            className="flex shrink-0 items-center"
+                                            onClick={(e) => e.stopPropagation()}
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => openEditModal(church)}
+                                                className="cursor-pointer rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                                                title="Editar"
+                                                aria-label="Editar"
+                                            >
+                                                <PencilIcon className="h-5 w-5" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleDelete(church.id)}
+                                                className="cursor-pointer rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:hover:bg-zinc-800 dark:hover:text-red-400"
+                                                title="Excluir"
+                                                aria-label="Excluir"
+                                            >
+                                                <TrashIcon className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+
+                    <Card className="hidden !p-0 overflow-hidden md:block">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
@@ -225,7 +311,7 @@ export default function Index({ churches }: Props) {
                                         <button
                                             type="button"
                                             onClick={() => openEditModal(church)}
-                                            className="p-2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                            className="cursor-pointer rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                                             title="Editar"
                                         >
                                             <PencilIcon className="w-4 h-4" />
@@ -233,7 +319,7 @@ export default function Index({ churches }: Props) {
                                         <button
                                             type="button"
                                             onClick={() => handleDelete(church.id)}
-                                            className="p-2 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                            className="cursor-pointer rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:hover:bg-zinc-800 dark:hover:text-red-400"
                                             title="Excluir"
                                         >
                                             <TrashIcon className="w-4 h-4" />
@@ -244,13 +330,9 @@ export default function Index({ churches }: Props) {
                         </tbody>
                     </table>
                 </div>
-
-                {churches.length === 0 && (
-                    <div className="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400">
-                        Nenhuma igreja cadastrada. Clique em &quot;Nova Igreja&quot; para começar.
-                    </div>
-                )}
-            </Card>
+                    </Card>
+                </>
+            )}
 
             <Modal show={isModalOpen} onClose={closeModal}>
                 <form onSubmit={submit} className="p-6">

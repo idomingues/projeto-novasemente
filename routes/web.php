@@ -21,6 +21,7 @@ use App\Http\Controllers\DonationCampaignMobileController;
 use App\Http\Controllers\DonationItemCampaignController;
 use App\Http\Controllers\DonationItemCampaignMobileController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\FaceAiController;
 use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InventoryController;
@@ -37,29 +38,27 @@ use App\Http\Controllers\MobileAnoBiblicoController;
 use App\Http\Controllers\MobileBibleController;
 use App\Http\Controllers\MobileChurchSolicitationController;
 use App\Http\Controllers\MobileController;
-use App\Http\Controllers\MobileLeaderSolicitationController;
 use App\Http\Controllers\MobilePastoralAppointmentController;
 use App\Http\Controllers\MobilePromiseBoxController;
 use App\Http\Controllers\MobileSupportController;
 use App\Http\Controllers\MusicaController;
 use App\Http\Controllers\MyMinistryVolunteersController;
 use App\Http\Controllers\NewsController;
-use App\Http\Controllers\RevistaAdventistaArticleController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\PastoralAgendaController;
 use App\Http\Controllers\PastorController;
+use App\Http\Controllers\PhotoAlbumController;
 use App\Http\Controllers\PollController;
 use App\Http\Controllers\PollDisplayController;
-use App\Http\Controllers\PollPublicVoteController;
 use App\Http\Controllers\PollMobileController;
-use App\Http\Controllers\FaceAiController;
-use App\Http\Controllers\PhotoAlbumController;
+use App\Http\Controllers\PollPublicVoteController;
 use App\Http\Controllers\PrayerRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicationCommentAdminController;
 use App\Http\Controllers\PublicationEngagementController;
 use App\Http\Controllers\PublicDiskFileController;
 use App\Http\Controllers\PushTokenController;
+use App\Http\Controllers\RevistaAdventistaArticleController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RoomBookingController;
 use App\Http\Controllers\SettingsController;
@@ -645,6 +644,13 @@ Route::middleware('auth')->group(function () {
     Route::put('/rooms/{room}', [\App\Http\Controllers\RoomController::class, 'update'])->name('rooms.update')->middleware('permission:rooms.manage');
     Route::delete('/rooms/{room}', [\App\Http\Controllers\RoomController::class, 'destroy'])->name('rooms.destroy')->middleware('permission:rooms.manage');
 
+    // CONVIVA — turmas (sala + professor) e presenças
+    // CONVIVA — cadastro (temporário: só admin/super_admin)
+    Route::get('/conviva', [\App\Http\Controllers\ConvivaClassController::class, 'index'])->name('conviva.index')->middleware('role:admin|super_admin');
+    Route::post('/conviva', [\App\Http\Controllers\ConvivaClassController::class, 'store'])->name('conviva.store')->middleware('role:admin|super_admin');
+    Route::put('/conviva/{convivaClass}', [\App\Http\Controllers\ConvivaClassController::class, 'update'])->name('conviva.update')->middleware('role:admin|super_admin');
+    Route::delete('/conviva/{convivaClass}', [\App\Http\Controllers\ConvivaClassController::class, 'destroy'])->name('conviva.destroy')->middleware('role:admin|super_admin');
+
     // Enquetes (admin)
     Route::get('/enquetes', [PollController::class, 'index'])->name('polls.index')->middleware('permission:polls.view|polls.manage');
     Route::post('/enquetes', [PollController::class, 'store'])->name('polls.store')->middleware('permission:polls.manage');
@@ -1128,6 +1134,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/mobile/enquetes/{poll}/votar', [PollMobileController::class, 'vote'])
         ->middleware('throttle:30,1')
         ->name('mobile.polls.vote');
+
+    // CONVIVA — check-in (temporário: só admin/super_admin)
+    Route::get('/mobile/conviva', [\App\Http\Controllers\ConvivaCheckinController::class, 'show'])
+        ->middleware('role:admin|super_admin')
+        ->name('mobile.conviva.checkin');
+    Route::post('/mobile/conviva/checkin', [\App\Http\Controllers\ConvivaCheckinController::class, 'store'])
+        ->middleware(['role:admin|super_admin', 'throttle:30,1'])
+        ->name('mobile.conviva.checkin.store');
 
     // Solicitações (membro — requer login para enviar/acompanhar)
     Route::get('/mobile/talentos', [TalentConnectionController::class, 'index'])->name('mobile.talents.index');

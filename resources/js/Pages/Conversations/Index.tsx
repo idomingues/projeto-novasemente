@@ -122,8 +122,9 @@ export default function ConversationsIndex({
                 </div>
             </div>
 
-            <div className="mb-3 flex flex-wrap gap-2">
+            <div className="mb-3 flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <SelectInput
+                    className="w-full sm:w-auto"
                     value={filters.status}
                     onChange={(e) =>
                         router.get(route('conversations.index'), { status: e.target.value || undefined, ministry_id: filters.ministry_id || undefined })
@@ -137,6 +138,7 @@ export default function ConversationsIndex({
                     <option value="forwarded">Encaminhada</option>
                 </SelectInput>
                 <SelectInput
+                    className="w-full sm:w-auto"
                     value={filters.ministry_id ?? ''}
                     onChange={(e) =>
                         router.get(route('conversations.index'), {
@@ -154,8 +156,33 @@ export default function ConversationsIndex({
                 </SelectInput>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-                <table className="min-w-full text-sm">
+            {conversations.length === 0 ? (
+                <p className="rounded-2xl border border-zinc-200 bg-white px-4 py-10 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+                    Nenhuma conversa encontrada.
+                </p>
+            ) : (
+                <>
+                    <ul className="space-y-3 md:hidden">
+                        {conversations.map((c) => (
+                            <li key={c.id}>
+                                <button
+                                    type="button"
+                                    onClick={() => router.get(route('conversations.index'), { ...filters, modal: c.id })}
+                                    className="w-full cursor-pointer touch-manipulation rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40"
+                                >
+                                    <p className="font-semibold text-zinc-900 dark:text-white">{c.headerTitle}</p>
+                                    <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-300">{c.lastPreview}</p>
+                                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                        <span>{c.ministryName ?? '—'}</span>
+                                        <span>{c.statusLabel}</span>
+                                        <span>{c.assigneeName ?? 'Sem responsável'}</span>
+                                    </div>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="hidden overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 md:block">
+                        <table className="min-w-full text-sm">
                     <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500 dark:bg-zinc-800/60">
                         <tr>
                             <th className="px-4 py-3">Membro</th>
@@ -180,8 +207,10 @@ export default function ConversationsIndex({
                             </tr>
                         ))}
                     </tbody>
-                </table>
-            </div>
+                        </table>
+                    </div>
+                </>
+            )}
 
             <Modal show={open && !!modal} onClose={closeModal} maxWidth="2xl" disableBodyScroll>
                 {modal ? (

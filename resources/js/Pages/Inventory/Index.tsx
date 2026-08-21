@@ -340,7 +340,82 @@ export default function Index({ items, filters }: Props) {
                 )}
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
+            {items.length === 0 ? (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-12 text-center text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+                    {filters.search ? 'Nenhum item encontrado para esta busca.' : 'Nenhum item cadastrado. Clique em "Novo Item" para começar.'}
+                </div>
+            ) : (
+                <>
+                    <ul className="space-y-3 md:hidden">
+                        {items.map((item) => (
+                            <li key={item.id}>
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => openEditModal(item)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            openEditModal(item);
+                                        }
+                                    }}
+                                    className="w-full cursor-pointer touch-manipulation rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-semibold text-zinc-900 dark:text-white">{item.name}</p>
+                                            <p className="mt-0.5 font-mono text-xs text-zinc-500 dark:text-zinc-400">{item.barcode}</p>
+                                            {item.description ? (
+                                                <p className="mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {item.description}
+                                                </p>
+                                            ) : null}
+                                            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                                                {item.location ?? '—'}
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openHistory(item);
+                                                }}
+                                                className="mt-2 inline-flex cursor-pointer items-center gap-1.5 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                                            >
+                                                <ClockIcon className="h-4 w-4" />
+                                                {item.movements_count} {item.movements_count === 1 ? 'movimento' : 'movimentos'}
+                                            </button>
+                                        </div>
+                                        <div
+                                            className="flex shrink-0 items-center"
+                                            onClick={(e) => e.stopPropagation()}
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => openEditModal(item)}
+                                                className="cursor-pointer rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                                                title="Editar"
+                                                aria-label="Editar"
+                                            >
+                                                <PencilIcon className="h-5 w-5" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleDelete(item.id)}
+                                                className="cursor-pointer rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:hover:bg-zinc-800 dark:hover:text-red-400"
+                                                title="Excluir"
+                                                aria-label="Excluir"
+                                            >
+                                                <TrashIcon className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+
+                    <div className="hidden overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900 md:block">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-700">
@@ -407,12 +482,9 @@ export default function Index({ items, filters }: Props) {
                         </tbody>
                     </table>
                 </div>
-                {items.length === 0 && (
-                    <div className="p-12 text-center text-zinc-500 dark:text-zinc-400">
-                        {filters.search ? 'Nenhum item encontrado para esta busca.' : 'Nenhum item cadastrado. Clique em \"Novo Item\" para começar.'}
                     </div>
-                )}
-            </div>
+                </>
+            )}
 
             <Modal show={isModalOpen} onClose={closeModal} disableBodyScroll>
                 <form

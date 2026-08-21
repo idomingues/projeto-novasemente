@@ -26,36 +26,54 @@ class MinistryController extends Controller
     /**
      * @return array<int, int>
      */
-    private function validLeaderUserIds(?int $churchId, array $ids): array
+    private function validLeaderUserIds(?int $churchId, array $ids, ?Ministry $ministry = null): array
     {
         if ($churchId === null || $ids === []) {
             return [];
         }
 
-        return User::query()
+        $inChurch = User::query()
             ->where('church_id', $churchId)
             ->whereIn('id', $ids)
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
-            ->values()
             ->all();
+
+        $alreadyAttached = $ministry !== null
+            ? $ministry->users()
+                ->whereIn('users.id', $ids)
+                ->pluck('users.id')
+                ->map(fn ($id) => (int) $id)
+                ->all()
+            : [];
+
+        return array_values(array_unique(array_merge($inChurch, $alreadyAttached)));
     }
 
     /**
      * @return array<int, int>
      */
-    private function validVolunteerIds(?int $churchId, array $ids): array
+    private function validVolunteerIds(?int $churchId, array $ids, ?Ministry $ministry = null): array
     {
         if ($churchId === null || $ids === []) {
             return [];
         }
 
-        return VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId)
+        $visible = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId)
             ->whereIn('id', $ids)
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
-            ->values()
             ->all();
+
+        $alreadyAttached = $ministry !== null
+            ? $ministry->volunteers()
+                ->whereIn('volunteers.id', $ids)
+                ->pluck('volunteers.id')
+                ->map(fn ($id) => (int) $id)
+                ->all()
+            : [];
+
+        return array_values(array_unique(array_merge($visible, $alreadyAttached)));
     }
 
     public function index(Request $request): Response
@@ -68,6 +86,7 @@ class MinistryController extends Controller
             ->when($churchId === null, fn ($q) => $q->whereRaw('1 = 0'))
             ->with([
                 'users:id,name,email',
+                'users.volunteerProfile:id,user_id',
                 'volunteers:id,name,email',
             ])
             ->orderBy('name');
@@ -91,8 +110,20 @@ class MinistryController extends Controller
         $leaderOptions = [];
         $volunteerOptions = [];
         if ($churchId !== null) {
+            $attachedLeaderIds = $departments
+                ->flatMap(fn (Ministry $m) => $m->users->pluck('id'))
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+
             $leaderOptions = User::query()
-                ->where('church_id', $churchId)
+                ->where(function ($q) use ($churchId, $attachedLeaderIds) {
+                    $q->where('church_id', $churchId);
+                    if ($attachedLeaderIds !== []) {
+                        $q->orWhereIn('id', $attachedLeaderIds);
+                    }
+                })
                 ->with('volunteerProfile:id,user_id')
                 ->orderBy('name')
                 ->get(['id', 'name', 'email'])
@@ -105,16 +136,33 @@ class MinistryController extends Controller
                 ->values()
                 ->all();
 
-            $volunteerOptions = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId)
-                ->orderBy('name')
-                ->get(['id', 'name', 'email'])
-                ->map(fn (Volunteer $v) => [
-                    'id' => (int) $v->id,
-                    'name' => (string) ($v->name ?: 'Sem nome'),
-                    'email' => $v->email,
-                ])
+            $attachedVolunteerIds = $departments
+                ->flatMap(fn (Ministry $m) => $m->volunteers->pluck('id'))
+                ->map(fn ($id) => (int) $id)
+                ->unique()
                 ->values()
                 ->all();
+
+            $visibleVolunteerIds = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $volunteerOptionIds = array_values(array_unique(array_merge($visibleVolunteerIds, $attachedVolunteerIds)));
+
+            $volunteerOptions = $volunteerOptionIds === []
+                ? []
+                : Volunteer::query()
+                    ->whereIn('id', $volunteerOptionIds)
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'email'])
+                    ->map(fn (Volunteer $v) => [
+                        'id' => (int) $v->id,
+                        'name' => (string) ($v->name ?: 'Sem nome'),
+                        'email' => $v->email,
+                    ])
+                    ->values()
+                    ->all();
         }
 
         $canManageEscalasRoles = $request->user()?->can('escalas.manage') ?? false;
@@ -131,11 +179,14 @@ class MinistryController extends Controller
                 'leaders' => $m->users->map(fn (User $u) => [
                     'id' => (int) $u->id,
                     'name' => (string) $u->name,
+                    'email' => $u->email,
+                    'volunteer_id' => $u->volunteerProfile?->id ? (int) $u->volunteerProfile->id : null,
                     'addedAt' => $u->pivot->created_at?->toIso8601String(),
                 ])->values()->all(),
                 'volunteers' => $m->volunteers->map(fn (Volunteer $v) => [
                     'id' => (int) $v->id,
                     'name' => (string) ($v->name ?: 'Sem nome'),
+                    'email' => $v->email,
                     'addedAt' => $v->pivot->created_at?->toIso8601String(),
                 ])->values()->all(),
             ])->values()->all(),
@@ -177,7 +228,7 @@ class MinistryController extends Controller
         $ministry->update($request->safe()->only(['name', 'icon']));
 
         if ($request->has('leader_user_ids')) {
-            $leaderIds = $this->validLeaderUserIds($churchId, array_map('intval', (array) $request->input('leader_user_ids', [])));
+            $leaderIds = $this->validLeaderUserIds($churchId, array_map('intval', (array) $request->input('leader_user_ids', [])), $ministry);
             if (count($leaderIds) !== count(array_unique(array_map('intval', (array) $request->input('leader_user_ids', []))))) {
                 throw ValidationException::withMessages([
                     'leader_user_ids' => 'Um ou mais líderes não pertencem a esta igreja.',
@@ -187,7 +238,7 @@ class MinistryController extends Controller
         }
 
         if ($request->has('volunteer_ids')) {
-            $volunteerIds = $this->validVolunteerIds($churchId, array_map('intval', (array) $request->input('volunteer_ids', [])));
+            $volunteerIds = $this->validVolunteerIds($churchId, array_map('intval', (array) $request->input('volunteer_ids', [])), $ministry);
             $requested = array_unique(array_map('intval', (array) $request->input('volunteer_ids', [])));
             if (count($volunteerIds) !== count($requested)) {
                 throw ValidationException::withMessages([

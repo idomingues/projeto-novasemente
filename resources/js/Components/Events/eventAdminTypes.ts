@@ -48,18 +48,33 @@ export function imageSrc(url: string | null, appUrl: string): string {
     return url;
 }
 
+export const EVENT_TZ = 'America/Sao_Paulo';
+const tzOpts = { timeZone: EVENT_TZ };
+
+function tzDateParts(d: Date): Record<string, string> {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: EVENT_TZ,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+    }).formatToParts(d);
+
+    return Object.fromEntries(parts.filter((p) => p.type !== 'literal').map((p) => [p.type, p.value]));
+}
+
+/** Valor para input datetime-local no fuso da igreja (evita toISOString em UTC). */
 export function toDatetimeLocalString(d: Date): string {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const p = tzDateParts(d);
+    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
 export function toDateInputValue(d: Date): string {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const p = tzDateParts(d);
+    return `${p.year}-${p.month}-${p.day}`;
 }
-
-export const EVENT_TZ = 'America/Sao_Paulo';
-const tzOpts = { timeZone: EVENT_TZ };
 
 export function formatTime(iso: string): string {
     const d = new Date(iso);
