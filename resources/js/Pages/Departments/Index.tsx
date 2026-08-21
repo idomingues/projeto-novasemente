@@ -25,7 +25,7 @@ import SelectInput from '@/Components/SelectInput';
 import PageHeader from '@/Components/PageHeader';
 import InputError from '@/Components/InputError';
 import { DEPARTMENT_ICON_OPTIONS, getMinistryIconByKey } from '@/lib/ministryIcons';
-import { useState, useEffect, useMemo, useCallback, FormEventHandler } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, FormEventHandler } from 'react';
 import type { MouseEvent } from 'react';
 import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
@@ -46,6 +46,7 @@ import {
     syncVolunteerModalUrl,
     type VolunteerModalUrlTab,
 } from '@/utils/volunteerPipelineModalSave';
+import { reloadListModalProps } from '@/utils/listModalFetchSave';
 import SortedMultiCheckboxList from '@/Components/SortedMultiCheckboxList';
 import VolunteerServeMinistriesPicker from '@/Components/Volunteers/VolunteerServeMinistriesPicker';
 import VolunteerUsuarioAppTabPanel from '@/Components/Volunteers/VolunteerUsuarioAppTabPanel';
@@ -188,6 +189,8 @@ function PersonPicker({
     selectedPeople = [],
     selectedIds,
     onChange,
+    persistRemoval,
+    busy = false,
     memberRole,
     onViewDetail,
     resolveDetailId,
@@ -199,6 +202,9 @@ function PersonPicker({
     selectedPeople?: PersonRef[];
     selectedIds: number[];
     onChange: (ids: number[]) => void;
+    /** Persiste desvinculação na hora; se retornar false, a seleção não muda. */
+    persistRemoval?: (nextIds: number[], removedIds: number[]) => Promise<boolean>;
+    busy?: boolean;
     /** Rótulo para confirmação ao desmarcar (ex.: líder, voluntário) */
     memberRole: 'líder' | 'voluntário';
     onViewDetail?: (id: number) => void;
@@ -259,7 +265,7 @@ function PersonPicker({
                     title: isAdd ? `Adicionar ${memberRole}?` : `Remover ${memberRole}?`,
                     text: isAdd
                         ? `Deseja adicionar ${name} como ${memberRole} deste departamento? A alteração só será aplicada ao salvar.`
-                        : `Deseja remover ${name} como ${memberRole} deste departamento? A alteração só será aplicada ao salvar.`,
+                        : `Deseja remover ${name} como ${memberRole} deste departamento? O vínculo será desfeito agora.`,
                     confirmButtonText: isAdd ? 'Adicionar' : 'Remover',
                     cancelButtonText: 'Cancelar',
                     danger: !isAdd,
@@ -269,7 +275,9 @@ function PersonPicker({
 
             return confirmAction({
                 title: isAdd ? `Adicionar ${plural}?` : `Remover ${plural}?`,
-                text: `Deseja ${isAdd ? 'adicionar' : 'remover'} ${ids.length} pessoas como ${plural} deste departamento? A alteração só será aplicada ao salvar.`,
+                text: isAdd
+                    ? `Deseja adicionar ${ids.length} pessoas como ${plural} deste departamento? A alteração só será aplicada ao salvar.`
+                    : `Deseja remover ${ids.length} pessoas como ${plural} deste departamento? Os vínculos serão desfeitos agora.`,
                 confirmButtonText: isAdd ? 'Adicionar' : 'Remover',
                 cancelButtonText: 'Cancelar',
                 danger: !isAdd,
@@ -281,6 +289,10 @@ function PersonPicker({
 
     const handleSelectionChange = useCallback(
         async (nextIds: number[]) => {
+            if (busy) {
+                return;
+            }
+
             const nextNormalized = normalizePersonIds(nextIds);
             const nextSet = new Set(nextNormalized);
             const currentSet = new Set(normalizedSelectedIds);
@@ -317,6 +329,12 @@ function PersonPicker({
             }
 
             if (removed.length > 0) {
+                if (persistRemoval) {
+                    const persisted = await persistRemoval(nextNormalized, removed);
+                    if (!persisted) {
+                        return;
+                    }
+                }
                 setSessionAddedAtById((prev) => {
                     const next = { ...prev };
                     for (const id of removed) {
@@ -328,7 +346,7 @@ function PersonPicker({
 
             onChange(nextNormalized);
         },
-        [confirmMemberChange, mergedAddedAtById, normalizedSelectedIds, onChange],
+        [busy, confirmMemberChange, mergedAddedAtById, normalizedSelectedIds, onChange, persistRemoval],
     );
 
     const renderTrailingAction = (row: { id: number; name: string }) => {
@@ -411,7 +429,7 @@ export default function Index({
     filters,
     volunteerDetailUrlPattern,
 }: Props) {
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const [leaderAddedAtById, setLeaderAddedAtById] = useState<Record<number, string>>({});
     const [volunteerAddedAtById, setVolunteerAddedAtById] = useState<Record<number, string>>({});
     const {
@@ -442,6 +460,8 @@ export default function Index({
     const [ministriesSaving, setMinistriesSaving] = useState(false);
     const [departmentSaving, setDepartmentSaving] = useState(false);
     const [departmentSaveMessage, setDepartmentSaveMessage] = useState<string | null>(null);
+    const [departmentSaveError, setDepartmentSaveError] = useState<string | null>(null);
+    const syncFormAfterReloadRef = useRef(false);
     const page = usePage();
     const pageUrl = page.url;
     const csrf = (page.props as { csrf_token?: string }).csrf_token ?? '';
@@ -695,10 +715,103 @@ export default function Index({
         window.setTimeout(() => setDepartmentSaveMessage(null), 5000);
     }, []);
 
+    const persistRosterRemoval = useCallback(
+        async (kind: 'leaders' | 'volunteers', removedIds: number[]): Promise<boolean> => {
+            if (!isEditing || editingId == null) {
+                return true;
+            }
+            if (departmentSaving) {
+                return false;
+            }
+
+            const dept = departments.find((d) => d.id === editingId);
+            const savedPeople = kind === 'leaders' ? (dept?.leaders ?? []) : (dept?.volunteers ?? []);
+            const savedIds = normalizePersonIds(savedPeople.map((p) => p.id));
+            const savedSet = new Set(savedIds);
+            const removedFromServer = removedIds.filter((id) => savedSet.has(id));
+            if (removedFromServer.length === 0) {
+                return true;
+            }
+
+            const nextServerIds = savedIds.filter((id) => !removedIds.includes(id));
+            clearErrors();
+            setDepartmentSaving(true);
+            try {
+                const result = await submitVolunteerModalPut(
+                    route('departments.update', editingId),
+                    {
+                        name: dept?.name ?? data.name,
+                        icon: (dept?.icon ?? data.icon) || null,
+                        ...(kind === 'leaders'
+                            ? { leader_user_ids: nextServerIds }
+                            : { volunteer_ids: nextServerIds }),
+                    },
+                    csrf,
+                );
+                if (!result.ok) {
+                    applyVolunteerModalFormErrors(result.errors, setError);
+                    setDepartmentSaveError(
+                        Object.values(result.errors)
+                            .flatMap((value) => (Array.isArray(value) ? value : [value]))
+                            .find((text) => Boolean(text)) ??
+                            result.message ??
+                            'Não foi possível remover. Tente novamente.',
+                    );
+                    return false;
+                }
+
+                if (kind === 'leaders') {
+                    setLeaderAddedAtById((prev) => {
+                        const next = { ...prev };
+                        for (const id of removedFromServer) {
+                            delete next[id];
+                        }
+                        return next;
+                    });
+                } else {
+                    setVolunteerAddedAtById((prev) => {
+                        const next = { ...prev };
+                        for (const id of removedFromServer) {
+                            delete next[id];
+                        }
+                        return next;
+                    });
+                }
+
+                await reloadListModalProps(['departments', 'leaderOptions', 'volunteerOptions']);
+                showDepartmentSaveMessage(
+                    kind === 'leaders'
+                        ? removedFromServer.length === 1
+                            ? 'Líder removido.'
+                            : 'Líderes removidos.'
+                        : removedFromServer.length === 1
+                          ? 'Voluntário removido.'
+                          : 'Voluntários removidos.',
+                );
+                return true;
+            } finally {
+                setDepartmentSaving(false);
+            }
+        },
+        [
+            clearErrors,
+            csrf,
+            data.icon,
+            data.name,
+            departmentSaving,
+            departments,
+            editingId,
+            isEditing,
+            setError,
+            showDepartmentSaveMessage,
+        ],
+    );
+
     const openCreateModal = () => {
         setIsEditing(false);
         setEditingId(null);
         setDepartmentSaveMessage(null);
+        setDepartmentSaveError(null);
         syncDepartmentEditModalUrl(null);
         setRosterTab('leaders');
         setIconPickerOpen(false);
@@ -713,6 +826,7 @@ export default function Index({
         setIsEditing(true);
         setEditingId(d.id);
         setDepartmentSaveMessage(null);
+        setDepartmentSaveError(null);
         syncDepartmentEditModalUrl(d.id);
         applyDepartmentToForm(d);
         setIsModalOpen(true);
@@ -734,10 +848,23 @@ export default function Index({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pageUrl, departments]);
 
+    useEffect(() => {
+        if (!syncFormAfterReloadRef.current || editingId == null || !isModalOpen) {
+            return;
+        }
+        const dept = departments.find((d) => d.id === editingId);
+        if (!dept) {
+            return;
+        }
+        applyDepartmentToForm(dept, { resetRosterTab: false });
+        syncFormAfterReloadRef.current = false;
+    }, [applyDepartmentToForm, departments, editingId, isModalOpen]);
+
     const closeModal = () => {
         setIsModalOpen(false);
         setIconPickerOpen(false);
         setDepartmentSaveMessage(null);
+        setDepartmentSaveError(null);
         syncDepartmentEditModalUrl(null);
         reset();
     };
@@ -761,6 +888,8 @@ export default function Index({
     const submitDepartment = async () => {
         if (departmentSaving) return;
         clearErrors();
+        setDepartmentSaveError(null);
+        setDepartmentSaveMessage(null);
         setDepartmentSaving(true);
         const payload = {
             name: data.name,
@@ -768,13 +897,43 @@ export default function Index({
             leader_user_ids: normalizePersonIds(data.leader_user_ids),
             volunteer_ids: normalizePersonIds(data.volunteer_ids),
         };
+        const firstErrorMessage = (errorsMap: Record<string, string | string[]>): string | null => {
+            for (const value of Object.values(errorsMap)) {
+                const text = Array.isArray(value) ? value[0] : value;
+                if (text) {
+                    return text;
+                }
+            }
+            return null;
+        };
+        const applySaveFailure = (result: { errors: Record<string, string | string[]>; message?: string }) => {
+            applyVolunteerModalFormErrors(result.errors, setError);
+            if (result.errors.leader_user_ids || Object.keys(result.errors).some((key) => key.startsWith('leader_user_ids.'))) {
+                setRosterTab('leaders');
+            } else if (
+                result.errors.volunteer_ids ||
+                Object.keys(result.errors).some((key) => key.startsWith('volunteer_ids.'))
+            ) {
+                setRosterTab('volunteers');
+            }
+            setDepartmentSaveError(
+                firstErrorMessage(result.errors) ?? result.message ?? 'Não foi possível salvar. Verifique os campos.',
+            );
+        };
         try {
             if (isEditing && editingId) {
                 const result = await submitVolunteerModalPut(route('departments.update', editingId), payload, csrf);
                 if (!result.ok) {
-                    applyVolunteerModalFormErrors(result.errors, setError);
+                    applySaveFailure(result);
                     return;
                 }
+                syncFormAfterReloadRef.current = true;
+                await reloadListModalProps([
+                    'departments',
+                    'leaderOptions',
+                    'volunteerOptions',
+                    'scheduleRolesByDepartmentId',
+                ]);
                 showDepartmentSaveMessage('Departamento atualizado.');
                 syncDepartmentEditModalUrl(editingId);
                 return;
@@ -782,7 +941,7 @@ export default function Index({
 
             const result = await submitVolunteerModalPost(route('departments.store'), payload, csrf);
             if (!result.ok) {
-                applyVolunteerModalFormErrors(result.errors, setError);
+                applySaveFailure(result);
                 return;
             }
             const newId = departmentIdFromRedirectLocation(result.redirectLocation ?? null);
@@ -791,10 +950,13 @@ export default function Index({
                 setIsEditing(true);
                 setEditingId(newId);
                 syncDepartmentEditModalUrl(newId);
-                const created = departments.find((d) => d.id === newId);
-                if (created) {
-                    applyDepartmentToForm(created);
-                }
+                syncFormAfterReloadRef.current = true;
+                await reloadListModalProps([
+                    'departments',
+                    'leaderOptions',
+                    'volunteerOptions',
+                    'scheduleRolesByDepartmentId',
+                ]);
             }
         } finally {
             setDepartmentSaving(false);
@@ -819,31 +981,37 @@ export default function Index({
         }
     };
 
+    const stopRowClick = (e: MouseEvent) => {
+        e.stopPropagation();
+    };
+
     const renderActions = (d: Department) => (
-        <ListCardActionRow className="shrink-0 justify-end gap-1 sm:w-auto">
-            {canManage && (
-                <ListCardIconActionButton
-                    label="Excluir departamento"
-                    icon={<TrashIcon className="h-5 w-5" />}
-                    tone="danger"
-                    onClick={() => handleDelete(d.id)}
-                />
-            )}
-            {canManage && (
-                <ListCardIconActionButton
-                    label="Editar departamento"
-                    icon={<PencilIcon className="h-5 w-5" />}
-                    onClick={() => openEditModal(d)}
-                />
-            )}
-            {canManageEscalasRoles && (
-                <ListCardIconActionButton
-                    label="Gerir funções"
-                    icon={<ClipboardDocumentListIcon className="h-5 w-5" />}
-                    onClick={() => openRolesModal(d.id)}
-                />
-            )}
-        </ListCardActionRow>
+        <div onClick={stopRowClick} onKeyDown={(e) => e.stopPropagation()}>
+            <ListCardActionRow className="shrink-0 justify-end gap-1 sm:w-auto">
+                {canManage && (
+                    <ListCardIconActionButton
+                        label="Excluir departamento"
+                        icon={<TrashIcon className="h-5 w-5" />}
+                        tone="danger"
+                        onClick={() => handleDelete(d.id)}
+                    />
+                )}
+                {canManage && (
+                    <ListCardIconActionButton
+                        label="Editar departamento"
+                        icon={<PencilIcon className="h-5 w-5" />}
+                        onClick={() => openEditModal(d)}
+                    />
+                )}
+                {canManageEscalasRoles && (
+                    <ListCardIconActionButton
+                        label="Gerir funções"
+                        icon={<ClipboardDocumentListIcon className="h-5 w-5" />}
+                        onClick={() => openRolesModal(d.id)}
+                    />
+                )}
+            </ListCardActionRow>
+        </div>
     );
 
     const renderDepartmentCard = (d: Department) => {
@@ -853,7 +1021,16 @@ export default function Index({
         return (
             <div
                 key={d.id}
-                className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col min-h-[280px] overflow-hidden"
+                role="button"
+                tabIndex={0}
+                onClick={() => openEditModal(d)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openEditModal(d);
+                    }
+                }}
+                className="flex min-h-[280px] cursor-pointer flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white p-5 text-left shadow-sm transition-shadow hover:border-zinc-300 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600"
             >
                 <div className="shrink-0">
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -917,7 +1094,16 @@ export default function Index({
         return (
             <div
                 key={d.id}
-                className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:flex-row sm:items-center sm:gap-4"
+                role="button"
+                tabIndex={0}
+                onClick={() => openEditModal(d)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openEditModal(d);
+                    }
+                }}
+                className="flex cursor-pointer flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800/40 sm:flex-row sm:items-center sm:gap-4"
             >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
@@ -1119,7 +1305,8 @@ export default function Index({
                         <div className="mt-6 border-t border-zinc-200 pt-5 dark:border-zinc-700">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white">Equipe do departamento</p>
                             <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                                Associe líderes e voluntários em separado (opcional).
+                                Associe líderes e voluntários em separado (opcional). Ao remover, o vínculo é
+                                salvo na hora; inclusões valem ao salvar.
                             </p>
                             <div className="mt-3 inline-flex w-full rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/80">
                                 <button
@@ -1157,6 +1344,8 @@ export default function Index({
                                     }
                                     selectedIds={data.leader_user_ids}
                                     onChange={(ids) => setData('leader_user_ids', ids)}
+                                    persistRemoval={(_next, removed) => persistRosterRemoval('leaders', removed)}
+                                    busy={departmentSaving}
                                     addedAtById={leaderAddedAtById}
                                     onViewDetail={volunteerDetailUrlPattern ? openVolunteerDetail : undefined}
                                     resolveDetailId={(o) => o.volunteer_id ?? null}
@@ -1172,6 +1361,8 @@ export default function Index({
                                     }
                                     selectedIds={data.volunteer_ids}
                                     onChange={(ids) => setData('volunteer_ids', ids)}
+                                    persistRemoval={(_next, removed) => persistRosterRemoval('volunteers', removed)}
+                                    busy={departmentSaving}
                                     addedAtById={volunteerAddedAtById}
                                     onViewDetail={volunteerDetailUrlPattern ? openVolunteerDetail : undefined}
                                     error={errors.volunteer_ids}
@@ -1180,19 +1371,36 @@ export default function Index({
                         </div>
                     ) : null}
 
-                    <div className="mt-6 flex justify-end gap-2">
-                        <SecondaryButton type="button" onClick={closeModal}>
-                            Cancelar
-                        </SecondaryButton>
-                        {canManage ? (
-                            <PrimaryButton
-                                type="button"
-                                onClick={() => void submitDepartment()}
-                                disabled={departmentSaving}
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                        {departmentSaveMessage ? (
+                            <p
+                                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100 sm:mr-auto"
+                                role="status"
                             >
-                                {departmentSaving ? 'Salvando…' : isEditing ? 'Salvar' : 'Criar'}
-                            </PrimaryButton>
+                                {departmentSaveMessage}
+                            </p>
                         ) : null}
+                        {departmentSaveError ? (
+                            <p
+                                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100 sm:mr-auto"
+                                role="alert"
+                            >
+                                {departmentSaveError}
+                            </p>
+                        ) : null}
+                        <div className="flex justify-end gap-2">
+                            <SecondaryButton type="button" onClick={closeModal}>
+                                Cancelar
+                            </SecondaryButton>
+                            {canManage ? (
+                                <PrimaryButton
+                                    type="submit"
+                                    disabled={departmentSaving}
+                                >
+                                    {departmentSaving ? 'Salvando…' : isEditing ? 'Salvar' : 'Criar'}
+                                </PrimaryButton>
+                            ) : null}
+                        </div>
                     </div>
                 </form>
             </Modal>

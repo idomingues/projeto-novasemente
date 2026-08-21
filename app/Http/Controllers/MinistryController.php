@@ -39,6 +39,13 @@ class MinistryController extends Controller
             ->map(fn ($id) => (int) $id)
             ->all();
 
+        $ledInChurch = User::query()
+            ->whereIn('id', $ids)
+            ->whereHas('ministries', fn ($q) => $q->where('church_id', $churchId))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
         $alreadyAttached = $ministry !== null
             ? $ministry->users()
                 ->whereIn('users.id', $ids)
@@ -47,7 +54,10 @@ class MinistryController extends Controller
                 ->all()
             : [];
 
-        return array_values(array_unique(array_merge($inChurch, $alreadyAttached)));
+        $allowed = array_flip(array_unique(array_merge($inChurch, $ledInChurch, $alreadyAttached)));
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+
+        return array_values(array_filter($ids, fn (int $id) => $id > 0 && isset($allowed[$id])));
     }
 
     /**
@@ -59,8 +69,17 @@ class MinistryController extends Controller
             return [];
         }
 
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+
         $visible = VolunteerChurchRosterBuilder::volunteersVisibleInChurchQuery($churchId)
             ->whereIn('id', $ids)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $inChurchMinistries = Volunteer::query()
+            ->whereIn('id', $ids)
+            ->whereHas('ministries', fn ($q) => $q->where('church_id', $churchId))
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
@@ -73,7 +92,9 @@ class MinistryController extends Controller
                 ->all()
             : [];
 
-        return array_values(array_unique(array_merge($visible, $alreadyAttached)));
+        $allowed = array_flip(array_unique(array_merge($visible, $inChurchMinistries, $alreadyAttached)));
+
+        return array_values(array_filter($ids, fn (int $id) => $id > 0 && isset($allowed[$id])));
     }
 
     public function index(Request $request): Response
