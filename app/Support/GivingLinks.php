@@ -6,6 +6,9 @@ use App\Models\Church;
 
 /**
  * Links oficiais de contribuição (7me) usados no app e na landing pública /oferta.
+ *
+ * Dízimo: https://7me.app/71/eax0dw
+ * Oferta e Pacto: https://7me.app/71/g7y95y
  */
 final class GivingLinks
 {

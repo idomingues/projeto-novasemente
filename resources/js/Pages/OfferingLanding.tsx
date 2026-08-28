@@ -11,15 +11,7 @@ interface Props {
 
 const SEVENME_LOGO_SRC = '/images/7me-logo.png';
 
-function ContributionCard({
-    href,
-    title,
-    description,
-}: {
-    href: string;
-    title: string;
-    description: string;
-}) {
+function ContributionCard({ href, title }: { href: string; title: string }) {
     return (
         <a
             href={href}
@@ -34,9 +26,8 @@ function ContributionCard({
                     height={24}
                 />
             </span>
-            <span className="min-w-0 flex-1">
-                <span className="block text-lg font-semibold text-zinc-900 dark:text-white">{title}</span>
-                <span className="mt-0.5 block text-sm text-zinc-500 dark:text-zinc-400">{description}</span>
+            <span className="min-w-0 flex-1 text-xl font-semibold text-zinc-900 dark:text-white">
+                {title}
             </span>
             <ArrowRightIcon
                 className="h-5 w-5 shrink-0 text-zinc-400 transition group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300"
@@ -61,25 +52,14 @@ export default function OfferingLanding({ churchName, churchLogoUrl, titheUrl, o
                         className="mx-auto h-14 w-14 rounded-full object-cover object-center dark:invert"
                     />
                     <p className="mt-4 text-sm font-medium text-zinc-500 dark:text-zinc-400">{churchName}</p>
-                    <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                    <h1 className="mt-1 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-4xl">
                         Como deseja contribuir?
                     </h1>
-                    <p className="mt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                        Escolha uma opção para abrir o 7me e concluir a contribuição.
-                    </p>
                 </header>
 
                 <div className="mt-8 grid gap-3 md:grid-cols-2">
-                    <ContributionCard
-                        href={titheUrl}
-                        title="Dízimo"
-                        description="Dízimos e Pacto"
-                    />
-                    <ContributionCard
-                        href={offeringUrl}
-                        title="Oferta"
-                        description="Oferta Nova Semente"
-                    />
+                    <ContributionCard href={titheUrl} title="Dízimo" />
+                    <ContributionCard href={offeringUrl} title="Oferta e Pacto" />
                 </div>
             </div>
         </GuestLayout>

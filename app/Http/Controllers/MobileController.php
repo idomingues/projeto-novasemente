@@ -1873,7 +1873,7 @@ class MobileController extends Controller
     public function offerings(): Response
     {
         $church = $this->currentChurch();
-        $donationUrl = GivingLinks::titheUrl($church);
+        $donationUrl = GivingLinks::TITHE_FALLBACK_URL;
 
         $donation = [
             'churchName' => $church?->name,
@@ -1890,6 +1890,7 @@ class MobileController extends Controller
         return Inertia::render('Mobile/Offerings', [
             'donation' => $donation,
             'localOffer' => $localOffer,
+            'offeringUrl' => GivingLinks::offeringUrl(),
         ]);
     }
 

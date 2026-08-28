@@ -18,7 +18,7 @@ class OfferingLandingController extends Controller
         return Inertia::render('OfferingLanding', [
             'churchName' => $church?->name ?: 'Nova Semente',
             'churchLogoUrl' => $church?->logo_url,
-            'titheUrl' => GivingLinks::titheUrl($church),
+            'titheUrl' => GivingLinks::TITHE_FALLBACK_URL,
             'offeringUrl' => GivingLinks::offeringUrl(),
         ]);
     }
