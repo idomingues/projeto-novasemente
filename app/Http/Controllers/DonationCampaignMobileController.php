@@ -9,6 +9,7 @@ use App\Models\Church;
 use App\Models\DonationCampaign;
 use App\Services\CampaignDonationNotifier;
 use App\Services\ReceiptOcrService;
+use App\Support\GivingLinks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,9 +59,7 @@ class DonationCampaignMobileController extends Controller
         $church = $donationCampaign->church;
         $user = $request->user();
         $treasurerEmail = trim((string) ($church?->treasurer_notification_email ?? ''));
-        $donationUrl = $donationCampaign->show_caixa_fixo_story
-            ? 'https://7me.app/71/r8ctoh'
-            : 'https://7me.app/71/y8nzix';
+        $donationUrl = GivingLinks::offeringUrl((bool) $donationCampaign->show_caixa_fixo_story);
 
         $recentDonations = $donationCampaign->donations()
             ->with('user:id,name')

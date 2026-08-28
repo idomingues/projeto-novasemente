@@ -11,6 +11,7 @@ use App\Models\Church;
 use App\Services\CharityDonationNotifier;
 use App\Services\CharityItemDonationNotifier;
 use App\Services\ReceiptOcrService;
+use App\Support\GivingLinks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,7 +62,7 @@ class CharityCampaignMobileController extends Controller
         $user = $request->user();
         $treasurerEmail = trim((string) ($church?->treasurer_notification_email ?? ''));
         $donationUrl = $charityCampaign->isMoneyCampaign()
-            ? ($church?->donation_url ?: 'https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9')
+            ? GivingLinks::titheUrl($church)
             : null;
 
         $recentDonations = $charityCampaign->isItemCampaign()

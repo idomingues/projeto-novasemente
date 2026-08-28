@@ -23,20 +23,21 @@ use App\Models\ScheduleCheckinDate;
 use App\Models\User;
 use App\Models\UserDismissedAppNotification;
 use App\Models\UserHomeCardBookmark;
-use App\Models\UserLibraryBookBookmark;
 use App\Models\UserInboxNotification;
+use App\Models\UserLibraryBookBookmark;
 use App\Models\Volunteer;
 use App\Services\DriveFolderCoverService;
 use App\Services\DriveFolderImagesService;
 use App\Services\LibraryEgwPdfService;
-use App\Services\RevistaAdventistaEditionPdfService;
 use App\Services\LibraryExternalPageExtractService;
+use App\Services\RevistaAdventistaEditionPdfService;
 use App\Services\SabbathSunsetService;
 use App\Services\ScheduleAssignmentPresenter;
 use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
 use App\Services\YoutubePlaylistImportService;
 use App\Support\ChurchAppFeatures;
+use App\Support\GivingLinks;
 use App\Support\HomeCardKeys;
 use App\Support\HomeFeaturedWeek;
 use App\Support\HomeModuleSpotlight;
@@ -53,8 +54,8 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -1872,7 +1873,7 @@ class MobileController extends Controller
     public function offerings(): Response
     {
         $church = $this->currentChurch();
-        $donationUrl = $church?->donation_url ?: 'https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9';
+        $donationUrl = GivingLinks::titheUrl($church);
 
         $donation = [
             'churchName' => $church?->name,

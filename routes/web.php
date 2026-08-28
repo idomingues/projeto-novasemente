@@ -44,6 +44,7 @@ use App\Http\Controllers\MobileSupportController;
 use App\Http\Controllers\MusicaController;
 use App\Http\Controllers\MyMinistryVolunteersController;
 use App\Http\Controllers\NewsController;
+use App\Http\Controllers\OfferingLandingController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\PastoralAgendaController;
 use App\Http\Controllers\PastorController;
@@ -200,6 +201,7 @@ Route::post('/mobile/missao/cadastro/etapa', [MissionFormController::class, 'sav
 Route::post('/mobile/missao/cadastro/conta-app', [\App\Http\Controllers\MissionAppAccountController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('mobile.mission.app-account.store');
+Route::get('/oferta', OfferingLandingController::class)->name('oferta');
 Route::get('/missao', [MissionFormController::class, 'create'])->name('mission.form');
 Route::post('/missao', [MissionFormController::class, 'store'])
     ->middleware('throttle:20,1')
@@ -645,11 +647,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/rooms/{room}', [\App\Http\Controllers\RoomController::class, 'destroy'])->name('rooms.destroy')->middleware('permission:rooms.manage');
 
     // CONVIVA — turmas (sala + professor) e presenças
-    // CONVIVA — cadastro (temporário: só admin/super_admin)
-    Route::get('/conviva', [\App\Http\Controllers\ConvivaClassController::class, 'index'])->name('conviva.index')->middleware('role:admin|super_admin');
-    Route::post('/conviva', [\App\Http\Controllers\ConvivaClassController::class, 'store'])->name('conviva.store')->middleware('role:admin|super_admin');
-    Route::put('/conviva/{convivaClass}', [\App\Http\Controllers\ConvivaClassController::class, 'update'])->name('conviva.update')->middleware('role:admin|super_admin');
-    Route::delete('/conviva/{convivaClass}', [\App\Http\Controllers\ConvivaClassController::class, 'destroy'])->name('conviva.destroy')->middleware('role:admin|super_admin');
+    // CONVIVA — cadastro de turmas + presenças (Cadastro)
+    Route::get('/conviva', [\App\Http\Controllers\ConvivaClassController::class, 'index'])->name('conviva.index')->middleware('permission:conviva.view|conviva.manage');
+    Route::post('/conviva', [\App\Http\Controllers\ConvivaClassController::class, 'store'])->name('conviva.store')->middleware('permission:conviva.manage');
+    Route::put('/conviva/{convivaClass}', [\App\Http\Controllers\ConvivaClassController::class, 'update'])->name('conviva.update')->middleware('permission:conviva.manage');
+    Route::delete('/conviva/{convivaClass}', [\App\Http\Controllers\ConvivaClassController::class, 'destroy'])->name('conviva.destroy')->middleware('permission:conviva.manage');
 
     // Enquetes (admin)
     Route::get('/enquetes', [PollController::class, 'index'])->name('polls.index')->middleware('permission:polls.view|polls.manage');
@@ -1135,12 +1137,11 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:30,1')
         ->name('mobile.polls.vote');
 
-    // CONVIVA — check-in (temporário: só admin/super_admin)
+    // CONVIVA — check-in do aluno (sábado)
     Route::get('/mobile/conviva', [\App\Http\Controllers\ConvivaCheckinController::class, 'show'])
-        ->middleware('role:admin|super_admin')
         ->name('mobile.conviva.checkin');
     Route::post('/mobile/conviva/checkin', [\App\Http\Controllers\ConvivaCheckinController::class, 'store'])
-        ->middleware(['role:admin|super_admin', 'throttle:30,1'])
+        ->middleware('throttle:30,1')
         ->name('mobile.conviva.checkin.store');
 
     // Solicitações (membro — requer login para enviar/acompanhar)

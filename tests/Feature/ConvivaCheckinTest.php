@@ -69,36 +69,13 @@ class ConvivaCheckinTest extends TestCase
         ]);
     }
 
-    public function test_member_cannot_access_mobile_conviva_yet(): void
+    public function test_checkin_only_on_saturday(): void
     {
         ['member' => $member, 'class' => $class] = $this->seedBase();
 
-        Carbon::setTestNow(ConvivaSaturday::now()->next(Carbon::SATURDAY)->setTime(10, 0));
-
-        $this->actingAs($member)
-            ->get(route('mobile.conviva.checkin'))
-            ->assertForbidden();
-
-        $this->actingAs($member)
-            ->post(route('mobile.conviva.checkin.store'), [
-                'conviva_class_id' => $class->id,
-            ])
-            ->assertForbidden();
-
-        $this->assertDatabaseCount('conviva_checkins', 0);
-
-        Carbon::setTestNow();
-    }
-
-    public function test_checkin_only_on_saturday(): void
-    {
-        ['churchId' => $churchId, 'class' => $class] = $this->seedBase();
-        $admin = User::factory()->create(['church_id' => $churchId]);
-        $admin->assignRole('admin');
-
         Carbon::setTestNow(ConvivaSaturday::now()->next(Carbon::WEDNESDAY)->setTime(10, 0));
 
-        $this->actingAs($admin)
+        $this->actingAs($member)
             ->post(route('mobile.conviva.checkin.store'), [
                 'conviva_class_id' => $class->id,
             ])
@@ -109,15 +86,13 @@ class ConvivaCheckinTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_admin_can_checkin_on_saturday_and_switch_class(): void
+    public function test_member_can_checkin_on_saturday_and_switch_class(): void
     {
-        ['churchId' => $churchId, 'class' => $class, 'classB' => $classB] = $this->seedBase();
-        $admin = User::factory()->create(['church_id' => $churchId]);
-        $admin->assignRole('admin');
+        ['churchId' => $churchId, 'member' => $member, 'class' => $class, 'classB' => $classB] = $this->seedBase();
 
         Carbon::setTestNow(ConvivaSaturday::now()->next(Carbon::SATURDAY)->setTime(10, 30));
 
-        $this->actingAs($admin)
+        $this->actingAs($member)
             ->post(route('mobile.conviva.checkin.store'), [
                 'conviva_class_id' => $class->id,
             ])
@@ -126,27 +101,27 @@ class ConvivaCheckinTest extends TestCase
         $this->assertTrue(
             ConvivaCheckin::query()
                 ->where('church_id', $churchId)
-                ->where('user_id', $admin->id)
+                ->where('user_id', $member->id)
                 ->where('conviva_class_id', $class->id)
                 ->whereDate('checkin_date', Carbon::now()->toDateString())
                 ->exists()
         );
 
-        $this->actingAs($admin)
+        $this->actingAs($member)
             ->post(route('mobile.conviva.checkin.store'), [
                 'conviva_class_id' => $classB->id,
             ])
             ->assertRedirect(route('mobile.conviva.checkin'));
 
-        $this->assertSame(1, ConvivaCheckin::query()->where('user_id', $admin->id)->count());
+        $this->assertSame(1, ConvivaCheckin::query()->where('user_id', $member->id)->count());
         $this->assertTrue(
             ConvivaCheckin::query()
-                ->where('user_id', $admin->id)
+                ->where('user_id', $member->id)
                 ->where('conviva_class_id', $classB->id)
                 ->exists()
         );
         $this->assertDatabaseHas('conviva_preferences', [
-            'user_id' => $admin->id,
+            'user_id' => $member->id,
             'church_id' => $churchId,
             'conviva_class_id' => $classB->id,
         ]);

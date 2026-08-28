@@ -1,11 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import {
-    PencilIcon,
-    TrashIcon,
-    BookOpenIcon,
-    UserGroupIcon,
-} from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, BookOpenIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
@@ -92,26 +87,31 @@ export default function Index({ tab, classes, canManage = false, presence }: Pro
         window.setTimeout(() => setSaveMessage(null), 5000);
     }, []);
 
-    const syncEditModalUrl = useCallback((id: number | null) => {
-        if (typeof window === 'undefined') return;
-        const params = new URLSearchParams(window.location.search);
-        if (id != null && id > 0) {
-            params.set('modal', 'edit');
-            params.set('id', String(id));
-        } else {
-            params.delete('modal');
-            params.delete('id');
-        }
-        if (!params.get('tab')) {
-            params.set('tab', tab);
-        }
-        const q = params.toString();
-        const next = `${window.location.pathname}${q ? `?${q}` : ''}`;
-        const current = `${window.location.pathname}${window.location.search}`;
-        if (next !== current) {
-            window.history.replaceState({}, '', next);
-        }
-    }, [tab]);
+    const syncEditModalUrl = useCallback(
+        (id: number | null) => {
+            if (typeof window === 'undefined') {
+                return;
+            }
+            const params = new URLSearchParams(window.location.search);
+            if (id != null && id > 0) {
+                params.set('modal', 'edit');
+                params.set('id', String(id));
+            } else {
+                params.delete('modal');
+                params.delete('id');
+            }
+            if (!params.get('tab')) {
+                params.set('tab', tab);
+            }
+            const q = params.toString();
+            const next = `${window.location.pathname}${q ? `?${q}` : ''}`;
+            const current = `${window.location.pathname}${window.location.search}`;
+            if (next !== current) {
+                window.history.replaceState({}, '', next);
+            }
+        },
+        [tab],
+    );
 
     const applyClassToForm = useCallback(
         (row: ConvivaClassRow) => {
@@ -156,13 +156,21 @@ export default function Index({ tab, classes, canManage = false, presence }: Pro
     };
 
     useEffect(() => {
-        if (typeof window === 'undefined') return;
+        if (typeof window === 'undefined') {
+            return;
+        }
         const params = new URLSearchParams(window.location.search);
-        if (params.get('modal') !== 'edit') return;
+        if (params.get('modal') !== 'edit') {
+            return;
+        }
         const id = Number(params.get('id'));
-        if (Number.isNaN(id) || id <= 0) return;
+        if (Number.isNaN(id) || id <= 0) {
+            return;
+        }
         const row = classes.find((c) => c.id === id);
-        if (!row) return;
+        if (!row) {
+            return;
+        }
         if (!isModalOpen || editingId !== id) {
             openEditModal(row);
         }
@@ -170,9 +178,13 @@ export default function Index({ tab, classes, canManage = false, presence }: Pro
     }, [classes]);
 
     useEffect(() => {
-        if (!syncFormAfterReloadRef.current || editingId == null || !isModalOpen) return;
+        if (!syncFormAfterReloadRef.current || editingId == null || !isModalOpen) {
+            return;
+        }
         const row = classes.find((c) => c.id === editingId);
-        if (!row) return;
+        if (!row) {
+            return;
+        }
         applyClassToForm(row);
         syncFormAfterReloadRef.current = false;
     }, [classes, editingId, isModalOpen, applyClassToForm]);
@@ -193,7 +205,9 @@ export default function Index({ tab, classes, canManage = false, presence }: Pro
                 route('conviva.store'),
                 (id) => route('conviva.update', id),
             );
-            if (!outcome.ok) return;
+            if (!outcome.ok) {
+                return;
+            }
             if (isEditing) {
                 showSaveMessage('Turma atualizada.');
                 return;
@@ -254,8 +268,7 @@ export default function Index({ tab, classes, canManage = false, presence }: Pro
         'cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40';
     const tabActive =
         'bg-teal-50 text-teal-900 ring-1 ring-teal-200 dark:bg-teal-950/40 dark:text-teal-100 dark:ring-teal-800';
-    const tabIdle =
-        'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800';
+    const tabIdle = 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800';
 
     return (
         <AdminLayout>
@@ -358,7 +371,10 @@ export default function Index({ tab, classes, canManage = false, presence }: Pro
                                     defaultValue={presence.date}
                                     className="mt-1 block w-full"
                                     onChange={(e) =>
-                                        applyPresenceFilters(e.target.value, presence.class_id ? String(presence.class_id) : '')
+                                        applyPresenceFilters(
+                                            e.target.value,
+                                            presence.class_id ? String(presence.class_id) : '',
+                                        )
                                     }
                                 />
                             </div>

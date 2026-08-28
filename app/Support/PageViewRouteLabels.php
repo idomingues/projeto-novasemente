@@ -70,6 +70,7 @@ final class PageViewRouteLabels
         'mission.index' => 'Missão — gestão',
         'mission.trip-registrations.index' => 'Missão — inscrições Tailândia & Mianmar',
         'mission.show' => 'Missão — cadastro',
+        'oferta' => 'Oferta (QR)',
         'mobile.offerings' => 'Dízimos e Pacto',
         'mobile.campaigns.index' => 'Oferta Nova Semente',
         'mobile.campaigns.show' => 'Oferta Nova Semente — detalhe',

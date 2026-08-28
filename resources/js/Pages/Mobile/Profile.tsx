@@ -213,11 +213,8 @@ export default function MobileProfile({ user, profileCounts, volunteerSignupComp
         (isMinistryLeader || isVolunteer) &&
         !canShowComunicacaoPainel;
     const { isEnabled } = useAppFeatures();
-    // Temporário: CONVIVA só para admin/super_admin enquanto validamos o fluxo.
     const canShowConviva =
-        adminUnrestricted &&
-        route().has('mobile.conviva.checkin') &&
-        isEnabled('conviva');
+        route().has('mobile.conviva.checkin') && isEnabled('conviva');
 
     const memberRows: Row[] = [
         {
