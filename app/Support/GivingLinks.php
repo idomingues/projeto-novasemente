@@ -9,9 +9,9 @@ use App\Models\Church;
  */
 final class GivingLinks
 {
-    public const TITHE_FALLBACK_URL = 'https://giving.7me.app/guest-donation/church/96ccdd6e-f537-49be-88dd-ffc112442cd9';
+    public const TITHE_FALLBACK_URL = 'https://7me.app/71/eax0dw';
 
-    public const OFFERING_URL = 'https://7me.app/71/y8nzix';
+    public const OFFERING_URL = 'https://7me.app/71/g7y95y';
 
     public const OFFERING_CAIXA_FIXO_URL = 'https://7me.app/71/r8ctoh';
 

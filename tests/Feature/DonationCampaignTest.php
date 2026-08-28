@@ -12,6 +12,7 @@ use App\Models\DonationCampaignPhoto;
 use App\Models\User;
 use App\Models\UserInboxNotification;
 use App\Services\ReceiptOcrService;
+use App\Support\GivingLinks;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -800,7 +801,7 @@ class DonationCampaignTest extends TestCase
         $response->assertInertia(fn ($page) => $page
             ->component('Mobile/DonationCampaigns/Show')
             ->where('campaign.starts_at', '2026-05-01')
-            ->where('donationUrl', 'https://7me.app/71/y8nzix')
+            ->where('donationUrl', GivingLinks::OFFERING_URL)
             ->where('campaign.story_youtube_embed_url', 'https://www.youtube.com/embed/dQw4w9WgXcQ')
             ->where('campaign.thanks_is_published', true)
             ->where('campaign.show_caixa_fixo_story', false)
