@@ -1,5 +1,5 @@
 import GuestLayout from '@/Layouts/GuestLayout';
-use { Head, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
 
 interface Props {
