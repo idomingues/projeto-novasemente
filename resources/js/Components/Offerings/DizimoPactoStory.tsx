@@ -53,6 +53,9 @@ function CircleIcon({ icon: Icon }: { icon: LineIcon }) {
 export default function DizimoPactoStory() {
     return (
         <div className="space-y-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">
+                Por que devolver
+            </p>
             <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800">
                 <img
                     src={DIZIMO_PACTO_HERO_IMAGE}
@@ -60,7 +63,8 @@ export default function DizimoPactoStory() {
                     className="block h-auto w-full"
                     width={1536}
                     height={1024}
-                    fetchPriority="high"
+                    loading="lazy"
+                    decoding="async"
                 />
             </section>
 
@@ -68,10 +72,10 @@ export default function DizimoPactoStory() {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300">
                     {DIZIMO_PACTO_INTRO.eyebrow}
                 </p>
-                <h1 className="mt-1.5 text-[1.65rem] font-semibold leading-tight tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                <h2 className="mt-1.5 text-[1.65rem] font-semibold leading-tight tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
                     Uma vida de{' '}
                     <span className="text-sky-600 dark:text-sky-300">fidelidade</span>, gratidão e missão
-                </h1>
+                </h2>
                 <div className="mt-4 space-y-3 text-[15px] leading-relaxed text-zinc-600 dark:text-zinc-300">
                     {DIZIMO_PACTO_INTRO.paragraphs.map((paragraph) => (
                         <p key={paragraph.slice(0, 48)}>{paragraph}</p>

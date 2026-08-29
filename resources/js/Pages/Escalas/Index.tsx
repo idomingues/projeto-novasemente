@@ -14,6 +14,7 @@ import VolunteerAddPopover, {
     type ScheduleRoleOption,
     type ScheduleVolunteerOption,
 } from '@/Components/Escalas/VolunteerAddPopover';
+import CoordinatorSlot, { type CoordinatorFace } from '@/Components/Escalas/CoordinatorAssignPopover';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -47,16 +48,32 @@ export type Assignment = {
     checkedInAt: string | null;
 };
 
+export type ScheduleCoordinator = {
+    id: number;
+    volunteerId: number;
+    memberId: number | null;
+    memberName: string;
+    memberPhotoUrl: string | null;
+    hasAppAccount: boolean;
+    saturdayNumber: number | null;
+    scheduleDate: string | null;
+    recurringSeries: boolean;
+};
+
 interface Ministry { id: number; name: string; usesSchedule?: boolean; }
 
 interface Props {
     assignments: Assignment[];
+    coordinators?: ScheduleCoordinator[];
     checkinEnabledDates: string[];
     month: number;
     year: number;
     ministryId: number | null;
     ministries: Ministry[];
     canEdit: boolean;
+    canAssignCoordinator?: boolean;
+    editableSaturdayNumbers?: number[];
+    editableExtraDates?: string[];
     scheduleVolunteers: ScheduleVolunteerOption[];
     scheduleRoles: ScheduleRoleOption[];
 }
@@ -80,12 +97,16 @@ function formatDateKey(date: Date): string {
 
 export default function EscalasIndex({
     assignments,
+    coordinators = [],
     checkinEnabledDates,
     month,
     year,
     ministryId,
     ministries,
     canEdit,
+    canAssignCoordinator = false,
+    editableSaturdayNumbers = [],
+    editableExtraDates = [],
     scheduleVolunteers,
     scheduleRoles,
 }: Props) {
@@ -98,6 +119,7 @@ export default function EscalasIndex({
     const [newRoleName, setNewRoleName] = useState('');
     const [checkinConfirmDate, setCheckinConfirmDate] = useState<Date | null>(null);
     const [removeModalAssignment, setRemoveModalAssignment] = useState<Assignment | null>(null);
+    const [removeCoordinator, setRemoveCoordinator] = useState<CoordinatorFace | null>(null);
     /** Atalho 1º–5º em destaque (verde); atualiza ao clicar e reinicia ao mudar mês/departamento. */
     const [highlightedSaturday, setHighlightedSaturday] = useState(1);
 
@@ -272,6 +294,78 @@ export default function EscalasIndex({
         });
     };
 
+    const coordinatorForSaturday = (saturdayNumber: number): ScheduleCoordinator | null =>
+        coordinators.find((c) => c.saturdayNumber === saturdayNumber) ?? null;
+
+    const coordinatorForExtra = (scheduleDate: string): ScheduleCoordinator | null =>
+        coordinators.find((c) => c.saturdayNumber === null && c.scheduleDate === scheduleDate) ?? null;
+
+    const canEditSaturdayDay = (saturdayNumber: number, isPast: boolean): boolean =>
+        !isPast && (canAssignCoordinator || editableSaturdayNumbers.includes(saturdayNumber));
+
+    const canEditExtraDay = (scheduleDate: string, isPast: boolean): boolean =>
+        !isPast && (canAssignCoordinator || editableExtraDates.includes(scheduleDate));
+
+    const postCoordinator = (
+        volunteerId: number,
+        payload: {
+            saturday_number?: number | null;
+            schedule_date?: string | null;
+            recurring?: boolean;
+            assignment_month?: number | null;
+            assignment_year?: number | null;
+        },
+    ) => {
+        router.post(
+            route('escalas.coordinators.store'),
+            {
+                ministry_id: ministryId,
+                volunteer_id: volunteerId,
+                saturday_number: payload.saturday_number ?? null,
+                schedule_date: payload.schedule_date ?? null,
+                recurring: payload.recurring ?? true,
+                assignment_month: payload.assignment_month ?? null,
+                assignment_year: payload.assignment_year ?? null,
+                view_month: month,
+                view_year: year,
+            },
+            { ...inertiaScrollOpts, preserveState: false },
+        );
+    };
+
+    const confirmRemoveCoordinator = (scope: 'single' | 'all') => {
+        const c = removeCoordinator;
+        if (!c) return;
+        router.delete(route('escalas.coordinators.destroy', c.id), {
+            preserveScroll: true,
+            data:
+                scope === 'single'
+                    ? { scope: 'single', occurrence_date: c.scheduleDate }
+                    : { scope: 'all' },
+            onSuccess: () => setRemoveCoordinator(null),
+        });
+    };
+
+    const handleRemoveCoordinator = async (c: CoordinatorFace) => {
+        if (!c.recurringSeries) {
+            const ok = await confirmAction({
+                title: 'Remover coordenador?',
+                text: 'Esta ação não pode ser desfeita.',
+                confirmButtonText: 'Remover',
+                danger: true,
+                icon: 'warning',
+            });
+            if (ok) {
+                router.delete(route('escalas.coordinators.destroy', c.id), {
+                    preserveScroll: true,
+                    data: { scope: 'all' },
+                });
+            }
+            return;
+        }
+        setRemoveCoordinator(c);
+    };
+
     const handleAddExtraDate = (dateStr: string) => {
         if (!allExtraDates.includes(dateStr)) setLocalExtraDates((prev) => [...prev, dateStr]);
     };
@@ -427,7 +521,9 @@ export default function EscalasIndex({
                             const totalCount = dayAssignments.length;
                             const progressPct = totalCount > 0 ? Math.round((confirmedCount / totalCount) * 100) : 0;
                             const checkinOpen = isCheckinEnabled(saturday);
-                            const canEditThisDay = canEdit && !isPast;
+                            const canEditThisDay = canEditSaturdayDay(saturdayNumber, isPast);
+                            const canManageDayOps = canAssignCoordinator && !isPast;
+                            const dayCoordinator = coordinatorForSaturday(saturdayNumber);
                             const formatted = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(
                                 saturday,
                             );
@@ -474,6 +570,7 @@ export default function EscalasIndex({
                                         </div>
                                         {canEditThisDay && (
                                             <div className="flex items-center gap-1.5 shrink-0">
+                                                {canManageDayOps && (
                                                 <button
                                                     type="button"
                                                     onClick={() => handleToggleCheckin(saturday, checkinOpen)}
@@ -493,10 +590,12 @@ export default function EscalasIndex({
                                                         <ClipboardDocumentCheckIcon className="h-5 w-5" />
                                                     )}
                                                 </button>
+                                                )}
                                                 <VolunteerAddPopover
                                                     scheduleVolunteers={scheduleVolunteers}
                                                     existingParticipantKeys={dayAssignments.map((a) => a.participantKey)}
                                                     canEdit={canEditThisDay}
+                                                    canAssignCoordinator={canManageDayOps}
                                                     saturdayNumber={saturdayNumber}
                                                     month={month}
                                                     year={year}
@@ -513,15 +612,49 @@ export default function EscalasIndex({
                                                                 recurring: options?.recurring ?? true,
                                                                 assignment_month: options?.assignment_month ?? null,
                                                                 assignment_year: options?.assignment_year ?? null,
+                                                                view_month: month,
+                                                                view_year: year,
                                                                 status: 'pending',
                                                             },
-                                                            { ...inertiaScrollOpts, preserveState: false },
+                                                            {
+                                                                ...inertiaScrollOpts,
+                                                                preserveState: false,
+                                                                onSuccess: () => {
+                                                                    if (options?.asCoordinator) {
+                                                                        postCoordinator(volunteerId, {
+                                                                            saturday_number: saturdayNumber,
+                                                                            schedule_date: null,
+                                                                            recurring: options?.recurring ?? true,
+                                                                            assignment_month: options?.assignment_month ?? null,
+                                                                            assignment_year: options?.assignment_year ?? null,
+                                                                        });
+                                                                    }
+                                                                },
+                                                            },
                                                         );
                                                     }}
                                                 />
                                             </div>
                                         )}
                                     </div>
+                                    <CoordinatorSlot
+                                        coordinator={dayCoordinator}
+                                        canAssign={canManageDayOps}
+                                        scheduleVolunteers={scheduleVolunteers}
+                                        saturdayNumber={saturdayNumber}
+                                        month={month}
+                                        year={year}
+                                        onPick={(volunteerId, options) => {
+                                            postCoordinator(volunteerId, {
+                                                saturday_number: saturdayNumber,
+                                                schedule_date: null,
+                                                recurring: options?.recurring ?? true,
+                                                assignment_month: options?.assignment_month ?? null,
+                                                assignment_year: options?.assignment_year ?? null,
+                                            });
+                                        }}
+                                        onRemove={(c) => void handleRemoveCoordinator(c)}
+                                    />
                                     <EscalaGrid
                                         assignments={dayAssignments}
                                         checkinEnabled={checkinOpen}
@@ -545,7 +678,9 @@ export default function EscalasIndex({
                         const totalCount = dayAssignments.length;
                         const formatted = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(date);
                         const checkinOpen = isCheckinEnabled(date);
-                        const canEditThisDay = canEdit && !isPast;
+                        const canEditThisDay = canEditExtraDay(scheduleDate, isPast);
+                        const canManageDayOps = canAssignCoordinator && !isPast;
+                        const dayCoordinator = coordinatorForExtra(scheduleDate);
 
                         return (
                             <section
@@ -587,6 +722,7 @@ export default function EscalasIndex({
                                     </div>
                                     {canEditThisDay && (
                                         <div className="flex items-center gap-1.5 shrink-0">
+                                            {canManageDayOps && (
                                             <button
                                                 type="button"
                                                 onClick={() => handleToggleCheckin(date, checkinOpen)}
@@ -606,10 +742,12 @@ export default function EscalasIndex({
                                                     <ClipboardDocumentCheckIcon className="h-5 w-5" />
                                                 )}
                                             </button>
+                                            )}
                                             <VolunteerAddPopover
                                                 scheduleVolunteers={scheduleVolunteers}
                                                 existingParticipantKeys={dayAssignments.map((a) => a.participantKey)}
                                                 canEdit={canEditThisDay}
+                                                canAssignCoordinator={canManageDayOps}
                                                 scheduleRoles={scheduleRoles}
                                                 onPick={(volunteerId, options) => {
                                                     router.post(
@@ -620,15 +758,43 @@ export default function EscalasIndex({
                                                             schedule_role_id: options?.schedule_role_id ?? null,
                                                             saturday_number: null,
                                                             schedule_date: scheduleDate,
+                                                            view_month: month,
+                                                            view_year: year,
                                                             status: 'pending',
                                                         },
-                                                        { ...inertiaScrollOpts, preserveState: false },
+                                                        {
+                                                            ...inertiaScrollOpts,
+                                                            preserveState: false,
+                                                            onSuccess: () => {
+                                                                if (options?.asCoordinator) {
+                                                                    postCoordinator(volunteerId, {
+                                                                        saturday_number: null,
+                                                                        schedule_date: scheduleDate,
+                                                                        recurring: false,
+                                                                    });
+                                                                }
+                                                            },
+                                                        },
                                                     );
                                                 }}
                                             />
                                         </div>
                                     )}
                                 </div>
+                                <CoordinatorSlot
+                                    coordinator={dayCoordinator}
+                                    canAssign={canManageDayOps}
+                                    scheduleVolunteers={scheduleVolunteers}
+                                    emptyLabel="Definir coordenador desta data"
+                                    onPick={(volunteerId) => {
+                                        postCoordinator(volunteerId, {
+                                            saturday_number: null,
+                                            schedule_date: scheduleDate,
+                                            recurring: false,
+                                        });
+                                    }}
+                                    onRemove={(c) => void handleRemoveCoordinator(c)}
+                                />
                                 <EscalaGrid
                                     assignments={dayAssignments}
                                     checkinEnabled={checkinOpen}
@@ -642,7 +808,7 @@ export default function EscalasIndex({
                         );
                     })}
 
-                    {canEdit && (
+                    {canAssignCoordinator && (
                         <div className="flex items-center gap-2">
                             <input
                                 type="date"
@@ -656,7 +822,7 @@ export default function EscalasIndex({
                         </div>
                     )}
 
-                    {ministryId && canEdit && (
+                    {ministryId && canAssignCoordinator && (
                         <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-900/50 p-4 space-y-4">
                             <div>
                                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Funções na escala</h3>
@@ -821,6 +987,48 @@ export default function EscalasIndex({
                         </header>
 
                         <div className="space-y-6">
+                            {canAssignCoordinator && roleModalAssignment.volunteerId != null && (
+                                coordinators.some(
+                                    (c) =>
+                                        c.volunteerId === roleModalAssignment.volunteerId
+                                        && (
+                                            (roleModalAssignment.saturdayNumber != null
+                                                && c.saturdayNumber === roleModalAssignment.saturdayNumber)
+                                            || (roleModalAssignment.saturdayNumber == null
+                                                && c.scheduleDate === roleModalAssignment.scheduleDate)
+                                        ),
+                                ) ? (
+                                    <p className="rounded-xl bg-zinc-50 px-4 py-3 text-sm text-zinc-600 ring-1 ring-zinc-200/90 dark:bg-zinc-800/50 dark:text-zinc-300 dark:ring-zinc-700">
+                                        Esta pessoa já é o coordenador deste sábado.
+                                    </p>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const a = roleModalAssignment;
+                                            if (a.volunteerId == null) return;
+                                            postCoordinator(a.volunteerId, {
+                                                saturday_number: a.saturdayNumber,
+                                                schedule_date: a.saturdayNumber == null ? a.scheduleDate : null,
+                                                recurring: a.recurringSeries ?? a.saturdayNumber != null,
+                                                assignment_month: a.recurringSeries ? null : month,
+                                                assignment_year: a.recurringSeries ? null : year,
+                                            });
+                                            setRoleModalAssignment(null);
+                                        }}
+                                        className="flex w-full cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left shadow-sm ring-1 ring-zinc-200/80 transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:ring-zinc-700 dark:hover:bg-zinc-800"
+                                    >
+                                        <span className="min-w-0">
+                                            <span className="block text-sm font-medium text-zinc-900 dark:text-white">
+                                                Definir como coordenador deste sábado
+                                            </span>
+                                            <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+                                                Passa a organizar a equipe neste dia, sem sair da escala.
+                                            </span>
+                                        </span>
+                                    </button>
+                                )
+                            )}
                             {canEdit && roleModalAssignment.scheduleDate && (
                                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-800/40 p-5">
                                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -861,7 +1069,7 @@ export default function EscalasIndex({
                                             >
                                                 {roleModalAssignment.checkedInAt ? 'Desfazer' : 'Check-in'}
                                             </button>
-                                        ) : (
+                                        ) : canAssignCoordinator ? (
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -874,7 +1082,7 @@ export default function EscalasIndex({
                                             >
                                                 Check-in
                                             </button>
-                                        )}
+                                        ) : null}
                                     </div>
                                 </div>
                             )}
@@ -1010,6 +1218,41 @@ export default function EscalasIndex({
                             Esta linha repete em todos os meses. Pode remover só{' '}
                             {removeModalAssignment.scheduleDate
                                 ? new Date(removeModalAssignment.scheduleDate + 'T12:00:00').toLocaleDateString('pt-BR')
+                                : 'esta data'}{' '}
+                            ou excluir toda a série.
+                        </p>
+                    </div>
+                )}
+            </Modal>
+
+            <Modal
+                show={removeCoordinator !== null}
+                onClose={() => setRemoveCoordinator(null)}
+                maxWidth="md"
+                footer={
+                    removeCoordinator ? (
+                        <div className="flex flex-col-reverse gap-2 justify-end sm:flex-row">
+                            <SecondaryButton type="button" onClick={() => setRemoveCoordinator(null)}>
+                                Cancelar
+                            </SecondaryButton>
+                            <SecondaryButton type="button" onClick={() => confirmRemoveCoordinator('single')}>
+                                Só esta data
+                            </SecondaryButton>
+                            <PrimaryButton type="button" onClick={() => confirmRemoveCoordinator('all')}>
+                                Toda a série
+                            </PrimaryButton>
+                        </div>
+                    ) : null
+                }
+            >
+                {removeCoordinator && (
+                    <div className="p-4 sm:p-6">
+                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Remover coordenador</h3>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{removeCoordinator.memberName}</p>
+                        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+                            Este coordenador se repete em todos os meses. Pode remover só{' '}
+                            {removeCoordinator.scheduleDate
+                                ? new Date(removeCoordinator.scheduleDate + 'T12:00:00').toLocaleDateString('pt-BR')
                                 : 'esta data'}{' '}
                             ou excluir toda a série.
                         </p>

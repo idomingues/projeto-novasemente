@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Church;
 use App\Models\Ministry;
 use App\Models\ScheduleAssignment;
+use App\Models\ScheduleCoordinator;
 use App\Models\ScheduleRole;
 use App\Models\User;
 use App\Models\Volunteer;
@@ -129,6 +130,7 @@ class DeaconsSeeder extends Seeder
                     continue;
                 }
                 $churchUser = $usersByName[$name];
+                $volunteer = Volunteer::query()->where('user_id', $churchUser->id)->first();
 
                 ScheduleAssignment::firstOrCreate(
                     [
@@ -139,12 +141,30 @@ class DeaconsSeeder extends Seeder
                     ],
                     [
                         'schedule_role_id' => $isCoordinator ? $roleCoordenador->id : null,
+                        'volunteer_id' => $volunteer?->id,
                         'recurring' => true,
                         'assignment_month' => null,
                         'assignment_year' => null,
                         'status' => 'pending',
                     ]
                 );
+
+                if ($isCoordinator && $volunteer) {
+                    ScheduleCoordinator::firstOrCreate(
+                        [
+                            'ministry_id' => $ministry->id,
+                            'saturday_number' => $saturdayNumber,
+                            'schedule_date' => null,
+                            'recurring' => true,
+                        ],
+                        [
+                            'volunteer_id' => $volunteer->id,
+                            'user_id' => $churchUser->id,
+                            'assignment_month' => null,
+                            'assignment_year' => null,
+                        ]
+                    );
+                }
             }
         }
 

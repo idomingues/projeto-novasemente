@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\ScheduleAssignment;
 use App\Models\ScheduleCheckinDate;
+use App\Models\ScheduleCoordinator;
+use App\Models\ScheduleCoordinatorSkip;
 use App\Models\ScheduleOccurrenceRoleOverride;
 use App\Models\ScheduleOccurrenceSkip;
 use App\Models\ScheduleRole;
@@ -14,6 +16,7 @@ use App\Services\ScheduleAssignmentPresenter;
 use App\Services\ScheduleCheckinNotifier;
 use App\Support\LeaderOperationalNotifications;
 use App\Support\ScheduleBoardViewData;
+use App\Support\ScheduleCoordinatorAccess;
 use App\Support\UserMessagingPreferences;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -22,22 +25,71 @@ use Inertia\Response;
 
 class ScheduleController extends Controller
 {
-    private function isMinistryLeaderAccount(?User $user): bool
-    {
-        return $user !== null && $user->isMinistryLeaderAccount();
-    }
-
     private function canManageMinistrySchedule(?User $user, int $ministryId): bool
     {
-        if (! $user) {
-            return false;
-        }
-        if ($user->hasRole('admin') || $user->hasRole('super_admin') || $user->can('escalas.manage')) {
-            return true;
+        return ScheduleCoordinatorAccess::canManageMinistrySchedule($user, $ministryId);
+    }
+
+    /**
+     * @param  array<string, mixed>  $valid
+     */
+    private function slotContextFromPayload(array $valid): array
+    {
+        $year = (int) ($valid['view_year'] ?? $valid['assignment_year'] ?? now()->year);
+        $month = (int) ($valid['view_month'] ?? $valid['assignment_month'] ?? now()->month);
+        $scheduleDate = ! empty($valid['schedule_date']) ? (string) $valid['schedule_date'] : null;
+        if ($scheduleDate) {
+            $d = Carbon::parse($scheduleDate);
+            $year = (int) $d->year;
+            $month = (int) $d->month;
         }
 
-        return $this->isMinistryLeaderAccount($user)
-            && $user->ministries()->where('ministries.id', $ministryId)->exists();
+        return [
+            'year' => $year,
+            'month' => $month,
+            'saturday_number' => ! empty($valid['saturday_number']) ? (int) $valid['saturday_number'] : null,
+            'schedule_date' => $scheduleDate,
+        ];
+    }
+
+    private function canEditSlot(?User $user, int $ministryId, ?int $saturdayNumber, ?string $scheduleDate, int $year, int $month): bool
+    {
+        return ScheduleCoordinatorAccess::canEditDay($user, $ministryId, $saturdayNumber, $scheduleDate, $year, $month);
+    }
+
+    private function assignmentSlotContext(ScheduleAssignment $assignment, ?string $occurrenceDate = null): array
+    {
+        if ($occurrenceDate) {
+            $d = Carbon::parse($occurrenceDate);
+
+            return [
+                'year' => (int) $d->year,
+                'month' => (int) $d->month,
+                'saturday_number' => $assignment->saturday_number !== null ? (int) $assignment->saturday_number : null,
+                'schedule_date' => $assignment->saturday_number === null ? $d->format('Y-m-d') : null,
+            ];
+        }
+
+        if ($assignment->schedule_date !== null) {
+            $d = Carbon::parse($assignment->schedule_date);
+
+            return [
+                'year' => (int) $d->year,
+                'month' => (int) $d->month,
+                'saturday_number' => $assignment->saturday_number !== null ? (int) $assignment->saturday_number : null,
+                'schedule_date' => $assignment->saturday_number === null ? $d->format('Y-m-d') : null,
+            ];
+        }
+
+        $year = $assignment->assignment_year !== null ? (int) $assignment->assignment_year : (int) now()->year;
+        $month = $assignment->assignment_month !== null ? (int) $assignment->assignment_month : (int) now()->month;
+
+        return [
+            'year' => $year,
+            'month' => $month,
+            'saturday_number' => $assignment->saturday_number !== null ? (int) $assignment->saturday_number : null,
+            'schedule_date' => null,
+        ];
     }
 
     /**
@@ -97,6 +149,8 @@ class ScheduleController extends Controller
             'recurring' => 'nullable|boolean',
             'assignment_month' => 'nullable|integer|min:1|max:12',
             'assignment_year' => 'nullable|integer|min:2020|max:2100',
+            'view_month' => 'nullable|integer|min:1|max:12',
+            'view_year' => 'nullable|integer|min:2020|max:2100',
             'status' => 'nullable|in:pending,confirmed,refused',
         ]);
 
@@ -124,7 +178,17 @@ class ScheduleController extends Controller
         }
 
         if (! $this->canManageMinistrySchedule($user, (int) $valid['ministry_id'])) {
-            return back()->withErrors(['ministry_id' => 'Sem permissão para editar esta escala.']);
+            $slot = $this->slotContextFromPayload($valid);
+            if (! $this->canEditSlot(
+                $user,
+                (int) $valid['ministry_id'],
+                $slot['saturday_number'],
+                $slot['schedule_date'],
+                $slot['year'],
+                $slot['month']
+            )) {
+                return back()->withErrors(['ministry_id' => 'Sem permissão para editar esta escala.']);
+            }
         }
 
         $hasSaturday = ! empty($valid['saturday_number']);
@@ -140,6 +204,18 @@ class ScheduleController extends Controller
         $recurring = $hasSaturday ? (bool) ($valid['recurring'] ?? true) : true;
         $assignmentMonth = $recurring ? null : ($valid['assignment_month'] ?? null);
         $assignmentYear = $recurring ? null : ($valid['assignment_year'] ?? null);
+
+        if (
+            $hasSaturday
+            && $recurring
+            && ! $this->canManageMinistrySchedule($user, (int) $valid['ministry_id'])
+            && ! ScheduleCoordinatorAccess::coordinatesRecurringSaturday($user, (int) $valid['ministry_id'], (int) $valid['saturday_number'])
+        ) {
+            $slot = $this->slotContextFromPayload($valid);
+            $recurring = false;
+            $assignmentMonth = $slot['month'];
+            $assignmentYear = $slot['year'];
+        }
 
         ScheduleAssignment::create([
             'ministry_id' => $valid['ministry_id'],
@@ -160,15 +236,35 @@ class ScheduleController extends Controller
     public function update(Request $request, ScheduleAssignment $assignment)
     {
         $user = $request->user();
-        if (! $this->canManageMinistrySchedule($user, (int) $assignment->ministry_id)) {
-            return back()->withErrors(['assignment' => 'Sem permissão para esta escala.']);
-        }
-
         $valid = $request->validate([
             'schedule_role_id' => 'nullable|exists:schedule_roles,id',
             'scope' => 'nullable|in:series,occurrence',
             'occurrence_date' => 'nullable|date_format:Y-m-d',
         ]);
+
+        $slot = $this->assignmentSlotContext($assignment, $valid['occurrence_date'] ?? null);
+        if (! $this->canEditSlot(
+            $user,
+            (int) $assignment->ministry_id,
+            $slot['saturday_number'],
+            $slot['schedule_date'],
+            $slot['year'],
+            $slot['month']
+        )) {
+            return back()->withErrors(['assignment' => 'Sem permissão para esta escala.']);
+        }
+
+        $scope = $valid['scope'] ?? 'series';
+        if (
+            $scope === 'series'
+            && $assignment->recurring
+            && $assignment->schedule_date === null
+            && ! $this->canManageMinistrySchedule($user, (int) $assignment->ministry_id)
+            && ! ($assignment->saturday_number !== null
+                && ScheduleCoordinatorAccess::coordinatesRecurringSaturday($user, (int) $assignment->ministry_id, (int) $assignment->saturday_number))
+        ) {
+            return back()->withErrors(['scope' => 'Sem permissão para alterar toda a série.']);
+        }
 
         $roleId = $valid['schedule_role_id'] !== null ? (int) $valid['schedule_role_id'] : null;
         if ($roleId !== null && ! $this->roleMatchesMinistry($roleId, (int) $assignment->ministry_id)) {
@@ -297,17 +393,34 @@ class ScheduleController extends Controller
     public function destroy(Request $request, ScheduleAssignment $assignment)
     {
         $user = $request->user();
-        if (! $this->canManageMinistrySchedule($user, (int) $assignment->ministry_id)) {
-            return back()->with('error', 'Só pode remover escalas dos departamentos que gere.');
-        }
-
         $valid = $request->validate([
             'scope' => 'nullable|in:single,all',
             'occurrence_date' => 'nullable|date_format:Y-m-d',
         ]);
 
+        $slot = $this->assignmentSlotContext($assignment, $valid['occurrence_date'] ?? null);
+        if (! $this->canEditSlot(
+            $user,
+            (int) $assignment->ministry_id,
+            $slot['saturday_number'],
+            $slot['schedule_date'],
+            $slot['year'],
+            $slot['month']
+        )) {
+            return back()->with('error', 'Só pode remover escalas dos sábados que organiza.');
+        }
+
         $scope = $valid['scope'] ?? 'all';
         $recurringSeries = $assignment->recurring && $assignment->schedule_date === null && $assignment->saturday_number !== null;
+
+        if (
+            $scope === 'all'
+            && $recurringSeries
+            && ! $this->canManageMinistrySchedule($user, (int) $assignment->ministry_id)
+            && ! ScheduleCoordinatorAccess::coordinatesRecurringSaturday($user, (int) $assignment->ministry_id, (int) $assignment->saturday_number)
+        ) {
+            return back()->with('error', 'Sem permissão para remover toda a série.');
+        }
 
         if ($scope === 'single' && $recurringSeries) {
             $occurrence = $valid['occurrence_date'] ?? null;
@@ -329,6 +442,162 @@ class ScheduleController extends Controller
         $assignment->delete();
 
         return back()->with('success', 'Escala removida.');
+    }
+
+    public function storeCoordinator(Request $request)
+    {
+        $user = $request->user();
+        $valid = $request->validate([
+            'ministry_id' => 'required|exists:ministries,id',
+            'volunteer_id' => 'required|exists:volunteers,id',
+            'saturday_number' => 'nullable|integer|min:1|max:5',
+            'schedule_date' => 'nullable|date_format:Y-m-d',
+            'recurring' => 'nullable|boolean',
+            'assignment_month' => 'nullable|integer|min:1|max:12',
+            'assignment_year' => 'nullable|integer|min:2020|max:2100',
+            'view_month' => 'nullable|integer|min:1|max:12',
+            'view_year' => 'nullable|integer|min:2020|max:2100',
+        ]);
+
+        if (! $this->canManageMinistrySchedule($user, (int) $valid['ministry_id'])) {
+            return back()->withErrors(['ministry_id' => 'Sem permissão para definir o coordenador.']);
+        }
+
+        $vol = Volunteer::query()->findOrFail((int) $valid['volunteer_id']);
+        if (! $vol->ministries()->where('ministries.id', (int) $valid['ministry_id'])->exists()) {
+            return back()->withErrors(['volunteer_id' => 'Este voluntário não está neste departamento.']);
+        }
+        if (! $vol->active) {
+            return back()->withErrors(['volunteer_id' => 'Voluntário inativo.']);
+        }
+
+        $hasSaturday = ! empty($valid['saturday_number']);
+        $hasDate = ! empty($valid['schedule_date']);
+        if ($hasSaturday === $hasDate) {
+            return back()->withErrors(['saturday_number' => 'Informe o sábado ou a data extra, mas não ambos.']);
+        }
+
+        $recurring = $hasSaturday ? (bool) ($valid['recurring'] ?? true) : false;
+        $assignmentMonth = $recurring ? null : ($valid['assignment_month'] ?? $valid['view_month'] ?? now()->month);
+        $assignmentYear = $recurring ? null : ($valid['assignment_year'] ?? $valid['view_year'] ?? now()->year);
+        $slot = $this->slotContextFromPayload($valid);
+
+        $this->replaceCoordinatorForSlot(
+            (int) $valid['ministry_id'],
+            $hasSaturday ? (int) $valid['saturday_number'] : null,
+            $hasDate ? (string) $valid['schedule_date'] : null,
+            $recurring,
+            (int) $slot['year'],
+            (int) $slot['month']
+        );
+
+        ScheduleCoordinator::create([
+            'ministry_id' => (int) $valid['ministry_id'],
+            'volunteer_id' => $vol->id,
+            'user_id' => $vol->user_id,
+            'saturday_number' => $hasSaturday ? (int) $valid['saturday_number'] : null,
+            'schedule_date' => $hasDate ? $valid['schedule_date'] : null,
+            'recurring' => $recurring,
+            'assignment_month' => $recurring ? null : $assignmentMonth,
+            'assignment_year' => $recurring ? null : $assignmentYear,
+        ]);
+
+        return back()->with('success', 'Coordenador definido.');
+    }
+
+    public function destroyCoordinator(Request $request, ScheduleCoordinator $scheduleCoordinator)
+    {
+        $user = $request->user();
+        if (! $this->canManageMinistrySchedule($user, (int) $scheduleCoordinator->ministry_id)) {
+            return back()->with('error', 'Sem permissão para remover o coordenador.');
+        }
+
+        $valid = $request->validate([
+            'scope' => 'nullable|in:single,all',
+            'occurrence_date' => 'nullable|date_format:Y-m-d',
+        ]);
+
+        $scope = $valid['scope'] ?? 'all';
+        $recurringSeries = $scheduleCoordinator->isRecurringSeries();
+
+        if ($scope === 'single' && $recurringSeries) {
+            $occurrence = $valid['occurrence_date'] ?? null;
+            if (! $occurrence) {
+                return back()->withErrors(['occurrence_date' => 'Indique a data desta ocorrência.']);
+            }
+            if (! ScheduleCoordinatorAccess::occurrenceMatchesRecurringCoordinator($scheduleCoordinator, $occurrence)) {
+                return back()->withErrors(['occurrence_date' => 'Data inválida para este coordenador.']);
+            }
+
+            ScheduleCoordinatorSkip::firstOrCreate([
+                'schedule_coordinator_id' => $scheduleCoordinator->id,
+                'occurrence_date' => Carbon::parse($occurrence)->startOfDay(),
+            ]);
+
+            return back()->with('success', 'Coordenador removido só nesta data.');
+        }
+
+        $scheduleCoordinator->delete();
+
+        return back()->with('success', 'Coordenador removido.');
+    }
+
+    private function replaceCoordinatorForSlot(
+        int $ministryId,
+        ?int $saturdayNumber,
+        ?string $scheduleDate,
+        bool $recurring,
+        int $year,
+        int $month
+    ): void {
+        if ($scheduleDate !== null) {
+            ScheduleCoordinator::query()
+                ->where('ministry_id', $ministryId)
+                ->whereNull('saturday_number')
+                ->whereDate('schedule_date', $scheduleDate)
+                ->delete();
+
+            return;
+        }
+
+        if ($saturdayNumber === null) {
+            return;
+        }
+
+        $saturdays = ScheduleAssignmentPresenter::getSaturdays($year, $month);
+        $occurrence = $saturdays[$saturdayNumber - 1] ?? null;
+        $occurrenceYmd = $occurrence?->format('Y-m-d');
+
+        $templates = ScheduleCoordinator::query()
+            ->where('ministry_id', $ministryId)
+            ->where('saturday_number', $saturdayNumber)
+            ->whereNull('schedule_date')
+            ->where(function ($q) use ($month, $year) {
+                $q->where('recurring', true)
+                    ->orWhere(function ($q2) use ($month, $year) {
+                        $q2->where('recurring', false)
+                            ->where('assignment_month', $month)
+                            ->where('assignment_year', $year);
+                    });
+            })
+            ->get();
+
+        foreach ($templates as $existing) {
+            if ($recurring) {
+                $existing->delete();
+
+                continue;
+            }
+            if ($existing->isRecurringSeries() && $occurrenceYmd) {
+                ScheduleCoordinatorSkip::firstOrCreate([
+                    'schedule_coordinator_id' => $existing->id,
+                    'occurrence_date' => Carbon::parse($occurrenceYmd)->startOfDay(),
+                ]);
+
+                continue;
+            }
+            $existing->delete();
+        }
     }
 
     public function checkinToggle(Request $request)
@@ -494,11 +763,15 @@ class ScheduleController extends Controller
 
     private function userCanManageEscalas(User $user, ScheduleAssignment $assignment): bool
     {
-        if ($user->hasRole('admin') || $user->hasRole('super_admin') || $user->can('escalas.manage')) {
-            return true;
-        }
+        $slot = $this->assignmentSlotContext($assignment);
 
-        return $this->isMinistryLeaderAccount($user)
-            && $user->ministries()->where('ministries.id', $assignment->ministry_id)->exists();
+        return $this->canEditSlot(
+            $user,
+            (int) $assignment->ministry_id,
+            $slot['saturday_number'],
+            $slot['schedule_date'],
+            $slot['year'],
+            $slot['month']
+        );
     }
 }

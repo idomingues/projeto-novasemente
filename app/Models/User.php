@@ -118,6 +118,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Coordena pelo menos um sábado (ou data extra) em alguma escala.
+     */
+    public function isScheduleCoordinatorAccount(): bool
+    {
+        return \App\Support\ScheduleCoordinatorAccess::isCoordinatorAccount($this);
+    }
+
+    /**
      * Conta da equipe ou líder — não deve ser reutilizada nem ter papéis alterados pelo cadastro de voluntário.
      */
     public function isPrivilegedTeamAccount(): bool

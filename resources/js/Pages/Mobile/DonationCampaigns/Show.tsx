@@ -291,7 +291,7 @@ export default function MobileDonationCampaignShow({
                         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
                             {campaign.title}
                         </h1>
-                        {(campaign.starts_at || campaign.ends_at) && (
+                        {!campaign.show_caixa_fixo_story && (campaign.starts_at || campaign.ends_at) && (
                             <p className="mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
                                 {campaign.starts_at ? `Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
                                 {campaign.starts_at && campaign.ends_at ? ' · ' : ''}

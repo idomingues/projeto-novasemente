@@ -104,7 +104,7 @@ export default function MobileDonationCampaignsIndex({ campaigns }: Props) {
                                         {caixaFixoMonthlyProgressLabels().monthTitle}
                                     </p>
                                 )}
-                                {(campaign.starts_at || campaign.ends_at) && (
+                                {!campaign.show_caixa_fixo_story && (campaign.starts_at || campaign.ends_at) && (
                                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                         {campaign.starts_at ? `Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
                                         {campaign.starts_at && campaign.ends_at ? ' · ' : ''}

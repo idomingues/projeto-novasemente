@@ -311,6 +311,8 @@ class HandleInertiaRequests extends Middleware
                  * Propriedade Líder de ministério (`is_ministry_leader`).
                  */
                 'isMinistryLeaderAccount' => $request->user()?->isMinistryLeaderAccount() ?? false,
+                /** Coordena pelo menos um sábado na escala (sem ser líder). */
+                'isScheduleCoordinator' => $request->user()?->isScheduleCoordinatorAccount() ?? false,
                 'permissions' => $permissionNames,
                 /** Bloco ADM do menu (Perfis, Suporte APP, Versão, Config. da igreja): só super admin. */
                 'isSuperAdmin' => $request->user()?->hasRole('super_admin') ?? false,

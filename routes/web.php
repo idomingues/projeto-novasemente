@@ -462,6 +462,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/escalas', [\App\Http\Controllers\ScheduleController::class, 'index'])->name('escalas.index');
     Route::post('/escalas', [\App\Http\Controllers\ScheduleController::class, 'store'])
         ->name('escalas.store');
+    Route::post('/escalas/coordinators', [\App\Http\Controllers\ScheduleController::class, 'storeCoordinator'])
+        ->name('escalas.coordinators.store');
+    Route::delete('/escalas/coordinators/{scheduleCoordinator}', [\App\Http\Controllers\ScheduleController::class, 'destroyCoordinator'])
+        ->name('escalas.coordinators.destroy');
     Route::patch('/escalas/{assignment}', [\App\Http\Controllers\ScheduleController::class, 'update'])
         ->name('escalas.update');
     Route::post('/escalas/roles', [\App\Http\Controllers\ScheduleController::class, 'storeRole'])

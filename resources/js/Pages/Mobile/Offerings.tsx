@@ -78,21 +78,19 @@ export default function MobileOfferings({ donation, localOffer, offeringUrl }: P
     return (
         <MobileLayout>
             <Head title="Dízimos e Pacto" />
-            <div className="mx-auto w-full max-w-lg space-y-6 sm:max-w-2xl">
-                <DizimoPactoStory />
-
+            <div className="mx-auto w-full max-w-lg space-y-8 sm:max-w-2xl">
                 <section className="space-y-4">
                     <header>
                         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">
                             Como contribuir
                         </p>
-                        <h2 className="mt-1 text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">
+                        <h1 className="mt-1 text-lg font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-xl">
                             Dízimo, oferta e pacto
-                        </h2>
+                        </h1>
                     </header>
 
                     {hasSevenMe && (
-                        <div className="grid gap-3 md:grid-cols-2">
+                        <div className="grid gap-3 sm:grid-cols-2">
                             {hasTithe && titheUrl && <SevenMeCard href={titheUrl} title="Dízimo" />}
                             {hasOffering && offeringUrl && <SevenMeCard href={offeringUrl} title="Oferta e Pacto" />}
                         </div>
@@ -145,6 +143,8 @@ export default function MobileOfferings({ donation, localOffer, offeringUrl }: P
                         </p>
                     )}
                 </section>
+
+                <DizimoPactoStory />
             </div>
         </MobileLayout>
     );

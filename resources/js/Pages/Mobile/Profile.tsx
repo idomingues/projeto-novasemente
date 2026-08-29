@@ -181,6 +181,8 @@ export default function MobileProfile({ user, profileCounts, volunteerSignupComp
             user?: { is_volunteer?: boolean; is_ministry_leader?: boolean };
             /** Propriedade `is_ministry_leader` na conta. */
             isMinistryLeaderAccount?: boolean;
+            /** Coordena pelo menos um sábado na escala. */
+            isScheduleCoordinator?: boolean;
         };
     }).auth;
     const linkedPastor = auth?.linkedPastor ?? null;
@@ -202,6 +204,7 @@ export default function MobileProfile({ user, profileCounts, volunteerSignupComp
             permissions.includes('solicitations.view') ||
             permissions.includes('solicitations.manage'));
     const isMinistryLeader = auth?.isMinistryLeaderAccount === true;
+    const isScheduleCoordinator = auth?.isScheduleCoordinator === true;
     const canShowComunicacaoPainel =
         route().has('communication-requests.index') &&
         canAccessAdminMenu &&
@@ -244,22 +247,28 @@ export default function MobileProfile({ user, profileCounts, volunteerSignupComp
             href: route('mobile.schedule'),
             tone: 'member',
         },
-        ...(isMinistryLeader
+        ...(isMinistryLeader || isScheduleCoordinator
             ? ([
                   {
                       title: 'Gestão de Escala',
-                      description: 'Gestão de voluntários na escala dos seus departamentos',
+                      description: isMinistryLeader
+                          ? 'Gestão de voluntários na escala dos seus departamentos'
+                          : 'Organize os voluntários nos sábados que você coordena',
                       icon: CalendarDaysIcon,
                       href: route('escalas.index'),
                       tone: 'member',
                   },
-                  {
-                      title: 'Meus voluntários',
-                      description: 'Fluxo completo do líder: novos, em atividade e solicitar voluntário',
-                      icon: UserGroupIcon,
-                      href: route('ministry-lead.my-volunteers.index'),
-                      tone: 'member',
-                  },
+                  ...(isMinistryLeader
+                      ? ([
+                            {
+                                title: 'Meus voluntários',
+                                description: 'Fluxo completo do líder: novos, em atividade e solicitar voluntário',
+                                icon: UserGroupIcon,
+                                href: route('ministry-lead.my-volunteers.index'),
+                                tone: 'member',
+                            },
+                        ] as Row[])
+                      : []),
               ] as Row[])
             : []),
         ...((isMinistryLeader || isVolunteer || adminUnrestricted) && route().has('mobile.leader.birthdays')

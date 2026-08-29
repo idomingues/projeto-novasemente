@@ -8,6 +8,7 @@ export interface VolunteerAddOptions {
     assignment_month?: number;
     assignment_year?: number;
     schedule_role_id?: number | null;
+    asCoordinator?: boolean;
 }
 
 export interface ScheduleRoleOption {
@@ -20,6 +21,7 @@ export type ScheduleVolunteerOption = {
     volunteerId: number;
     memberId: number | null;
     name: string;
+    hasAppAccount?: boolean;
 };
 
 interface Props {
@@ -31,6 +33,8 @@ interface Props {
     month?: number | null;
     year?: number | null;
     scheduleRoles?: ScheduleRoleOption[];
+    /** Líder/ADM: ao adicionar, também definir esta pessoa como coordenadora do dia. */
+    canAssignCoordinator?: boolean;
 }
 
 function isVolunteerTaken(v: ScheduleVolunteerOption, taken: Set<string>): boolean {
@@ -57,9 +61,11 @@ export default function VolunteerAddPopover({
     month,
     year,
     scheduleRoles = [],
+    canAssignCoordinator = false,
 }: Props) {
     const [nameFilter, setNameFilter] = useState('');
     const [addRecurring, setAddRecurring] = useState(true);
+    const [asCoordinator, setAsCoordinator] = useState(false);
     const [selectedRoleId, setSelectedRoleId] = useState<string>('');
 
     const taken = useMemo(() => new Set(existingParticipantKeys), [existingParticipantKeys]);
@@ -86,10 +92,12 @@ export default function VolunteerAddPopover({
                       assignment_month: addRecurring ? undefined : month,
                       assignment_year: addRecurring ? undefined : year,
                       schedule_role_id,
+                      asCoordinator: canAssignCoordinator && asCoordinator,
                   }
-                : { schedule_role_id };
+                : { schedule_role_id, asCoordinator: canAssignCoordinator && asCoordinator };
         onPick(volunteerId, options);
         setNameFilter('');
+        setAsCoordinator(false);
         close();
     };
 
@@ -104,6 +112,7 @@ export default function VolunteerAddPopover({
                 onClick={() => {
                     setNameFilter('');
                     setSelectedRoleId('');
+                    setAsCoordinator(false);
                 }}
                 className={scheduleIconButtonClass}
                 title="Adicionar voluntário a esta escala"
@@ -156,6 +165,21 @@ export default function VolunteerAddPopover({
                                         )}
                                     </p>
                                 )}
+                            </div>
+                        )}
+                        {canAssignCoordinator && (
+                            <div className="border-b border-zinc-100 p-2 dark:border-zinc-700">
+                                <label className="flex cursor-pointer items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={asCoordinator}
+                                        onChange={(e) => setAsCoordinator(e.target.checked)}
+                                        className="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600"
+                                    />
+                                    <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                                        Definir como coordenador deste sábado
+                                    </span>
+                                </label>
                             </div>
                         )}
                         <div className="border-b border-zinc-100 p-2 dark:border-zinc-700">
