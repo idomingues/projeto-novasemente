@@ -241,27 +241,35 @@ export default function PublicationFeedCard({
 
     const isPolls = item.type === 'polls';
     const isMeditation = item.type === 'meditation';
+    const isYoutubeWidescreen = item.type === 'culto' || item.type === 'musica';
     const overlayText = (item.cover_overlay_text ?? '').trim();
     const overlayCitation = (item.cover_overlay_citation ?? '').trim();
     const showMeditationOverlay = isMeditation && overlayText !== '';
     // Mobile: proporção por tipo. sm+ (iPad/PC): capa quadrada para cards alinhados no grid.
-    const coverAspectClass = isMeditation
-        ? 'aspect-[4/5] sm:aspect-square'
-        : isNews
-          ? 'sm:aspect-square'
-          : isPhotos
-            ? 'aspect-[4/5] sm:aspect-square'
-            : isPolls
-              ? 'aspect-[16/9] sm:aspect-square'
-              : 'aspect-square';
-    const placeholderAspectClass = isMeditation || isPhotos
-        ? 'aspect-[4/5] sm:aspect-square'
-        : isPolls
-          ? 'aspect-[16/9] sm:aspect-square'
-          : 'aspect-square';
-    const coverImageClass = isNews && !isMeditation
-        ? 'block h-auto w-full object-contain sm:h-full sm:object-cover sm:object-center'
-        : 'h-full w-full object-cover object-center';
+    // Culto e música: 16:9 (formato YouTube) em todos os tamanhos para não cortar a miniatura.
+    const coverAspectClass = isYoutubeWidescreen
+        ? 'aspect-video'
+        : isMeditation
+          ? 'aspect-[4/5] sm:aspect-square'
+          : isNews
+            ? 'sm:aspect-square'
+            : isPhotos
+              ? 'aspect-[4/5] sm:aspect-square'
+              : isPolls
+                ? 'aspect-[16/9] sm:aspect-square'
+                : 'aspect-square';
+    const placeholderAspectClass = isYoutubeWidescreen
+        ? 'aspect-video'
+        : isMeditation || isPhotos
+          ? 'aspect-[4/5] sm:aspect-square'
+          : isPolls
+            ? 'aspect-[16/9] sm:aspect-square'
+            : 'aspect-square';
+    const coverImageClass = isYoutubeWidescreen
+        ? 'h-full w-full object-contain object-center'
+        : isNews && !isMeditation
+          ? 'block h-auto w-full object-contain sm:h-full sm:object-cover sm:object-center'
+          : 'h-full w-full object-cover object-center';
 
     const goLogin = () => {
         window.location.href = route('login');

@@ -1,3 +1,4 @@
+import DizimoPactoStory from '@/Components/Offerings/DizimoPactoStory';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head } from '@inertiajs/react';
 import {
@@ -77,66 +78,73 @@ export default function MobileOfferings({ donation, localOffer, offeringUrl }: P
     return (
         <MobileLayout>
             <Head title="Dízimos e Pacto" />
-            <div className="mx-auto max-w-lg space-y-5">
-                <header>
-                    <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
-                        Dízimos e Pacto
-                    </h1>
-                </header>
+            <div className="mx-auto w-full max-w-lg space-y-6 sm:max-w-2xl">
+                <DizimoPactoStory />
 
-                {hasSevenMe && (
-                    <div className="grid gap-3 md:grid-cols-2">
-                        {hasTithe && titheUrl && <SevenMeCard href={titheUrl} title="Dízimo" />}
-                        {hasOffering && offeringUrl && <SevenMeCard href={offeringUrl} title="Oferta e Pacto" />}
-                    </div>
-                )}
+                <section className="space-y-4">
+                    <header>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">
+                            Como contribuir
+                        </p>
+                        <h2 className="mt-1 text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">
+                            Dízimo, oferta e pacto
+                        </h2>
+                    </header>
 
-                {hasPix && (
-                    <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800">
-                        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-                            Outra opção · Chave PIX
-                        </p>
-                        <p className="mt-3 break-all font-mono text-[15px] leading-relaxed text-zinc-900 dark:text-zinc-100 sm:text-base">
-                            {pixKeyForOffer}
-                        </p>
-                        <button
-                            type="button"
-                            onClick={copyPix}
-                            className={`mt-5 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition active:scale-[0.99] ${
-                                copied
-                                    ? 'bg-emerald-600 text-white dark:bg-emerald-500'
-                                    : 'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100'
-                            }`}
-                        >
-                            {copied ? (
-                                <>
-                                    <CheckIcon className="h-4 w-4" strokeWidth={2.25} />
-                                    Copiado
-                                </>
-                            ) : (
-                                <>
-                                    <DocumentDuplicateIcon className="h-4 w-4" />
-                                    Copiar chave
-                                </>
-                            )}
-                        </button>
-                        <p
-                            className="mt-4 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400"
-                            role="note"
-                        >
-                            Valores com centavos{' '}
-                            <span className="font-medium text-zinc-700 dark:text-zinc-300">,20</span>{' '}
-                            (ex.: R$ 50,20) destinam a oferta ou o pacto à{' '}
-                            <span className="font-medium text-zinc-700 dark:text-zinc-300">igreja local</span>.
-                        </p>
-                    </section>
-                )}
+                    {hasSevenMe && (
+                        <div className="grid gap-3 md:grid-cols-2">
+                            {hasTithe && titheUrl && <SevenMeCard href={titheUrl} title="Dízimo" />}
+                            {hasOffering && offeringUrl && <SevenMeCard href={offeringUrl} title="Oferta e Pacto" />}
+                        </div>
+                    )}
 
-                {!hasAnyMethod && (
-                    <p className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                        As formas de contribuição podem ser configuradas no painel da igreja.
-                    </p>
-                )}
+                    {hasPix && (
+                        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800">
+                            <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                                Outra opção · Chave PIX
+                            </p>
+                            <p className="mt-3 break-all font-mono text-[15px] leading-relaxed text-zinc-900 dark:text-zinc-100 sm:text-base">
+                                {pixKeyForOffer}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={copyPix}
+                                className={`mt-5 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition active:scale-[0.99] ${
+                                    copied
+                                        ? 'bg-emerald-600 text-white dark:bg-emerald-500'
+                                        : 'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100'
+                                }`}
+                            >
+                                {copied ? (
+                                    <>
+                                        <CheckIcon className="h-4 w-4" strokeWidth={2.25} />
+                                        Copiado
+                                    </>
+                                ) : (
+                                    <>
+                                        <DocumentDuplicateIcon className="h-4 w-4" />
+                                        Copiar chave
+                                    </>
+                                )}
+                            </button>
+                            <p
+                                className="mt-4 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400"
+                                role="note"
+                            >
+                                Valores com centavos{' '}
+                                <span className="font-medium text-zinc-700 dark:text-zinc-300">,20</span>{' '}
+                                (ex.: R$ 50,20) destinam a oferta ou o pacto à{' '}
+                                <span className="font-medium text-zinc-700 dark:text-zinc-300">igreja local</span>.
+                            </p>
+                        </div>
+                    )}
+
+                    {!hasAnyMethod && (
+                        <p className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                            As formas de contribuição podem ser configuradas no painel da igreja.
+                        </p>
+                    )}
+                </section>
             </div>
         </MobileLayout>
     );
