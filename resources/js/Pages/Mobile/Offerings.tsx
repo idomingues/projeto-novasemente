@@ -99,41 +99,68 @@ export default function MobileOfferings({ donation, localOffer, offeringUrl }: P
                     {hasPix && (
                         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800">
                             <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-                                Outra opção · Chave PIX
+                                Outra opção · PIX
                             </p>
-                            <p className="mt-3 break-all font-mono text-[15px] leading-relaxed text-zinc-900 dark:text-zinc-100 sm:text-base">
-                                {pixKeyForOffer}
+
+                            <div className="mt-3 flex items-center gap-2 rounded-2xl bg-zinc-50 px-3 py-2.5 ring-1 ring-zinc-200/80 dark:bg-zinc-950/40 dark:ring-zinc-800">
+                                <p className="min-w-0 flex-1 break-all font-mono text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200 sm:text-sm">
+                                    {pixKeyForOffer}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={copyPix}
+                                    className={`inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition ${
+                                        copied
+                                            ? 'text-brand-700 dark:text-brand-300'
+                                            : 'text-zinc-500 hover:bg-white hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-200'
+                                    }`}
+                                    aria-label={copied ? 'Chave copiada' : 'Copiar chave PIX'}
+                                >
+                                    {copied ? (
+                                        <>
+                                            <CheckIcon className="h-3.5 w-3.5" strokeWidth={2.25} />
+                                            Copiado
+                                        </>
+                                    ) : (
+                                        <>
+                                            <DocumentDuplicateIcon className="h-3.5 w-3.5" />
+                                            Copiar
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            <p className="mt-5 text-sm text-zinc-500 dark:text-zinc-400">
+                                No PIX, os centavos indicam o destino.
                             </p>
-                            <button
-                                type="button"
-                                onClick={copyPix}
-                                className={`mt-5 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition active:scale-[0.99] ${
-                                    copied
-                                        ? 'bg-emerald-600 text-white dark:bg-emerald-500'
-                                        : 'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100'
-                                }`}
-                            >
-                                {copied ? (
-                                    <>
-                                        <CheckIcon className="h-4 w-4" strokeWidth={2.25} />
-                                        Copiado
-                                    </>
-                                ) : (
-                                    <>
-                                        <DocumentDuplicateIcon className="h-4 w-4" />
-                                        Copiar chave
-                                    </>
-                                )}
-                            </button>
-                            <p
-                                className="mt-4 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400"
-                                role="note"
-                            >
-                                Valores com centavos{' '}
-                                <span className="font-medium text-zinc-700 dark:text-zinc-300">,20</span>{' '}
-                                (ex.: R$ 50,20) destinam a oferta ou o pacto à{' '}
-                                <span className="font-medium text-zinc-700 dark:text-zinc-300">igreja local</span>.
-                            </p>
+                            <ul className="mt-2.5 space-y-2" role="list">
+                                <li className="flex items-start gap-3 rounded-2xl bg-zinc-50 px-3.5 py-3 ring-1 ring-zinc-200/80 dark:bg-zinc-950/40 dark:ring-zinc-800">
+                                    <span className="w-11 shrink-0 pt-px text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">
+                                        0,10
+                                    </span>
+                                    <span className="min-w-0">
+                                        <span className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                                            Dízimo
+                                        </span>
+                                        <span className="mt-0.5 block text-xs tabular-nums text-zinc-400 dark:text-zinc-500">
+                                            ex.: R$ 50,10
+                                        </span>
+                                    </span>
+                                </li>
+                                <li className="flex items-start gap-3 rounded-2xl bg-zinc-50 px-3.5 py-3 ring-1 ring-zinc-200/80 dark:bg-zinc-950/40 dark:ring-zinc-800">
+                                    <span className="w-11 shrink-0 pt-px text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">
+                                        0,20
+                                    </span>
+                                    <span className="min-w-0">
+                                        <span className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                                            Oferta da igreja ou pacto
+                                        </span>
+                                        <span className="mt-0.5 block text-xs tabular-nums text-zinc-400 dark:text-zinc-500">
+                                            ex.: R$ 50,20
+                                        </span>
+                                    </span>
+                                </li>
+                            </ul>
                         </div>
                     )}
 

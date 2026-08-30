@@ -9,6 +9,7 @@ import { createRoot } from 'react-dom/client';
 
 import BiometricOptInGate from './Components/Auth/BiometricOptInGate';
 import AppHead from './Components/AppHead';
+import GetTheAppBanner from './Components/GetTheAppBanner';
 import OfflineBanner from './Components/OfflineBanner';
 import NativeAppUpdateGate from './Components/NativeAppUpdateGate';
 import PushNotificationsSync from './Components/PushNotificationsSync';
@@ -87,6 +88,7 @@ createInertiaApp({
                 return (
                     <>
                         <AppHead />
+                        <GetTheAppBanner />
                         <Page {...props} />
                     </>
                 );

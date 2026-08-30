@@ -33,8 +33,8 @@ export default function AdminLayout({
     const mainClassName = modalOverlayOpen
         ? 'overflow-hidden p-0'
         : compactChrome
-          ? 'flex flex-col overflow-hidden pt-[calc(4rem+env(safe-area-inset-top,0px))] px-3 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pt-24 md:px-4 md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]'
-          : 'overflow-y-auto overflow-x-clip pt-[calc(4rem+env(safe-area-inset-top,0px))] px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:px-6 md:pt-24 md:px-6 md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:px-8';
+          ? 'flex flex-col overflow-hidden pt-[calc(4rem+var(--ns-get-app-banner-h,0px)+env(safe-area-inset-top,0px))] px-3 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pt-24 md:px-4 md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]'
+          : 'overflow-y-auto overflow-x-clip pt-[calc(4rem+var(--ns-get-app-banner-h,0px)+env(safe-area-inset-top,0px))] px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:px-6 md:pt-24 md:px-6 md:pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:px-8';
 
     const innerClassName = modalOverlayOpen
         ? ''

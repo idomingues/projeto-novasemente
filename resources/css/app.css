@@ -117,6 +117,9 @@
         height: 100dvh;
         height: -webkit-fill-available;
         scroll-behavior: auto;
+        --ns-get-app-banner-h: 0px;
+        --ns-get-app-banner-offset: 0px;
+        --ns-topbar-safe-top: env(safe-area-inset-top, 0px);
     }
     body {
         overflow: hidden;

@@ -170,8 +170,11 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
 
     return (
         <header
-            className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 fixed top-0 right-0 left-0 z-40 transition-all duration-300 h-[calc(4rem+env(safe-area-inset-top,0px))] md:h-[calc(6rem+env(safe-area-inset-top,0px))]"
-            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+            className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 fixed right-0 left-0 z-40 transition-all duration-300 h-[calc(4rem+var(--ns-topbar-safe-top,env(safe-area-inset-top,0px)))] md:h-[calc(6rem+var(--ns-topbar-safe-top,env(safe-area-inset-top,0px)))]"
+            style={{
+                top: 'var(--ns-get-app-banner-offset, 0px)',
+                paddingTop: 'var(--ns-topbar-safe-top, env(safe-area-inset-top, 0px))',
+            }}
         >
             <div className="flex items-center justify-between h-16 md:h-24 px-4 md:px-8">
                 {/* Menu button (mobile) + Search / Title */}

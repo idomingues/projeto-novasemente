@@ -13,8 +13,12 @@ export default function GuestAppBar() {
 
     return (
         <header
-            className="fixed top-0 left-0 right-0 z-40 h-14 safe-area-top bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800"
-            style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
+            className="fixed left-0 right-0 z-40 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800"
+            style={{
+                top: 'var(--ns-get-app-banner-offset, 0px)',
+                paddingTop: 'var(--ns-topbar-safe-top, env(safe-area-inset-top, 0px))',
+                height: 'calc(3.5rem + var(--ns-topbar-safe-top, env(safe-area-inset-top, 0px)))',
+            }}
         >
             <div className="relative flex h-14 items-center justify-center px-4">
                 <div className="absolute left-3 top-1/2 z-10 -translate-y-1/2 sm:left-4">
