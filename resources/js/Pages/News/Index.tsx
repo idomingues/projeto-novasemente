@@ -8,6 +8,7 @@ import {
     DocumentTextIcon,
     PlayCircleIcon,
     PowerIcon,
+    ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
@@ -23,7 +24,7 @@ import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionBu
 import InputError from '@/Components/InputError';
 import SelectInput from '@/Components/SelectInput';
 import Checkbox from '@/Components/Checkbox';
-import { useState, useEffect, FormEventHandler, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, FormEventHandler, useMemo, useCallback, useRef, type ReactNode } from 'react';
 import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
 import { confirmAction } from '@/utils/confirmDialog';
@@ -43,13 +44,13 @@ import {
     useListModalSaveMessage,
     useSyncFormAfterListReload,
 } from '@/hooks/useListModalEditUrl';
-import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import ImageDownloadButton from '@/Components/ImageDownloadButton';
 import { youtubeThumbUrlFromVideoUrl } from '@/utils/youtube';
 import FeedCaptionBody from '@/Components/News/FeedCaptionBody';
 import FeedPostHeader, { type FeedPostAuthor } from '@/Components/News/FeedPostHeader';
 import NewsCoverImagePicker from '@/Components/News/NewsCoverImagePicker';
 import NewsPdfFilePicker, { PDF_MAX_MB } from '@/Components/News/NewsPdfFilePicker';
+import NewsVideoFilePicker from '@/Components/News/NewsVideoFilePicker';
 import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import InstagramViewLink from '@/Components/News/InstagramViewLink';
 import { InstagramBrandIcon } from '@/Components/SocialBrandIcons';
@@ -152,6 +153,55 @@ function cardSummary(p: NewsPost): string {
         return 'Link para o Instagram';
     }
     return '';
+}
+
+function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <section className="space-y-4">
+            <h3 className="border-b border-zinc-100 pb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:border-zinc-800 dark:text-zinc-500">
+                {title}
+            </h3>
+            {children}
+        </section>
+    );
+}
+
+function LinkField({
+    id,
+    label,
+    value,
+    onChange,
+    error,
+    placeholder,
+    hint,
+}: {
+    id: string;
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    error?: string;
+    placeholder: string;
+    hint: string;
+}) {
+    return (
+        <div>
+            <InputLabel htmlFor={id} value={label} />
+            <TextInput
+                id={id}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="mt-1 block w-full"
+                placeholder={placeholder}
+            />
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{hint}</p>
+            <InputError message={error} className="mt-1" />
+        </div>
+    );
+}
+
+function localDatetimeInputValue(date = new Date()): string {
+    const offsetMs = date.getTimezoneOffset() * 60_000;
+    return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
 export default function Index({ posts, filters, canManage, config }: Props) {
@@ -492,17 +542,31 @@ export default function Index({ posts, filters, canManage, config }: Props) {
     const previewVideoSrc = videoPreviewUrl || (isInstagramFeed && existingVideoUrl ? existingVideoUrl : '');
     const previewHasVideo = Boolean(previewVideoSrc);
 
-    const imageFieldLabel = isInstagramFeed
-        ? 'Imagem (opcional — 1080 × 1350 px, 4:5; capa do vídeo)'
-        : data.content_type === 'image'
-          ? 'Imagem (obrigatória — 16:10)'
-          : isPdf
-            ? 'Capa na lista (opcional — 16:10)'
-          : data.content_type === 'youtube'
-            ? 'Imagem de capa (opcional — 16:10; se vazio, usa miniatura do YouTube)'
-            : isInstagramLink
-              ? 'Imagem de capa (opcional — 16:10)'
-              : 'Imagem de capa (opcional — 16:10)';
+    const coverLabel = isPdf
+        ? 'Capa na lista'
+        : isInstagramFeed
+          ? 'Imagem do feed'
+          : data.content_type === 'image'
+            ? 'Imagem'
+            : 'Imagem de capa';
+    const coverHint = isInstagramFeed
+        ? 'Opcional se enviar vídeo · 4:5 · até 2 MB'
+        : data.content_type === 'youtube'
+          ? 'Opcional · 16:10. Sem capa, usamos a miniatura do YouTube.'
+          : data.content_type === 'image'
+            ? 'Obrigatória · 16:10 · até 2 MB'
+            : 'Opcional · 16:10 · até 2 MB';
+    const coverSpecs = isInstagramFeed ? NEWS_INSTAGRAM_FEED_IMAGE_SPECS : NEWS_STANDARD_COVER_SPECS;
+    const coverAspectClass = isInstagramFeed
+        ? 'mx-auto aspect-[4/5] w-full max-w-[220px]'
+        : 'aspect-[16/10]';
+    const showHasVideoToggle = !isPdf && data.content_type !== 'youtube' && !isInstagramFeed;
+    const isScheduled = Boolean(data.published_at);
+    const youtubeAutoThumb =
+        data.content_type === 'youtube' &&
+        !data.image_file &&
+        !data.image_url.trim() &&
+        Boolean(data.youtube_url.trim());
 
     const bodyLabel = data.content_type === 'article'
         ? 'Conteúdo'
@@ -788,120 +852,113 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                         <h2 className="mb-6 text-lg font-semibold text-zinc-900 dark:text-white">
                             {isEditing ? `Editar ${entityLabel}` : `Nova ${entityLabel}`}
                         </h2>
-                        <div ref={modalScrollRef} className="space-y-4">
-                            <div>
-                                <InputLabel htmlFor="news_content_type" value="Tipo de publicação" />
-                                <SelectInput
-                                    id="news_content_type"
-                                    value={data.content_type}
-                                    className="mt-1"
-                                    onChange={(e) => {
-                                        const next = e.target.value as ContentType;
-                                        setData('content_type', next);
-                                        if (next === 'youtube') {
-                                            setData('has_video', true);
-                                        }
-                                    }}
-                                >
-                                    <option value="article">Artigo (texto)</option>
-                                    <option value="youtube">Vídeo (YouTube)</option>
-                                    <option value="pdf">Documento PDF</option>
-                                    <option value="image">Só imagem</option>
-                                    <option value="instagram_feed">Feed Instagram</option>
-                                    <option value="instagram_link">Link do Instagram</option>
-                                </SelectInput>
-                                {isInstagramFeed && (
-                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Republicação manual: imagem + legenda, exibida em coluna no app (sem ligação à conta
-                                        Instagram). Imagem <strong>1080×1350</strong> (4:5) ou vídeo{' '}
-                                        <strong>1080×1920</strong> (9:16).
-                                    </p>
-                                )}
-                                {isInstagramLink && (
-                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Cole o link do post ou reel e use <strong>Legenda</strong> para o texto completo da
-                                        publicação (até 2.200 caracteres do Instagram).
-                                    </p>
-                                )}
-                                {isPdf && (
-                                    <p className="mt-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs leading-relaxed text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-300">
-                                        Envie o <strong>PDF</strong>, escolha uma <strong>capa</strong> para a lista (opcional) e,
-                                        se quiser, um <strong>texto curto de apresentação</strong>. O conteúdo principal fica no
-                                        documento.
-                                    </p>
-                                )}
-                                <InputError message={errors.content_type} className="mt-1" />
-                            </div>
-                            <div className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-900/40">
-                                <Checkbox
-                                    id="news_has_video"
-                                    checked={data.has_video}
-                                    onChange={(e) => setData('has_video', e.target.checked)}
-                                />
-                                <div className="min-w-0">
-                                    <InputLabel htmlFor="news_has_video" value="Tem vídeo" className="cursor-pointer" />
-                                    <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Marque para mostrar o ícone de play na capa (lista e feed). No detalhe a imagem
-                                        abre completa, sem play.
-                                    </p>
-                                    <InputError message={errors.has_video} className="mt-1" />
+                        <div ref={modalScrollRef} className="space-y-8">
+                            <FormSection title="Conteúdo">
+                                <div>
+                                    <InputLabel htmlFor="news_content_type" value="Tipo" />
+                                    <SelectInput
+                                        id="news_content_type"
+                                        value={data.content_type}
+                                        className="mt-1"
+                                        onChange={(e) => {
+                                            const next = e.target.value as ContentType;
+                                            setData('content_type', next);
+                                            if (next === 'youtube') {
+                                                setData('has_video', true);
+                                            }
+                                        }}
+                                    >
+                                        <option value="article">Artigo (texto)</option>
+                                        <option value="youtube">Vídeo (YouTube)</option>
+                                        <option value="pdf">Documento PDF</option>
+                                        <option value="image">Só imagem</option>
+                                        <option value="instagram_feed">Feed Instagram</option>
+                                        <option value="instagram_link">Link do Instagram</option>
+                                    </SelectInput>
+                                    {isInstagramFeed ? (
+                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                            Imagem ou vídeo no formato do Instagram, com legenda no app.
+                                        </p>
+                                    ) : null}
+                                    {isInstagramLink ? (
+                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                            Cole o link do post ou reel. A legenda aparece no app.
+                                        </p>
+                                    ) : null}
+                                    {isPdf ? (
+                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                            O conteúdo principal fica no PDF. Capa e apresentação são opcionais.
+                                        </p>
+                                    ) : null}
+                                    <InputError message={errors.content_type} className="mt-1" />
                                 </div>
-                            </div>
-                            <div>
-                                <InputLabel htmlFor="title" value="Título" />
-                                <TextInput
-                                    id="title"
-                                    value={data.title}
-                                    onChange={(e) => setData('title', e.target.value)}
-                                    className="mt-1 block w-full"
-                                />
-                                <InputError message={errors.title} className="mt-1" />
-                            </div>
 
-                            {isPdf ? (
-                                <>
+                                <div>
+                                    <InputLabel htmlFor="title" value="Título" />
+                                    <TextInput
+                                        id="title"
+                                        value={data.title}
+                                        onChange={(e) => setData('title', e.target.value)}
+                                        className="mt-1 block w-full"
+                                    />
+                                    <InputError message={errors.title} className="mt-1" />
+                                </div>
+
+                                {isPdf ? (
                                     <NewsPdfFilePicker
                                         file={data.pdf_file}
                                         existingUrl={existingPdfUrl}
                                         error={errors.pdf_file}
                                         onFileChange={(file) => setData('pdf_file', file)}
                                     />
+                                ) : null}
 
-                                    <NewsCoverImagePicker
-                                        label={imageFieldLabel}
-                                        specsId="news_pdf_cover_specs"
-                                        specsText={
-                                            <>
-                                                <span className="font-semibold">Capa no app:</span> {NEWS_STANDARD_COVER_SPECS}
-                                            </>
-                                        }
-                                        imageFile={data.image_file}
-                                        fileThumbUrl={fileThumbUrl}
-                                        imageUrl={data.image_url}
-                                        resolvedThumbSrc={
-                                            data.image_url?.trim() ? imageSrc(data.image_url, appUrl) : ''
-                                        }
-                                        imageUrlError={errors.image_url}
-                                        imageFileError={errors.image_file}
-                                        onImageFileChange={(file) => setData('image_file', file)}
-                                        onImageUrlChange={(url) => setData('image_url', url)}
+                                {isInstagramLink ? (
+                                    <LinkField
+                                        id="instagram_url"
+                                        label="Link do Instagram"
+                                        value={data.instagram_url}
+                                        onChange={(value) => setData('instagram_url', value)}
+                                        error={errors.instagram_url}
+                                        placeholder="https://www.instagram.com/p/… ou …/reel/…"
+                                        hint="Abre o botão «Ver no Instagram» no app."
                                     />
+                                ) : null}
 
+                                {data.content_type === 'youtube' ? (
+                                    <LinkField
+                                        id="youtube_url"
+                                        label="Link do YouTube"
+                                        value={data.youtube_url}
+                                        onChange={(value) => setData('youtube_url', value)}
+                                        error={errors.youtube_url}
+                                        placeholder="https://www.youtube.com/watch?v=… ou https://youtu.be/…"
+                                        hint="Sem capa, o app usa a miniatura do vídeo."
+                                    />
+                                ) : null}
+
+                                {isPdf || !isInstagramFeed ? (
                                     <div>
-                                        <InputLabel htmlFor="excerpt" value="Apresentação (opcional)" />
-                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                            Texto curto que aparece na lista e acima do PDF no app. Deixe vazio se o título
-                                            bastar.
+                                        <InputLabel
+                                            htmlFor="excerpt"
+                                            value={isPdf ? 'Apresentação' : 'Resumo'}
+                                        />
+                                        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                            {isPdf
+                                                ? 'Opcional. Texto curto na lista e acima do PDF.'
+                                                : isInstagramLink
+                                                  ? 'Opcional. Texto curto nos cards. A legenda completa fica abaixo.'
+                                                  : 'Opcional. Aparece nos cards da lista.'}
                                         </p>
                                         <Textarea
                                             id="excerpt"
                                             value={data.excerpt}
                                             maxLength={NEWS_EXCERPT_MAX_LENGTH}
                                             onChange={(e) => setData('excerpt', e.target.value)}
-                                            rows={3}
+                                            rows={isPdf ? 3 : 2}
                                             className="mt-1 block w-full"
                                         />
-                                        {data.excerpt.length > 0 && (
+                                        {data.excerpt.length > 0 ? (
                                             <p
                                                 className={`mt-1 text-xs ${
                                                     data.excerpt.length > NEWS_EXCERPT_MAX_LENGTH
@@ -912,273 +969,192 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                                 {data.excerpt.length.toLocaleString('pt-BR')} /{' '}
                                                 {NEWS_EXCERPT_MAX_LENGTH.toLocaleString('pt-BR')} caracteres
                                             </p>
-                                        )}
+                                        ) : null}
                                         <InputError message={errors.excerpt} className="mt-1" />
                                     </div>
-                                </>
-                            ) : (
-                                <>
-                            {isInstagramLink && (
-                                <div>
-                                    <InputLabel htmlFor="instagram_url" value="Link do Instagram" />
-                                    <TextInput
-                                        id="instagram_url"
-                                        value={data.instagram_url}
-                                        onChange={(e) => setData('instagram_url', e.target.value)}
-                                        className="mt-1 block w-full"
-                                        placeholder="https://www.instagram.com/p/… ou …/reel/…"
-                                    />
-                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Cole o link do post, reel ou IGTV. Na app, aparecerá o botão «Ver no Instagram».
-                                    </p>
-                                    <InputError message={errors.instagram_url} className="mt-1" />
-                                </div>
-                            )}
+                                ) : null}
 
-                            {!isInstagramFeed && (
-                                <div>
-                                    <InputLabel htmlFor="excerpt" value="Resumo (opcional)" />
-                                    {isInstagramLink && (
-                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                            Texto curto para listas e cards. Para a legenda completa, use o campo Legenda
-                                            abaixo.
-                                        </p>
-                                    )}
-                                    <Textarea
-                                        id="excerpt"
-                                        value={data.excerpt}
-                                        maxLength={NEWS_EXCERPT_MAX_LENGTH}
-                                        onChange={(e) => setData('excerpt', e.target.value)}
-                                        rows={2}
-                                        className="mt-1 block w-full"
-                                    />
-                                    {data.excerpt.length > 0 && (
-                                        <p
-                                            className={`mt-1 text-xs ${
-                                                data.excerpt.length > NEWS_EXCERPT_MAX_LENGTH
-                                                    ? 'font-medium text-red-600 dark:text-red-400'
-                                                    : 'text-zinc-500 dark:text-zinc-400'
-                                            }`}
-                                        >
-                                            {data.excerpt.length.toLocaleString('pt-BR')} /{' '}
-                                            {NEWS_EXCERPT_MAX_LENGTH.toLocaleString('pt-BR')} caracteres
-                                        </p>
-                                    )}
-                                    <InputError message={errors.excerpt} className="mt-1" />
-                                </div>
-                            )}
-
-                            {data.content_type === 'youtube' && (
-                                <div>
-                                    <InputLabel htmlFor="youtube_url" value="Link do YouTube" />
-                                    <TextInput
-                                        id="youtube_url"
-                                        value={data.youtube_url}
-                                        onChange={(e) => setData('youtube_url', e.target.value)}
-                                        className="mt-1 block w-full"
-                                        placeholder="https://www.youtube.com/watch?v=… ou https://youtu.be/…"
-                                    />
-                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Se não enviar imagem de capa, usamos automaticamente a miniatura do vídeo.
-                                    </p>
-                                    <InputError message={errors.youtube_url} className="mt-1" />
-                                </div>
-                            )}
-
-                            {showBodyField && (
-                            <div>
-                                <InputLabel htmlFor="body" value={bodyLabel} />
-                                <Textarea
-                                    id="body"
-                                    value={data.body}
-                                    onChange={(e) => setData('body', e.target.value)}
-                                    rows={bodyRows}
-                                    className="mt-1 block w-full"
-                                />
-                                {(isInstagramFeed || isInstagramLink) && (
-                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Use <kbd className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">Enter</kbd> para
-                                        nova linha na legenda (o app respeita as quebras).
-                                    </p>
-                                )}
-                                <InputError message={errors.body} className="mt-1" />
-                                {data.content_type === 'article' && data.body.length > 0 && (
-                                    <p
-                                        className={`mt-1 text-xs ${
-                                            data.body.length > NEWS_BODY_MAX_LENGTH
-                                                ? 'font-medium text-red-600 dark:text-red-400'
-                                                : 'text-zinc-500 dark:text-zinc-400'
-                                        }`}
-                                    >
-                                        {data.body.length.toLocaleString('pt-BR')} /{' '}
-                                        {NEWS_BODY_MAX_LENGTH.toLocaleString('pt-BR')} caracteres
-                                    </p>
-                                )}
-                            </div>
-                            )}
-
-                            <div>
-                                <InputLabel htmlFor="image_url" value={imageFieldLabel} />
-                                {isInstagramFeed ? (
-                                    <p
-                                        id="instagram_feed_image_specs"
-                                        className="mt-1.5 rounded-xl border border-amber-200/80 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-100"
-                                    >
-                                        <span className="font-semibold">Imagem:</span> {NEWS_INSTAGRAM_FEED_IMAGE_SPECS}
-                                    </p>
-                                ) : (
-                                    <p
-                                        id="news_cover_specs"
-                                        className="mt-1.5 rounded-xl border border-teal-200/80 bg-teal-50 px-3 py-2 text-xs leading-relaxed text-teal-950 dark:border-teal-900/50 dark:bg-teal-950/35 dark:text-teal-100"
-                                    >
-                                        <span className="font-semibold">Capa no app:</span> {NEWS_STANDARD_COVER_SPECS}
-                                    </p>
-                                )}
-                                <div className="mt-1 space-y-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-200 dark:bg-zinc-800">
-                                            {data.image_file && fileThumbUrl ? (
-                                                <img
-                                                    src={fileThumbUrl}
-                                                    alt=""
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            ) : data.image_url ? (
-                                                <img
-                                                    src={imageSrc(data.image_url, appUrl)}
-                                                    alt=""
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            ) : data.content_type === 'youtube' && data.youtube_url?.trim() ? (
-                                                <img
-                                                    src={youtubeThumbUrlFromVideoUrl(data.youtube_url.trim()) ?? ''}
-                                                    alt=""
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            ) : (
-                                                <PhotoIcon className="h-5 w-5 text-zinc-500" />
-                                            )}
-                                        </div>
-                                        <div className="min-w-0 flex-1 space-y-2">
-                                            <input
-                                                id="image_file"
-                                                type="file"
-                                                accept={isInstagramFeed ? 'image/jpeg,image/png,image/webp' : GALLERY_IMAGE_ACCEPT}
-                                                aria-describedby={
-                                                    isInstagramFeed ? 'instagram_feed_image_specs' : 'news_cover_specs'
-                                                }
-                                                onChange={(e) => {
-                                                    const file = e.target.files?.[0] ?? null;
-                                                    setData('image_file', file);
-                                                }}
-                                                className="block w-full text-sm text-zinc-900 file:mr-4 file:rounded-full file:border-0 file:bg-zinc-900 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-900"
-                                            />
-                                            <TextInput
-                                                id="image_url"
-                                                value={data.image_url}
-                                                onChange={(e) => setData('image_url', e.target.value)}
-                                                className="block w-full"
-                                                placeholder="Ou cole uma URL https://…"
-                                            />
-                                        </div>
+                                {showBodyField ? (
+                                    <div>
+                                        <InputLabel htmlFor="body" value={bodyLabel} />
+                                        <Textarea
+                                            id="body"
+                                            value={data.body}
+                                            onChange={(e) => setData('body', e.target.value)}
+                                            rows={bodyRows}
+                                            className="mt-1 block w-full"
+                                        />
+                                        {isInstagramFeed || isInstagramLink ? (
+                                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                Enter cria nova linha na legenda.
+                                            </p>
+                                        ) : null}
+                                        <InputError message={errors.body} className="mt-1" />
+                                        {data.content_type === 'article' && data.body.length > 0 ? (
+                                            <p
+                                                className={`mt-1 text-xs ${
+                                                    data.body.length > NEWS_BODY_MAX_LENGTH
+                                                        ? 'font-medium text-red-600 dark:text-red-400'
+                                                        : 'text-zinc-500 dark:text-zinc-400'
+                                                }`}
+                                            >
+                                                {data.body.length.toLocaleString('pt-BR')} /{' '}
+                                                {NEWS_BODY_MAX_LENGTH.toLocaleString('pt-BR')} caracteres
+                                            </p>
+                                        ) : null}
                                     </div>
-                                    <InputError message={errors.image_url} className="mt-1" />
-                                    <InputError message={errors.image_file} className="mt-1" />
-                                </div>
-                            </div>
+                                ) : null}
+                            </FormSection>
 
-                            {isInstagramFeed && (
-                                <div>
-                                    <InputLabel htmlFor="instagram_url_feed" value="Link no Instagram (opcional)" />
-                                    <TextInput
-                                        id="instagram_url_feed"
-                                        value={data.instagram_url}
-                                        onChange={(e) => setData('instagram_url', e.target.value)}
-                                        className="mt-1 block w-full"
-                                        placeholder="https://www.instagram.com/p/… ou …/reel/…"
-                                    />
-                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Se a publicação original estiver no Instagram, cole o link para exibir o botão
-                                        «Ver no Instagram» na app (além da imagem ou vídeo enviados acima).
-                                    </p>
-                                    <InputError message={errors.instagram_url} className="mt-1" />
-                                </div>
-                            )}
+                            <FormSection title="Mídia">
+                                <NewsCoverImagePicker
+                                    label={coverLabel}
+                                    hint={coverHint}
+                                    specsId={isInstagramFeed ? 'instagram_feed_image_specs' : 'news_cover_specs'}
+                                    specsText={coverSpecs}
+                                    imageFile={data.image_file}
+                                    fileThumbUrl={fileThumbUrl}
+                                    imageUrl={data.image_url}
+                                    resolvedThumbSrc={previewThumbSrc}
+                                    autoThumbLabel={youtubeAutoThumb ? 'Miniatura do YouTube' : null}
+                                    imageUrlError={errors.image_url}
+                                    imageFileError={errors.image_file}
+                                    accept={isInstagramFeed ? 'image/jpeg,image/png,image/webp' : undefined}
+                                    previewAspectClass={coverAspectClass}
+                                    onImageFileChange={(file) => setData('image_file', file)}
+                                    onImageUrlChange={(url) => setData('image_url', url)}
+                                />
 
-                            {!isInstagramFeed && !isInstagramLink && (
-                                <div>
-                                    <InputLabel htmlFor="instagram_url_optional" value="Link no Instagram (opcional)" />
-                                    <TextInput
-                                        id="instagram_url_optional"
-                                        value={data.instagram_url}
-                                        onChange={(e) => setData('instagram_url', e.target.value)}
-                                        className="mt-1 block w-full"
-                                        placeholder="https://www.instagram.com/p/… ou …/reel/…"
-                                    />
-                                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                        Se houver publicação no Instagram, a app mostra o botão «Ver no Instagram».
-                                    </p>
-                                    <InputError message={errors.instagram_url} className="mt-1" />
-                                </div>
-                            )}
+                                {showHasVideoToggle ? (
+                                    <div>
+                                        <label
+                                            htmlFor="news_has_video"
+                                            className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-700 dark:text-zinc-300"
+                                        >
+                                            <Checkbox
+                                                id="news_has_video"
+                                                checked={data.has_video}
+                                                onChange={(e) => setData('has_video', e.target.checked)}
+                                            />
+                                            Mostrar ícone de play na capa
+                                        </label>
+                                        <InputError message={errors.has_video} className="mt-1" />
+                                    </div>
+                                ) : null}
 
-                            {isInstagramFeed && (
-                                <div>
-                                    <InputLabel htmlFor="video_file" value="Vídeo do post (opcional — 1080 × 1920 px, 9:16)" />
-                                    <p
-                                        id="instagram_feed_video_specs"
-                                        className="mt-1.5 rounded-xl border border-violet-200/80 bg-violet-50 px-3 py-2 text-xs leading-relaxed text-violet-950 dark:border-violet-900/50 dark:bg-violet-950/35 dark:text-violet-100"
-                                    >
-                                        <span className="font-semibold">Tamanho do vídeo:</span> {NEWS_INSTAGRAM_FEED_VIDEO_SPECS}
-                                    </p>
-                                    <input
-                                        id="video_file"
-                                        type="file"
-                                        accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
-                                        aria-describedby="instagram_feed_video_specs"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0] ?? null;
+                                {isInstagramFeed ? (
+                                    <NewsVideoFilePicker
+                                        file={data.video_file}
+                                        existingUrl={existingVideoUrl}
+                                        previewUrl={videoPreviewUrl}
+                                        error={errors.video_file}
+                                        hint="Opcional · 9:16 · até 50 MB"
+                                        specsText={NEWS_INSTAGRAM_FEED_VIDEO_SPECS}
+                                        onFileChange={(file) => {
                                             setData('video_file', file);
                                             if (file) {
                                                 setData('has_video', true);
                                             }
                                         }}
-                                        className="mt-2 block w-full text-sm text-zinc-900 file:mr-4 file:rounded-full file:border-0 file:bg-zinc-900 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:file:bg-zinc-800 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-900"
                                     />
-                                    {existingVideoUrl && !data.video_file && (
-                                        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                            Vídeo atual mantido. Envie um novo arquivo para substituir.
-                                        </p>
-                                    )}
-                                    <InputError message={errors.video_file} className="mt-1" />
+                                ) : null}
+
+                                {isInstagramFeed ? (
+                                    <LinkField
+                                        id="instagram_url_feed"
+                                        label="Link no Instagram"
+                                        value={data.instagram_url}
+                                        onChange={(value) => setData('instagram_url', value)}
+                                        error={errors.instagram_url}
+                                        placeholder="https://www.instagram.com/p/… ou …/reel/…"
+                                        hint="Opcional. Mostra o botão «Ver no Instagram»."
+                                    />
+                                ) : null}
+
+                                {!isPdf && !isInstagramFeed && !isInstagramLink ? (
+                                    <details className="group">
+                                        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 [&::-webkit-details-marker]:hidden">
+                                            <ChevronDownIcon className="h-4 w-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-180" aria-hidden />
+                                            Link do Instagram
+                                            {data.instagram_url.trim() ? (
+                                                <span className="font-normal text-zinc-500 dark:text-zinc-400">adicionado</span>
+                                            ) : (
+                                                <span className="font-normal text-zinc-400 dark:text-zinc-500">opcional</span>
+                                            )}
+                                        </summary>
+                                        <div className="mt-2">
+                                            <TextInput
+                                                id="instagram_url_optional"
+                                                value={data.instagram_url}
+                                                onChange={(e) => setData('instagram_url', e.target.value)}
+                                                className="block w-full"
+                                                placeholder="https://www.instagram.com/p/… ou …/reel/…"
+                                            />
+                                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                Mostra o botão «Ver no Instagram» no app.
+                                            </p>
+                                            <InputError message={errors.instagram_url} className="mt-1" />
+                                        </div>
+                                    </details>
+                                ) : null}
+                            </FormSection>
+
+                            <FormSection title="Publicação">
+                                <div>
+                                    <InputLabel htmlFor="published_at" value="Quando publicar" />
+                                    {!isEditing ? (
+                                        <div className="mt-1.5 flex rounded-2xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-700 dark:bg-zinc-900/50">
+                                            <button
+                                                type="button"
+                                                onClick={() => setData('published_at', '')}
+                                                className={`flex-1 cursor-pointer rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                                                    !isScheduled
+                                                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white'
+                                                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                                }`}
+                                            >
+                                                Agora
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!data.published_at) {
+                                                        setData('published_at', localDatetimeInputValue());
+                                                    }
+                                                }}
+                                                className={`flex-1 cursor-pointer rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                                                    isScheduled
+                                                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white'
+                                                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                                }`}
+                                            >
+                                                Agendar
+                                            </button>
+                                        </div>
+                                    ) : null}
+                                    {isEditing || isScheduled ? (
+                                        <TextInput
+                                            id="published_at"
+                                            type="datetime-local"
+                                            value={data.published_at}
+                                            onChange={(e) => setData('published_at', e.target.value)}
+                                            className="mt-2 block w-full"
+                                        />
+                                    ) : null}
+                                    <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                        {isEditing
+                                            ? 'Altere a data se quiser reagendar.'
+                                            : isScheduled
+                                              ? 'Só aparece no app a partir desta data e hora.'
+                                              : 'Aparece no app assim que você publicar.'}
+                                    </p>
+                                    <InputError message={errors.published_at} className="mt-1" />
                                 </div>
-                            )}
-
-                                </>
-                            )}
-
-                            <div>
-                                <InputLabel
-                                    htmlFor="published_at"
-                                    value="Data de publicação (vazio = publicar agora)"
-                                />
-                                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                    Se escolher uma data no futuro, a publicação só vai aparecer no app a partir dessa data.
-                                    Para remover do app sem apagar, use o botão <strong>Ativar/Desativar</strong> na lista.
-                                </p>
-                                <TextInput
-                                    id="published_at"
-                                    type="datetime-local"
-                                    value={data.published_at}
-                                    onChange={(e) => setData('published_at', e.target.value)}
-                                    className="mt-1 block w-full"
-                                />
-                                <InputError message={errors.published_at} className="mt-1" />
-                            </div>
+                            </FormSection>
                         </div>
-                        <div className="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-                                Pré-visualização (app)
+                        <div className="mt-8 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+                            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                                Como fica no app
                             </p>
                             <div className={`max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 ${isInstagramFeed ? 'max-w-xs' : ''}`}>
                                 {isInstagramFeed && (

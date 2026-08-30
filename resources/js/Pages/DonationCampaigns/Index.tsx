@@ -6,9 +6,7 @@ import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
-import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -101,6 +99,12 @@ const statusLabels: Record<string, string> = {
     active: 'Ativa',
     closed: 'Encerrada',
     archived: 'Arquivada',
+};
+
+const statusBadgeClasses: Record<string, string> = {
+    active: 'bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200',
+    closed: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
+    archived: 'bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200',
 };
 
 export default function DonationCampaignsIndex({ campaigns, canManage, canManageMedia, canManageDonations = canManageMedia }: Props) {
@@ -533,50 +537,89 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                 }
             />
 
-            <div className="space-y-4">
-                {campaigns.length === 0 ? (
-                    <div className="rounded-2xl border border-zinc-200 bg-white py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
-                        <BanknotesIcon className="mx-auto mb-4 h-10 w-10 text-zinc-400" />
-                        <p className="font-medium text-zinc-600 dark:text-zinc-400">Nenhuma campanha cadastrada</p>
-                        {canManage && (
-                            <AddButton variant="icon" onClick={openCreateModal} className="mt-4" title="Nova campanha">
-                                Nova campanha
-                            </AddButton>
-                        )}
-                    </div>
-                ) : (
-                    campaigns.map((campaign) => {
+            {campaigns.length === 0 ? (
+                <div className="rounded-2xl border border-zinc-200 bg-white py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
+                    <BanknotesIcon className="mx-auto mb-4 h-10 w-10 text-zinc-400" />
+                    <p className="font-medium text-zinc-600 dark:text-zinc-400">Nenhuma campanha cadastrada</p>
+                    {canManage && (
+                        <AddButton variant="icon" onClick={openCreateModal} className="mt-4" title="Nova campanha">
+                            Nova campanha
+                        </AddButton>
+                    )}
+                </div>
+            ) : (
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    {campaigns.map((campaign) => {
                         const progress = progressForCampaign(campaign);
+                        const isStoryCampaign = campaign.show_caixa_fixo_story || campaign.show_construcao_story;
+                        const canDelete = canManage && !isStoryCampaign;
+                        const metaParts: string[] = [];
+                        if (!isStoryCampaign || campaign.donations_count > 0) {
+                            metaParts.push(
+                                campaign.donations_count === 1
+                                    ? '1 contribuição'
+                                    : `${campaign.donations_count} contribuições`,
+                            );
+                        }
+                        if (campaign.story_photos.length > 0) {
+                            metaParts.push(
+                                campaign.story_photos.length === 1
+                                    ? '1 foto do projeto'
+                                    : `${campaign.story_photos.length} fotos do projeto`,
+                            );
+                        }
+                        if (campaign.starts_at) {
+                            metaParts.push(`Início: ${formatCampaignDate(campaign.starts_at)}`);
+                        }
+                        if (campaign.ends_at) {
+                            metaParts.push(`Prazo: ${formatCampaignDate(campaign.ends_at)}`);
+                        }
+
                         return (
                         <article
                             key={campaign.id}
-                            className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
+                            className="flex h-full min-w-0 flex-col rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900 sm:p-4"
                         >
                             <button
                                 type="button"
                                 onClick={() => setPreviewCampaign(campaign)}
-                                className="flex w-full cursor-pointer flex-col gap-4 rounded-xl text-left transition hover:bg-zinc-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-zinc-800/40 sm:flex-row sm:items-start sm:justify-between"
+                                className="flex w-full min-w-0 flex-1 cursor-pointer flex-col gap-2.5 rounded-xl text-left transition hover:bg-zinc-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-zinc-800/40"
                             >
-                                <div className="min-w-0 flex-1 space-y-3">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{campaign.title}</h2>
-                                        <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                {campaign.cover_image_url ? (
+                                    <img
+                                        src={campaign.cover_image_url}
+                                        alt=""
+                                        className="h-24 w-full shrink-0 rounded-xl object-cover sm:h-28"
+                                    />
+                                ) : null}
+                                <div className="min-w-0 flex-1 space-y-2">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <h2 className="text-sm font-semibold leading-snug text-zinc-900 dark:text-white sm:text-base">
+                                            {campaign.title}
+                                        </h2>
+                                        <span
+                                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium sm:text-xs ${
+                                                statusBadgeClasses[campaign.status] ?? statusBadgeClasses.closed
+                                            }`}
+                                        >
                                             {statusLabels[campaign.status] ?? campaign.status}
                                         </span>
                                     </div>
-                                    {campaign.description && (
-                                        <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">{campaign.description}</p>
-                                    )}
-                                    {campaign.show_caixa_fixo_story && (
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">
+                                    {campaign.description ? (
+                                        <p className="hidden text-xs text-zinc-600 line-clamp-2 dark:text-zinc-400 sm:block">
+                                            {campaign.description}
+                                        </p>
+                                    ) : null}
+                                    {campaign.show_caixa_fixo_story ? (
+                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300 sm:text-xs">
                                             {progress.monthTitle ?? caixaFixoMonthlyProgressLabels().monthTitle}
                                         </p>
-                                    )}
-                                    {campaign.show_construcao_story && (
-                                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                    ) : null}
+                                    {campaign.show_construcao_story ? (
+                                        <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 sm:text-xs">
                                             História da Construção ativa
                                         </p>
-                                    )}
+                                    ) : null}
                                     <DonationProgressBar
                                         raisedAmount={progress.raised}
                                         goalAmount={progress.goal}
@@ -584,69 +627,61 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                         progressPercent={progress.percent}
                                         raisedLabel={progress.raisedLabel}
                                         remainingLabel={progress.remainingLabel}
+                                        size="sm"
                                     />
-                                    <p className="text-xs text-zinc-500">
-                                        {campaign.donations_count} contribuição(ões)
-                                        {campaign.story_photos.length > 0 ? ` · ${campaign.story_photos.length} foto(s) do projeto` : ''}
-                                        {campaign.starts_at ? ` · Início: ${formatCampaignDate(campaign.starts_at)}` : ''}
-                                        {campaign.ends_at ? ` · Prazo: ${formatCampaignDate(campaign.ends_at)}` : ''}
-                                    </p>
+                                    {metaParts.length > 0 ? (
+                                        <p className="text-[10px] leading-snug text-zinc-500 dark:text-zinc-400 sm:text-xs">
+                                            {metaParts.join(' · ')}
+                                        </p>
+                                    ) : null}
                                 </div>
-                                {campaign.cover_image_url && (
-                                    <img
-                                        src={campaign.cover_image_url}
-                                        alt=""
-                                        className="h-24 w-24 shrink-0 rounded-xl object-cover"
-                                    />
-                                )}
                             </button>
-                            <ListCardActionRow className="mt-4">
-                                <ListCardTextActionButton
-                                    type="button"
-                                    icon={<DocumentTextIcon className="h-4 w-4" />}
+                            <div className="mt-2 flex flex-wrap items-center justify-start gap-0.5 border-t border-zinc-100 pt-1.5 dark:border-zinc-800 sm:mt-3 sm:pt-2">
+                                <ListCardIconActionButton
+                                    label="Ver conteúdo"
+                                    className="min-h-10 min-w-10 p-2 sm:min-h-9 sm:min-w-9"
+                                    icon={<DocumentTextIcon className="h-5 w-5" />}
                                     onClick={() => setPreviewCampaign(campaign)}
-                                >
-                                    Ver conteúdo
-                                </ListCardTextActionButton>
-                                <ListCardTextActionButton
-                                    type="button"
-                                    icon={<EyeIcon className="h-4 w-4" />}
+                                />
+                                <ListCardIconActionButton
+                                    label="Contribuições"
+                                    className="min-h-10 min-w-10 p-2 sm:min-h-9 sm:min-w-9"
+                                    icon={<EyeIcon className="h-5 w-5" />}
                                     onClick={() => openDonations(campaign)}
-                                >
-                                    Contribuições
-                                </ListCardTextActionButton>
-                                {canManageMedia && (
-                                    <ListCardTextActionButton
-                                        type="button"
-                                        icon={<PhotoIcon className="h-4 w-4" />}
+                                />
+                                {canManageMedia ? (
+                                    <ListCardIconActionButton
+                                        label="Fotos do projeto"
+                                        className="min-h-10 min-w-10 p-2 sm:min-h-9 sm:min-w-9"
+                                        icon={<PhotoIcon className="h-5 w-5" />}
                                         onClick={() => openMediaModal(campaign)}
-                                    >
-                                        Fotos do projeto
-                                    </ListCardTextActionButton>
-                                )}
-                                {canManage && (
+                                    />
+                                ) : null}
+                                {canManage ? (
                                     <>
                                         <ListCardIconActionButton
                                             label="Editar"
+                                            className="min-h-10 min-w-10 p-2 sm:min-h-9 sm:min-w-9"
                                             icon={<PencilIcon className="h-5 w-5" />}
                                             onClick={() => openEditModal(campaign)}
                                         />
-                                        {!campaign.show_caixa_fixo_story && !campaign.show_construcao_story ? (
+                                        {canDelete ? (
                                             <ListCardIconActionButton
                                                 label="Excluir"
+                                                className="min-h-10 min-w-10 p-2 sm:min-h-9 sm:min-w-9"
                                                 icon={<TrashIcon className="h-5 w-5" />}
                                                 tone="danger"
                                                 onClick={() => handleDelete(campaign)}
                                             />
                                         ) : null}
                                     </>
-                                )}
-                            </ListCardActionRow>
+                                ) : null}
+                            </div>
                         </article>
                         );
-                    })
-                )}
-            </div>
+                    })}
+                </div>
+            )}
 
             <Modal show={previewCampaign !== null} onClose={() => setPreviewCampaign(null)} maxWidth="3xl">
                 <div className="flex max-h-[min(90dvh,calc(100dvh-2rem))] flex-col">

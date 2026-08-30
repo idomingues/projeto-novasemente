@@ -72,6 +72,19 @@ function writeLastReading(value: { bookKey: string; chapter: number }) {
     }
 }
 
+/** Rola o `main` do shell até o elemento, abaixo da topbar (padding-top do main). */
+function scrollToInMain(el: HTMLElement, behavior: ScrollBehavior = 'smooth') {
+    const main = el.closest('main');
+    if (!(main instanceof HTMLElement)) {
+        el.scrollIntoView({ behavior, block: 'start' });
+        return;
+    }
+
+    const padTop = parseFloat(window.getComputedStyle(main).paddingTop) || 0;
+    const delta = el.getBoundingClientRect().top - main.getBoundingClientRect().top - padTop;
+    main.scrollTo({ top: Math.max(0, main.scrollTop + delta), behavior });
+}
+
 export default function MobileBible({ books, initial }: Props) {
     const [testament, setTestament] = useState<Testament>(initial?.book.testament ?? 'old');
     const [selectedBook, setSelectedBook] = useState<BibleBook | null>(() => {
@@ -90,6 +103,7 @@ export default function MobileBible({ books, initial }: Props) {
     const searchSeq = useRef(0);
     const searchDebounce = useRef<number | null>(null);
     const readerCardRef = useRef<HTMLDivElement | null>(null);
+    const pendingScrollRef = useRef<{ toTitle: boolean; verse: number | null } | null>(null);
     const [focusedVerse, setFocusedVerse] = useState<number | null>(null);
 
     const booksByTestament = useMemo(() => {
@@ -118,17 +132,36 @@ export default function MobileBible({ books, initial }: Props) {
         window.history.replaceState(null, '', url);
     }, [selectedBook, chapter]);
 
-    const scrollToReader = () => {
+    const scrollToChapterTitle = () => {
         const el = readerCardRef.current;
         if (!el) return;
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scrollToInMain(el);
     };
 
     const scrollToVerse = (verse: number) => {
         const el = document.getElementById(`bible-verse-${verse}`);
         if (!el) return;
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scrollToInMain(el);
     };
+
+    useEffect(() => {
+        const pending = pendingScrollRef.current;
+        if (!pending) return;
+        pendingScrollRef.current = null;
+
+        const run = () => {
+            if (pending.verse && Number.isFinite(pending.verse) && pending.verse > 0) {
+                scrollToVerse(pending.verse);
+                return;
+            }
+            if (pending.toTitle) {
+                scrollToChapterTitle();
+            }
+        };
+
+        // Dois RAFs: espera o React pintar o título/versículos no DOM.
+        requestAnimationFrame(() => requestAnimationFrame(run));
+    }, [verses, chapter, selectedBook?.key]);
 
     const loadChapter = async (
         bookKey: string,
@@ -157,17 +190,11 @@ export default function MobileBible({ books, initial }: Props) {
                 writeLastReading({ bookKey: book.key, chapter: Number(data.chapter ?? chap) });
             }
 
-            // Espera o React pintar o novo capítulo antes de subir/posicionar.
-            requestAnimationFrame(() => {
-                if (opts?.scrollToReader) {
-                    scrollToReader();
-                }
-                const v = typeof opts?.focusVerse === 'number' ? opts.focusVerse : null;
-                if (v && Number.isFinite(v) && v > 0) {
-                    // 2 RAFs para garantir que o DOM do map(verses) já foi montado.
-                    requestAnimationFrame(() => scrollToVerse(v));
-                }
-            });
+            const v = typeof opts?.focusVerse === 'number' ? opts.focusVerse : null;
+            pendingScrollRef.current = {
+                toTitle: Boolean(opts?.scrollToReader),
+                verse: v && Number.isFinite(v) && v > 0 ? v : null,
+            };
         } catch {
             if (seq !== requestSeq.current) return;
             setStatus('error');
@@ -184,8 +211,11 @@ export default function MobileBible({ books, initial }: Props) {
 
     const onSelectChapter = (chap: number) => {
         if (!selectedBook) return;
-        if (chap === chapter) return;
         setFocusedVerse(null);
+        if (chap === chapter && verses.length > 0) {
+            scrollToChapterTitle();
+            return;
+        }
         loadChapter(selectedBook.key, chap, { scrollToReader: true });
     };
 
@@ -431,12 +461,15 @@ export default function MobileBible({ books, initial }: Props) {
 
                         <div
                             ref={readerCardRef}
-                            className="rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4"
+                            className="scroll-mt-24 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4"
                         >
                             <div className="flex items-center justify-between gap-2">
-                                <p className="font-semibold text-zinc-900 dark:text-white">
+                                <h2
+                                    id="bible-chapter-title"
+                                    className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white"
+                                >
                                     {selectedBook.name} {chapter}
-                                </p>
+                                </h2>
                                 {status === 'loading' ? (
                                     <p className="text-sm text-zinc-500 dark:text-zinc-400">A carregar…</p>
                                 ) : status === 'error' ? (

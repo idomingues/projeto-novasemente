@@ -62,6 +62,38 @@ class MissionHubTest extends TestCase
                 ->where('events.0.title', 'Encontro missionário'));
     }
 
+    public function test_mobile_mission_events_hides_past_dates(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        MissionEvent::create([
+            'church_id' => $church->id,
+            'title' => 'Sent Care',
+            'description' => 'Cantar no hospital (sábado).',
+            'starts_at' => now()->subDays(5)->startOfDay(),
+            'all_day' => true,
+        ]);
+
+        MissionEvent::create([
+            'church_id' => $church->id,
+            'title' => 'Ação Kids — Sent Quiz 2026',
+            'starts_at' => now()->addDays(10)->startOfDay(),
+            'all_day' => true,
+        ]);
+
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.mission.events'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/MissionEvents')
+                ->has('events', 1)
+                ->where('events.0.title', 'Ação Kids — Sent Quiz 2026')
+                ->where('events', fn ($events) => collect($events)->every(
+                    fn ($event) => $event['title'] !== 'Sent Care',
+                )));
+    }
+
     public function test_mission_day_inherits_description_from_sibling_event_on_mobile(): void
     {
         $this->seed(ChurchSeeder::class);
@@ -71,7 +103,7 @@ class MissionHubTest extends TestCase
             'church_id' => $church->id,
             'title' => 'Mission Day Nova Semente - Teste NS',
             'description' => 'Programação especial com todas as informações para o público.',
-            'starts_at' => '2026-05-27 00:00:00',
+            'starts_at' => now()->addWeeks(2)->startOfDay(),
             'all_day' => true,
         ]);
 
@@ -79,7 +111,7 @@ class MissionHubTest extends TestCase
             'church_id' => $church->id,
             'title' => 'Mission Day',
             'description' => null,
-            'starts_at' => '2026-06-14 00:00:00',
+            'starts_at' => now()->addWeeks(4)->startOfDay(),
             'all_day' => true,
         ]);
 
@@ -104,7 +136,7 @@ class MissionHubTest extends TestCase
             'title' => 'Mission Day Nova Semente - Teste NS',
             'color' => '#D97706',
             'image_url' => '/media/events/mission-day.jpg',
-            'starts_at' => '2026-05-27 00:00:00',
+            'starts_at' => now()->addWeeks(2)->startOfDay(),
             'all_day' => true,
         ]);
 
@@ -112,7 +144,7 @@ class MissionHubTest extends TestCase
             'church_id' => $church->id,
             'title' => 'Mission Day',
             'color' => '#0D9488',
-            'starts_at' => '2026-06-14 00:00:00',
+            'starts_at' => now()->addWeeks(4)->startOfDay(),
             'all_day' => true,
         ]);
 
@@ -136,7 +168,7 @@ class MissionHubTest extends TestCase
             'church_id' => $church->id,
             'title' => 'Mission Day Nova Semente - Teste NS',
             'color' => '#D97706',
-            'starts_at' => '2026-05-27 00:00:00',
+            'starts_at' => now()->addWeeks(2)->startOfDay(),
             'all_day' => true,
         ]);
 
@@ -144,7 +176,7 @@ class MissionHubTest extends TestCase
             'church_id' => $church->id,
             'title' => 'Mission Day',
             'color' => '#EA580C',
-            'starts_at' => '2026-06-14 00:00:00',
+            'starts_at' => now()->addWeeks(4)->startOfDay(),
             'all_day' => true,
         ]);
 

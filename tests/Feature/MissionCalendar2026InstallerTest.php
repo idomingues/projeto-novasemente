@@ -34,12 +34,20 @@ class MissionCalendar2026InstallerTest extends TestCase
 
         $this->artisan('mission:seed-calendar-2026')->assertSuccessful();
 
+        $upcomingCount = MissionEvent::query()
+            ->where('church_id', $church->id)
+            ->missionCalendar2026()
+            ->upcoming()
+            ->count();
+
+        $this->assertGreaterThan(0, $upcomingCount);
+
         $this->withSession(['working_church_id' => $church->id])
             ->get(route('mobile.mission.events'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Mobile/MissionEvents')
-                ->has('events', count(NovaSementeMissionCalendar2026::events())));
+                ->has('events', $upcomingCount));
     }
 
     public function test_installer_updates_mission_day_description_from_seed_package(): void

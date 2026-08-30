@@ -35,7 +35,7 @@ function Verse({ text, reference }: { text: string; reference: string }) {
             <p className="text-[15px] font-medium leading-relaxed text-zinc-800 dark:text-zinc-100">
                 &ldquo;{text}&rdquo;
             </p>
-            <footer className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300">
+            <footer className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-300">
                 {reference}
             </footer>
         </blockquote>
@@ -44,7 +44,7 @@ function Verse({ text, reference }: { text: string; reference: string }) {
 
 function CircleIcon({ icon: Icon }: { icon: LineIcon }) {
     return (
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-sky-600 shadow-sm ring-1 ring-sky-200/90 dark:bg-zinc-950 dark:text-sky-300 dark:ring-sky-800/70">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-brand-600 shadow-sm ring-1 ring-brand-200/90 dark:bg-zinc-950 dark:text-brand-300 dark:ring-brand-800/70">
             <Icon className="h-5 w-5" aria-hidden strokeWidth={1.6} />
         </span>
     );
@@ -69,12 +69,12 @@ export default function DizimoPactoStory() {
             </section>
 
             <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800 sm:p-6">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
                     {DIZIMO_PACTO_INTRO.eyebrow}
                 </p>
                 <h2 className="mt-1.5 text-[1.65rem] font-semibold leading-tight tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
                     Uma vida de{' '}
-                    <span className="text-sky-600 dark:text-sky-300">fidelidade</span>, gratidão e missão
+                    <span className="text-brand-600 dark:text-brand-300">fidelidade</span>, gratidão e missão
                 </h2>
                 <div className="mt-4 space-y-3 text-[15px] leading-relaxed text-zinc-600 dark:text-zinc-300">
                     {DIZIMO_PACTO_INTRO.paragraphs.map((paragraph) => (
@@ -99,7 +99,7 @@ export default function DizimoPactoStory() {
                         <div className="flex items-start gap-3.5">
                             <CircleIcon icon={Icon} />
                             <div className="min-w-0">
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-300">
                                     {section.kicker}
                                 </p>
                                 <h2 className="mt-1 text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">
@@ -123,7 +123,7 @@ export default function DizimoPactoStory() {
             })}
 
             <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800 sm:p-6">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
                     {DIZIMO_PACTO_CLOSING.eyebrow}
                 </p>
                 <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-2xl">

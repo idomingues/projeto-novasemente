@@ -25,15 +25,17 @@ export default function MissionEvents({ events }: Props) {
                         Agenda da Missão 2026
                     </h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Junho a dezembro — eventos da comunidade missionária Nova Semente.
+                        Próximos encontros da comunidade missionária Nova Semente.
                     </p>
                 </div>
 
                 {events.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200 bg-white py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
                         <CalendarDaysIcon className="mx-auto h-10 w-10 text-zinc-400" />
-                        <p className="mt-3 font-medium text-zinc-600 dark:text-zinc-400">Nenhum evento cadastrado</p>
-                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">Os eventos aparecerão aqui.</p>
+                        <p className="mt-3 font-medium text-zinc-600 dark:text-zinc-400">Nenhum evento próximo</p>
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
+                            Os próximos eventos da missão aparecerão aqui.
+                        </p>
                     </div>
                 ) : (
                     <MobileEventListGrid events={events} onSelect={setSelected} />

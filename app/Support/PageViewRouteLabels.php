@@ -71,6 +71,8 @@ final class PageViewRouteLabels
         'mission.trip-registrations.index' => 'Missão — inscrições Tailândia & Mianmar',
         'mission.show' => 'Missão — cadastro',
         'oferta' => 'Oferta (QR)',
+        'app' => 'Baixe o app',
+        'baixar' => 'Baixe o app',
         'mobile.offerings' => 'Dízimos e Pacto',
         'mobile.campaigns.index' => 'Oferta Nova Semente',
         'mobile.campaigns.show' => 'Oferta Nova Semente — detalhe',

@@ -197,20 +197,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
                                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400 mt-2">
                                             {a.author?.name ? <span>• {a.author.name}</span> : null}
                                             {a.photographer_name ? <span>• {a.photographer_name}</span> : null}
-                                            {a.drive_view_url ? (
-                                                <a
-                                                    href={a.drive_view_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="underline underline-offset-4 hover:text-zinc-700 dark:hover:text-zinc-200"
-                                                >
-                                                    Abrir no Drive
-                                                </a>
-                                            ) : null}
                                         </div>
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 break-all">
-                                            {a.drive_folder_url}
-                                        </p>
                                     </div>
 
                                     {canManage && (

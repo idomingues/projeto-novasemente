@@ -25,6 +25,8 @@ return [
         'mobile.profile.edit',
         'mobile.publications-feed',
         'oferta',
+        'app',
+        'baixar',
         'login',
         'register',
         'password.request',

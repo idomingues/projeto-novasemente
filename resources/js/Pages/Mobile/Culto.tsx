@@ -1,4 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
+import PageHeader from '@/Components/PageHeader';
 import VideoPlayOverlay from '@/Components/News/VideoPlayOverlay';
 import { Head, Link } from '@inertiajs/react';
 import { ChevronRightIcon, FilmIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
@@ -38,6 +39,18 @@ function formatDate(iso: string | null): string {
     });
 }
 
+/** Títulos do YouTube costumam vir como «Série | Pregador | Igreja». */
+function splitCultoTitle(title: string): { heading: string; meta: string | null } {
+    const parts = title
+        .split('|')
+        .map((part) => part.trim())
+        .filter(Boolean);
+    if (parts.length < 2) {
+        return { heading: title, meta: null };
+    }
+    return { heading: parts[0], meta: parts.slice(1).join(' · ') };
+}
+
 function CultoVideoCard({
     id,
     title,
@@ -46,6 +59,7 @@ function CultoVideoCard({
     published_at,
     isLive,
 }: Pick<CultoItem, 'id' | 'title' | 'youtube_url' | 'youtube_thumb_url' | 'published_at'> & { isLive?: boolean }) {
+    const { heading, meta } = splitCultoTitle(title);
     const Wrapper = ({ children }: { children: React.ReactNode }) =>
         isLive ? (
             <a href={youtube_url} target="_blank" rel="noopener noreferrer" className="group block cursor-pointer">
@@ -75,11 +89,6 @@ function CultoVideoCard({
                                 AO VIVO
                             </span>
                         ) : null}
-                        {!isLive && published_at ? (
-                            <span className="absolute bottom-2 left-3 rounded-lg bg-black/55 px-2.5 py-1 text-xs font-medium text-white/95 backdrop-blur-sm">
-                                {formatDate(published_at)}
-                            </span>
-                        ) : null}
                     </div>
                 ) : (
                     <div className="relative flex aspect-video items-center justify-center bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800">
@@ -92,11 +101,14 @@ function CultoVideoCard({
                     </div>
                 )}
                 <div className="px-4 py-3.5">
-                    <h2 className="line-clamp-2 text-[15px] font-medium leading-relaxed tracking-wide text-zinc-700 dark:text-zinc-300">
-                        {title}
+                    <h2 className="line-clamp-2 text-[15px] font-semibold leading-snug text-zinc-900 dark:text-white">
+                        {heading}
                     </h2>
+                    {meta ? (
+                        <p className="mt-0.5 line-clamp-1 text-sm text-zinc-500 dark:text-zinc-400">{meta}</p>
+                    ) : null}
                     {!isLive && published_at ? (
-                        <p className="mt-1.5 text-xs font-normal text-zinc-500 dark:text-zinc-400">{formatDate(published_at)}</p>
+                        <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">{formatDate(published_at)}</p>
                     ) : isLive ? (
                         <p className="mt-1.5 text-xs font-medium text-rose-600 dark:text-rose-400">Transmissão ao vivo no YouTube</p>
                     ) : null}
@@ -125,21 +137,30 @@ export default function MobileCulto({ cultos, liveCulto = null, showPostRegistra
     return (
         <MobileLayout>
             <Head title="Culto" />
-            <div className="space-y-6">
-                <div className="flex items-center justify-between gap-3">
-                    <Link href={route('mobile.home')} className="text-sm text-zinc-500 underline dark:text-zinc-400">
+            <PageHeader
+                lead={
+                    <Link
+                        href={route('mobile.home')}
+                        className="cursor-pointer text-sm text-zinc-500 underline dark:text-zinc-400"
+                    >
                         ← Início
                     </Link>
-                    {showSeriesLinks ? (
+                }
+                title="Culto"
+                subtitle="Assista às mensagens dos cultos da Nova Semente. Toque em um vídeo para reproduzir."
+                actions={
+                    showSeriesLinks ? (
                         <Link
                             href={route('mobile.acervo')}
-                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/80"
+                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
                         >
-                            <PlayCircleIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                            Todas as nossas Séries
+                            <PlayCircleIcon className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                            Séries
                         </Link>
-                    ) : null}
-                </div>
+                    ) : null
+                }
+            />
+            <div className="space-y-6">
                 {showPostRegistrationBanner ? (
                     <div
                         className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-50"

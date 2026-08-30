@@ -44,6 +44,7 @@ use App\Http\Controllers\MobileSupportController;
 use App\Http\Controllers\MusicaController;
 use App\Http\Controllers\MyMinistryVolunteersController;
 use App\Http\Controllers\NewsController;
+use App\Http\Controllers\AppDownloadLandingController;
 use App\Http\Controllers\OfferingLandingController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\PastoralAgendaController;
@@ -202,6 +203,8 @@ Route::post('/mobile/missao/cadastro/conta-app', [\App\Http\Controllers\MissionA
     ->middleware('throttle:10,1')
     ->name('mobile.mission.app-account.store');
 Route::get('/oferta', OfferingLandingController::class)->name('oferta');
+Route::get('/app', AppDownloadLandingController::class)->name('app');
+Route::redirect('/baixar', '/app')->name('baixar');
 Route::get('/missao', [MissionFormController::class, 'create'])->name('mission.form');
 Route::post('/missao', [MissionFormController::class, 'store'])
     ->middleware('throttle:20,1')

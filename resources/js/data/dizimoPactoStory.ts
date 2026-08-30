@@ -1,4 +1,4 @@
-export const DIZIMO_PACTO_HERO_IMAGE = '/images/dizimo-pacto-hero.jpg';
+export const DIZIMO_PACTO_HERO_IMAGE = '/images/dizimo-pacto-hero.jpg?v=2';
 
 export const DIZIMO_PACTO_INTRO = {
     eyebrow: 'Dízimos e Ofertas',

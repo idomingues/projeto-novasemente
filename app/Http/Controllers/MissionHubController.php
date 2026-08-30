@@ -77,6 +77,7 @@ class MissionHubController extends Controller
         $events = MissionEvent::query()
             ->where('church_id', $churchId)
             ->missionCalendar2026()
+            ->upcoming()
             ->orderBy('starts_at')
             ->get();
 

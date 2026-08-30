@@ -76,7 +76,11 @@ export default function PrayerMobile({ requests }: Props) {
                     <PageHeader
                         title="Pedidos de oração"
                         subtitle="Faça seu pedido de oração ou ore por alguém."
-                        actions={<AddButton variant="icon" onClick={() => setCreateOpen(true)} title="Novo pedido">Novo pedido</AddButton>}
+                        actions={
+                            <AddButton variant="label" onClick={() => setCreateOpen(true)} title="Novo pedido">
+                                Novo pedido
+                            </AddButton>
+                        }
                     />
                     <p className="rounded-xl border border-brand-200/90 bg-brand-50/90 px-3 py-2.5 text-sm leading-relaxed text-brand-950 dark:border-brand-900/45 dark:bg-brand-950/30 dark:text-brand-50">
                         Clique no ícone <strong className="font-semibold text-brand-800 dark:text-brand-200">Orar</strong> e a pessoa vai saber que tem alguém orando por ela.
@@ -89,7 +93,7 @@ export default function PrayerMobile({ requests }: Props) {
                             <div className="rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-900/50 p-8 sm:p-12 text-center">
                                 <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum pedido ainda</p>
                                 <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">
-                                    Clique no <strong>+</strong> para enviar o primeiro pedido.
+                                    Toque em <strong>Novo pedido</strong> para enviar o primeiro.
                                 </p>
                             </div>
                         ) : (
