@@ -60,18 +60,15 @@ class MissionEvent extends Model
         return $id ? "https://www.youtube.com/embed/{$id}" : null;
     }
 
-    /** @param  Builder<self>  $query */
+    /**
+     * Eventos cuja data de início é hoje ou posterior.
+     * Não mantém na lista itens que começaram ontem, mesmo com `ends_at` ainda vigente.
+     *
+     * @param  Builder<self>  $query
+     */
     public function scopeUpcoming(Builder $query): Builder
     {
-        $now = now();
-
-        return $query->where(function ($q) use ($now) {
-            $q->where(function ($inner) use ($now) {
-                $inner->whereNotNull('ends_at')->where('ends_at', '>=', $now);
-            })->orWhere(function ($inner) use ($now) {
-                $inner->whereNull('ends_at')->where('starts_at', '>=', $now->copy()->startOfDay());
-            });
-        });
+        return $query->where('starts_at', '>=', now()->startOfDay());
     }
 
     /** Agenda missionária jun–dez/2026 (pacote instalável). */

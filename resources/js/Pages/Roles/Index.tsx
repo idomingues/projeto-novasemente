@@ -114,6 +114,7 @@ const PERMISSION_MENU: Record<string, { section: MenuSection; screen: string; ac
     'donations.view': { section: 'publicacao', screen: 'Doação', action: 'Visualizar' },
     'donations.manage': { section: 'publicacao', screen: 'Doação', action: 'Gerenciar' },
     'notifications.manage': { section: 'publicacao', screen: 'Notificações', action: 'Enviar avisos' },
+    'app_novelties.manage': { section: 'publicacao', screen: 'Novidades do APP', action: 'Gerenciar' },
 
     'departments.view': { section: 'cadastro', screen: 'Departamentos', action: 'Visualizar' },
     'departments.manage': { section: 'cadastro', screen: 'Departamentos', action: 'Gerenciar' },

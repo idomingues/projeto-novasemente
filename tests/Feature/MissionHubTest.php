@@ -94,6 +94,38 @@ class MissionHubTest extends TestCase
                 )));
     }
 
+    public function test_mobile_mission_events_hides_event_that_started_yesterday_even_if_it_ends_today(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        MissionEvent::create([
+            'church_id' => $church->id,
+            'title' => 'Missão 360°',
+            'starts_at' => now()->subDay()->startOfDay(),
+            'ends_at' => now()->endOfDay(),
+            'all_day' => true,
+        ]);
+
+        MissionEvent::create([
+            'church_id' => $church->id,
+            'title' => 'Ação Resgate — Penitenciária',
+            'starts_at' => now()->startOfDay(),
+            'all_day' => true,
+        ]);
+
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.mission.events'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/MissionEvents')
+                ->has('events', 1)
+                ->where('events.0.title', 'Ação Resgate — Penitenciária')
+                ->where('events', fn ($events) => collect($events)->every(
+                    fn ($event) => $event['title'] !== 'Missão 360°',
+                )));
+    }
+
     public function test_mission_day_inherits_description_from_sibling_event_on_mobile(): void
     {
         $this->seed(ChurchSeeder::class);

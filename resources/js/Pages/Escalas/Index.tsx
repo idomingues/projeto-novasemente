@@ -1281,7 +1281,7 @@ function EscalaGrid({
     onEditRole: (a: Assignment) => void;
 }) {
     return (
-        <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
             {assignments.map((a) => {
                 const isSelf = currentUserId != null && a.memberId != null && a.memberId === currentUserId;
                 return (
@@ -1300,22 +1300,22 @@ function EscalaGrid({
                               }
                             : undefined
                     }
-                    className={`flex w-full flex-col items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/50 sm:w-40 ${
-                        a.status === 'pending' ? 'border-l-4 border-l-amber-400 pl-2.5' : ''
+                    className={`flex min-w-0 w-full flex-col items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 dark:border-zinc-700 dark:bg-zinc-800/50 sm:w-40 sm:gap-2 sm:p-3 ${
+                        a.status === 'pending' ? 'border-l-4 border-l-amber-400 pl-2' : ''
                     } ${canEdit ? 'cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-zinc-100/80 dark:hover:bg-zinc-800' : ''}`}
                 >
                     {a.memberPhotoUrl ? (
                         <img
                             src={a.memberPhotoUrl}
                             alt=""
-                            className="w-14 h-14 rounded-full object-cover border border-zinc-200 dark:border-zinc-600"
+                            className="h-12 w-12 rounded-full object-cover border border-zinc-200 dark:border-zinc-600 sm:h-14 sm:w-14"
                         />
                     ) : (
-                        <div className="w-14 h-14 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-lg font-semibold text-zinc-700 dark:text-zinc-300">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-200 text-base font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300 sm:h-14 sm:w-14 sm:text-lg">
                             {a.memberName.charAt(0).toUpperCase()}
                         </div>
                     )}
-                    <span className="text-sm font-medium text-zinc-900 dark:text-white truncate w-full text-center">
+                    <span className="w-full text-center text-sm font-medium leading-snug text-zinc-900 line-clamp-2 dark:text-white">
                         {a.memberName}
                     </span>
                     {a.roleName ? (

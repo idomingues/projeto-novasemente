@@ -147,7 +147,7 @@ export default function MobileCulto({ cultos, liveCulto = null, showPostRegistra
                     </Link>
                 }
                 title="Culto"
-                subtitle="Assista às mensagens dos cultos da Nova Semente. Toque em um vídeo para reproduzir."
+                subtitle="Os últimos cultos da Nova Semente. Toque em um vídeo para reproduzir."
                 actions={
                     showSeriesLinks ? (
                         <Link

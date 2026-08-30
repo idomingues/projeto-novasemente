@@ -143,6 +143,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     /** Visibilidade no Sidebar: `showPastoralAgendaInSidebar` (pastor ligado, admin, gestão de pastores, etc.). */
     'pastoral-agenda.index': ['pastors.view', 'pastors.manage', 'pastoral_appointments.manage'],
     'app-versions.index': ['notifications.manage'],
+    'app-novelties.index': ['app_novelties.manage'],
     'notifications.manage': ['notifications.manage'],
     'more.index': [],
     'varios.schedule': [],

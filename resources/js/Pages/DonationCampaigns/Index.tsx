@@ -7,6 +7,7 @@ import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
+import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -106,6 +107,8 @@ const statusBadgeClasses: Record<string, string> = {
     closed: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
     archived: 'bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200',
 };
+
+const campaignActionBtnClass = 'min-h-11 w-full whitespace-nowrap sm:h-9 sm:min-h-0 sm:w-auto';
 
 export default function DonationCampaignsIndex({ campaigns, canManage, canManageMedia, canManageDonations = canManageMedia }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -537,19 +540,19 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                 }
             />
 
-            {campaigns.length === 0 ? (
-                <div className="rounded-2xl border border-zinc-200 bg-white py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
-                    <BanknotesIcon className="mx-auto mb-4 h-10 w-10 text-zinc-400" />
-                    <p className="font-medium text-zinc-600 dark:text-zinc-400">Nenhuma campanha cadastrada</p>
-                    {canManage && (
-                        <AddButton variant="icon" onClick={openCreateModal} className="mt-4" title="Nova campanha">
-                            Nova campanha
-                        </AddButton>
-                    )}
-                </div>
-            ) : (
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    {campaigns.map((campaign) => {
+            <div className="space-y-4">
+                {campaigns.length === 0 ? (
+                    <div className="rounded-2xl border border-zinc-200 bg-white py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
+                        <BanknotesIcon className="mx-auto mb-4 h-10 w-10 text-zinc-400" />
+                        <p className="font-medium text-zinc-600 dark:text-zinc-400">Nenhuma campanha cadastrada</p>
+                        {canManage && (
+                            <AddButton variant="icon" onClick={openCreateModal} className="mt-4" title="Nova campanha">
+                                Nova campanha
+                            </AddButton>
+                        )}
+                    </div>
+                ) : (
+                    campaigns.map((campaign) => {
                         const progress = progressForCampaign(campaign);
                         const isStoryCampaign = campaign.show_caixa_fixo_story || campaign.show_construcao_story;
                         const canDelete = canManage && !isStoryCampaign;
@@ -578,27 +581,18 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                         return (
                         <article
                             key={campaign.id}
-                            className="flex h-full min-w-0 flex-col rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900 sm:p-4"
+                            className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-5"
                         >
                             <button
                                 type="button"
                                 onClick={() => setPreviewCampaign(campaign)}
-                                className="flex w-full min-w-0 flex-1 cursor-pointer flex-col gap-2.5 rounded-xl text-left transition hover:bg-zinc-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-zinc-800/40"
+                                className="flex w-full cursor-pointer gap-3 rounded-xl text-left transition hover:bg-zinc-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-zinc-800/40"
                             >
-                                {campaign.cover_image_url ? (
-                                    <img
-                                        src={campaign.cover_image_url}
-                                        alt=""
-                                        className="h-24 w-full shrink-0 rounded-xl object-cover sm:h-28"
-                                    />
-                                ) : null}
-                                <div className="min-w-0 flex-1 space-y-2">
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                        <h2 className="text-sm font-semibold leading-snug text-zinc-900 dark:text-white sm:text-base">
-                                            {campaign.title}
-                                        </h2>
+                                <div className="min-w-0 flex-1 space-y-2.5">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{campaign.title}</h2>
                                         <span
-                                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium sm:text-xs ${
+                                            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                                 statusBadgeClasses[campaign.status] ?? statusBadgeClasses.closed
                                             }`}
                                         >
@@ -606,17 +600,15 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                         </span>
                                     </div>
                                     {campaign.description ? (
-                                        <p className="hidden text-xs text-zinc-600 line-clamp-2 dark:text-zinc-400 sm:block">
-                                            {campaign.description}
-                                        </p>
+                                        <p className="text-sm text-zinc-600 line-clamp-2 dark:text-zinc-400">{campaign.description}</p>
                                     ) : null}
                                     {campaign.show_caixa_fixo_story ? (
-                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300 sm:text-xs">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">
                                             {progress.monthTitle ?? caixaFixoMonthlyProgressLabels().monthTitle}
                                         </p>
                                     ) : null}
                                     {campaign.show_construcao_story ? (
-                                        <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 sm:text-xs">
+                                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
                                             História da Construção ativa
                                         </p>
                                     ) : null}
@@ -627,61 +619,73 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                         progressPercent={progress.percent}
                                         raisedLabel={progress.raisedLabel}
                                         remainingLabel={progress.remainingLabel}
-                                        size="sm"
                                     />
                                     {metaParts.length > 0 ? (
-                                        <p className="text-[10px] leading-snug text-zinc-500 dark:text-zinc-400 sm:text-xs">
-                                            {metaParts.join(' · ')}
-                                        </p>
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{metaParts.join(' · ')}</p>
                                     ) : null}
                                 </div>
-                            </button>
-                            <div className="mt-2 flex flex-wrap items-center justify-start gap-0.5 border-t border-zinc-100 pt-1.5 dark:border-zinc-800 sm:mt-3 sm:pt-2">
-                                <ListCardIconActionButton
-                                    label="Ver conteúdo"
-                                    className="min-h-10 min-w-10 p-2 sm:min-h-9 sm:min-w-9"
-                                    icon={<DocumentTextIcon className="h-5 w-5" />}
-                                    onClick={() => setPreviewCampaign(campaign)}
-                                />
-                                <ListCardIconActionButton
-                                    label="Contribuições"
-                                    className="min-h-10 min-w-10 p-2 sm:min-h-9 sm:min-w-9"
-                                    icon={<EyeIcon className="h-5 w-5" />}
-                                    onClick={() => openDonations(campaign)}
-                                />
-                                {canManageMedia ? (
-                                    <ListCardIconActionButton
-                                        label="Fotos do projeto"
-                                        className="min-h-10 min-w-10 p-2 sm:min-h-9 sm:min-w-9"
-                                        icon={<PhotoIcon className="h-5 w-5" />}
-                                        onClick={() => openMediaModal(campaign)}
+                                {campaign.cover_image_url ? (
+                                    <img
+                                        src={campaign.cover_image_url}
+                                        alt=""
+                                        className="h-16 w-16 shrink-0 rounded-xl object-cover sm:h-20 sm:w-20"
                                     />
                                 ) : null}
+                            </button>
+                            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800 sm:flex sm:flex-wrap sm:justify-end">
+                                <ListCardTextActionButton
+                                    type="button"
+                                    className={campaignActionBtnClass}
+                                    icon={<DocumentTextIcon className="h-4 w-4" />}
+                                    onClick={() => setPreviewCampaign(campaign)}
+                                >
+                                    Conteúdo
+                                </ListCardTextActionButton>
+                                <ListCardTextActionButton
+                                    type="button"
+                                    className={campaignActionBtnClass}
+                                    icon={<EyeIcon className="h-4 w-4" />}
+                                    onClick={() => openDonations(campaign)}
+                                >
+                                    Contribuições
+                                </ListCardTextActionButton>
+                                {canManageMedia ? (
+                                    <ListCardTextActionButton
+                                        type="button"
+                                        className={campaignActionBtnClass}
+                                        icon={<PhotoIcon className="h-4 w-4" />}
+                                        onClick={() => openMediaModal(campaign)}
+                                    >
+                                        Fotos
+                                    </ListCardTextActionButton>
+                                ) : null}
                                 {canManage ? (
-                                    <>
-                                        <ListCardIconActionButton
-                                            label="Editar"
-                                            className="min-h-10 min-w-10 p-2 sm:min-h-9 sm:min-w-9"
-                                            icon={<PencilIcon className="h-5 w-5" />}
+                                    <div className="flex min-w-0 items-stretch gap-1 sm:contents">
+                                        <ListCardTextActionButton
+                                            type="button"
+                                            className="min-h-11 min-w-0 flex-1 whitespace-nowrap sm:h-9 sm:min-h-0 sm:w-auto sm:flex-none"
+                                            icon={<PencilIcon className="h-4 w-4" />}
                                             onClick={() => openEditModal(campaign)}
-                                        />
+                                        >
+                                            Editar
+                                        </ListCardTextActionButton>
                                         {canDelete ? (
                                             <ListCardIconActionButton
                                                 label="Excluir"
-                                                className="min-h-10 min-w-10 p-2 sm:min-h-9 sm:min-w-9"
+                                                className="shrink-0 sm:min-h-9 sm:min-w-9 sm:p-2"
                                                 icon={<TrashIcon className="h-5 w-5" />}
                                                 tone="danger"
                                                 onClick={() => handleDelete(campaign)}
                                             />
                                         ) : null}
-                                    </>
+                                    </div>
                                 ) : null}
                             </div>
                         </article>
                         );
-                    })}
-                </div>
-            )}
+                    })
+                )}
+            </div>
 
             <Modal show={previewCampaign !== null} onClose={() => setPreviewCampaign(null)} maxWidth="3xl">
                 <div className="flex max-h-[min(90dvh,calc(100dvh-2rem))] flex-col">

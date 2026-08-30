@@ -44,6 +44,7 @@ use App\Support\HomeModuleSpotlight;
 use App\Support\NewsLaunchDeepLinks;
 use App\Support\NotificationFeed;
 use App\Support\NsWhatsAccess;
+use App\Support\PendingAppNovelty;
 use App\Support\PublicationEngagement;
 use App\Support\PublicationFeed;
 use App\Support\PublicationsFeedAccess;
@@ -283,6 +284,7 @@ class MobileController extends Controller
             'moduleSpotlight' => $moduleSpotlight,
             'bookmarkedHomeCards' => $bookmarkedHomeCards,
             'nsWhatsPendingReply' => $nsWhatsPendingReply,
+            'pendingAppNovelty' => PendingAppNovelty::forUser($user, $church),
         ]);
     }
 

@@ -1,6 +1,5 @@
 import {
     DIZIMO_PACTO_CLOSING,
-    DIZIMO_PACTO_HERO_IMAGE,
     DIZIMO_PACTO_INTRO,
     DIZIMO_PACTO_PILLARS,
     DIZIMO_PACTO_SECTIONS,
@@ -56,17 +55,6 @@ export default function DizimoPactoStory() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">
                 Por que devolver
             </p>
-            <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800">
-                <img
-                    src={DIZIMO_PACTO_HERO_IMAGE}
-                    alt="Dízimos e ofertas: fidelidade, gratidão e missão"
-                    className="block h-auto w-full"
-                    width={1536}
-                    height={1024}
-                    loading="lazy"
-                    decoding="async"
-                />
-            </section>
 
             <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800 sm:p-6">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">

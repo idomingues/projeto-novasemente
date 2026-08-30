@@ -133,6 +133,7 @@ const CLIENT_FALLBACK_MENU: MenuItem[] = [
     { name: 'Perfis', route: 'roles.index', icon: KeyIcon },
     { name: 'Suporte APP', route: 'support.index', icon: ChatBubbleLeftRightIcon },
     { name: 'Versão do APP', route: 'app-versions.index', icon: Cog6ToothIcon },
+    { name: 'Novidades do APP', route: 'app-novelties.index', icon: SparklesIcon },
     { name: 'Configurações', route: 'settings.index', icon: Cog6ToothIcon },
 ];
 
@@ -366,6 +367,7 @@ export default function Sidebar({
         'roles.index',
         'support.index',
         'app-versions.index',
+        'app-novelties.index',
         'settings.app-features.index',
         'settings.index',
     ] as const;
@@ -379,7 +381,7 @@ export default function Sidebar({
                   .map((r) => menuItems.find((i) => i.route === r))
                   .filter((i): i is MenuItem => i !== undefined)
             : [];
-    const publicationMenuItems =
+    const publicationMenuItemsBase =
         canAccessAdminMenu ? menuItems.filter((i) => publicationRoutes.has(i.route)) : [];
     const cadastroMenuItems =
         canAccessAdminMenu ? menuItems.filter((i) => cadastroRoutes.has(i.route)) : [];
@@ -396,6 +398,11 @@ export default function Sidebar({
                   })
                   .filter((i): i is MenuItem => i !== undefined)
             : [];
+    const noveltyMenuItem = menuItems.find((i) => i.route === 'app-novelties.index');
+    const publicationMenuItems =
+        noveltyMenuItem && !admMenuItems.some((i) => i.route === 'app-novelties.index')
+            ? [...publicationMenuItemsBase, noveltyMenuItem]
+            : publicationMenuItemsBase;
     const mainMenuItems = canAccessAdminMenu
         ? menuItems.filter((i) => !sectionRoutes.has(i.route) && !MOBILE_BOTTOM_NAV_ROUTES.has(i.route))
         : [];

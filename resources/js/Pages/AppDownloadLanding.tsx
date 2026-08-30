@@ -1,8 +1,8 @@
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, usePage } from '@inertiajs/react';
-import { ArrowRightIcon } from '@heroicons/react/24/outline';
-import { useEffect, useState, type ReactNode } from 'react';
-import QRCode from 'react-qr-code';
+import { ArrowRightIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
+import { CheckIcon } from '@heroicons/react/24/solid';
+import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
 
 interface Props {
     churchName: string;
@@ -32,6 +32,15 @@ function PlayStoreLogo({ className = 'h-6 w-6' }: { className?: string }) {
     );
 }
 
+function displayStoreUrl(href: string): string {
+    try {
+        const url = new URL(href);
+        return `${url.host}${url.pathname}${url.search}`.replace(/\/$/, '');
+    } catch {
+        return href.replace(/^https?:\/\//i, '');
+    }
+}
+
 function useStoreHint(): StoreHint {
     const [hint, setHint] = useState<StoreHint>(null);
 
@@ -56,7 +65,6 @@ function StoreCard({
     subtitle,
     cta,
     icon,
-    qrLabel,
     recommended,
 }: {
     href: string;
@@ -64,60 +72,75 @@ function StoreCard({
     subtitle: string;
     cta: string;
     icon: ReactNode;
-    qrLabel: string;
     recommended: boolean;
 }) {
+    const [copied, setCopied] = useState(false);
+    const displayUrl = displayStoreUrl(href);
+
+    const copyAddress = async (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+            await navigator.clipboard.writeText(href);
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 2000);
+        } catch {
+            setCopied(false);
+        }
+    };
+
     return (
-        <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`group flex cursor-pointer flex-col gap-5 rounded-3xl bg-white p-5 shadow-sm ring-1 transition active:scale-[0.99] sm:flex-row sm:items-center sm:gap-6 sm:p-6 dark:bg-zinc-900 ${
+        <article
+            className={`flex flex-col rounded-3xl bg-white p-5 shadow-sm ring-1 sm:p-6 dark:bg-zinc-900 ${
                 recommended
-                    ? 'ring-brand-300 hover:ring-brand-400 dark:ring-brand-700 dark:hover:ring-brand-500'
-                    : 'ring-zinc-200/90 hover:bg-zinc-50 hover:ring-zinc-300 dark:ring-zinc-800 dark:hover:bg-zinc-800/80 dark:hover:ring-zinc-700'
+                    ? 'ring-brand-300 dark:ring-brand-700'
+                    : 'ring-zinc-200/90 dark:ring-zinc-800'
             }`}
         >
-            <span className="mx-auto flex w-[128px] shrink-0 items-center justify-center rounded-2xl bg-white p-3 ring-1 ring-zinc-200/90 sm:mx-0 md:w-[148px] lg:w-[168px] dark:ring-zinc-700">
-                <QRCode
-                    value={href}
-                    size={168}
-                    level="M"
-                    bgColor="#ffffff"
-                    fgColor="#0f172a"
-                    aria-label={qrLabel}
-                    style={{ height: 'auto', width: '100%', maxWidth: '100%' }}
-                />
-            </span>
-
-            <span className="flex min-w-0 flex-1 flex-col items-center text-center sm:items-start sm:text-left">
-                <span className="flex items-center gap-3">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-50 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:ring-zinc-700">
-                        {icon}
-                    </span>
-                    <span className="min-w-0">
-                        <span className="block text-xl font-semibold tracking-tight text-zinc-900 dark:text-white">
-                            {title}
-                        </span>
-                        <span className="mt-0.5 block text-sm text-zinc-500 dark:text-zinc-400">{subtitle}</span>
-                    </span>
+            <div className="flex items-center gap-3">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-50 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:ring-zinc-700">
+                    {icon}
                 </span>
+                <div className="min-w-0">
+                    <h2 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-white">{title}</h2>
+                    <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">{subtitle}</p>
+                </div>
+            </div>
 
-                {recommended ? (
-                    <span className="mt-3 inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold text-brand-800 ring-1 ring-inset ring-brand-200/80 dark:bg-brand-950/50 dark:text-brand-200 dark:ring-brand-800/70">
-                        Recomendado para este aparelho
-                    </span>
-                ) : null}
+            {recommended ? (
+                <p className="mt-4 inline-flex w-fit items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold text-brand-800 ring-1 ring-inset ring-brand-200/80 dark:bg-brand-950/50 dark:text-brand-200 dark:ring-brand-800/70">
+                    Recomendado para este aparelho
+                </p>
+            ) : null}
 
-                <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 dark:text-brand-300">
-                    {cta}
-                    <ArrowRightIcon
-                        className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5"
-                        aria-hidden
-                    />
-                </span>
-            </span>
-        </a>
+            <div className="mt-5 flex min-w-0 items-start gap-2 rounded-2xl bg-zinc-50 px-3.5 py-3.5 ring-1 ring-zinc-200/80 dark:bg-zinc-950/50 dark:ring-zinc-800">
+                <p className="min-w-0 flex-1 break-all font-mono text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 sm:text-[15px]">
+                    {displayUrl}
+                </p>
+                <button
+                    type="button"
+                    onClick={copyAddress}
+                    className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl text-zinc-500 transition hover:bg-white hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                    aria-label={copied ? 'Endereço copiado' : `Copiar endereço da ${title}`}
+                >
+                    {copied ? (
+                        <CheckIcon className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden />
+                    ) : (
+                        <ClipboardDocumentIcon className="h-4 w-4" aria-hidden />
+                    )}
+                </button>
+            </div>
+
+            <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group mt-4 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-2xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 active:scale-[0.99] dark:bg-brand-600 dark:hover:bg-brand-500"
+            >
+                {cta}
+                <ArrowRightIcon className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" aria-hidden />
+            </a>
+        </article>
     );
 }
 
@@ -157,8 +180,8 @@ export default function AppDownloadLanding({
                         Baixe o app
                     </h1>
                     <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-zinc-500 dark:text-zinc-400 sm:text-base">
-                        Acompanhe cultos, oração, eventos e a comunidade no celular. Aponte a câmera para o QR ou toque
-                        na loja do seu aparelho.
+                        Acompanhe cultos, oração, eventos e a comunidade no celular. Toque na loja do seu aparelho ou
+                        copie o endereço.
                     </p>
                 </header>
 
@@ -169,7 +192,6 @@ export default function AppDownloadLanding({
                             title="App Store"
                             subtitle="iPhone e iPad"
                             cta="Abrir na App Store"
-                            qrLabel="QR code da App Store"
                             icon={<AppleLogo className="h-6 w-6 text-zinc-900 dark:text-white" />}
                             recommended={storeHint === 'apple'}
                         />
@@ -180,7 +202,6 @@ export default function AppDownloadLanding({
                             title="Google Play"
                             subtitle="Android"
                             cta="Abrir na Google Play"
-                            qrLabel="QR code da Google Play"
                             icon={<PlayStoreLogo className="h-6 w-6" />}
                             recommended={storeHint === 'android'}
                         />

@@ -35,6 +35,9 @@ import type { WeeklyProgramHomeCardData } from '@/Components/Mobile/WeeklyProgra
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
 import HomeFeaturedWeek, { type HomeFeaturedWeekPayload } from '@/Components/Mobile/HomeFeaturedWeek';
 import { type HomeModuleSpotlightPayload } from '@/Components/Mobile/HomeModuleSpotlightBanner';
+import AppNoveltyOverlay, {
+    type PendingAppNoveltyPayload,
+} from '@/Components/Mobile/AppNoveltyOverlay';
 import HomeCardBookmarkButton from '@/Components/Mobile/HomeCardBookmarkButton';
 import MeditationAudiencePicker from '@/Components/Mobile/MeditationAudiencePicker';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
@@ -57,6 +60,7 @@ interface Props {
     moduleSpotlight?: HomeModuleSpotlightPayload | null;
     bookmarkedHomeCards?: string[];
     nsWhatsPendingReply?: number;
+    pendingAppNovelty?: PendingAppNoveltyPayload | null;
 }
 
 type PageProps = {
@@ -365,6 +369,7 @@ export default function MobileHome({
     moduleSpotlight = null,
     bookmarkedHomeCards = [],
     nsWhatsPendingReply = 0,
+    pendingAppNovelty = null,
 }: Props) {
     const page = usePage();
     const { appUrl = '', auth, csrf_token: csrfProp } = page.props as unknown as PageProps;
@@ -680,6 +685,7 @@ export default function MobileHome({
 
                 <PromiseBoxModal show={promiseOpen} onClose={() => setPromiseOpen(false)} canFavorite={!!user} />
             </div>
+            {user && pendingAppNovelty ? <AppNoveltyOverlay novelty={pendingAppNovelty} /> : null}
         </MobileLayout>
     );
 }

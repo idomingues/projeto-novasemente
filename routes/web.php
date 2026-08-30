@@ -203,8 +203,9 @@ Route::post('/mobile/missao/cadastro/conta-app', [\App\Http\Controllers\MissionA
     ->middleware('throttle:10,1')
     ->name('mobile.mission.app-account.store');
 Route::get('/oferta', OfferingLandingController::class)->name('oferta');
-Route::get('/app', AppDownloadLandingController::class)->name('app');
-Route::redirect('/baixar', '/app')->name('baixar');
+Route::get('/app', AppDownloadLandingController::class)->name('app.download');
+Route::redirect('/baixe', '/app');
+Route::redirect('/baixar', '/app');
 Route::get('/missao', [MissionFormController::class, 'create'])->name('mission.form');
 Route::post('/missao', [MissionFormController::class, 'store'])
     ->middleware('throttle:20,1')
