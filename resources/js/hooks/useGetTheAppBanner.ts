@@ -56,10 +56,12 @@ export function useGetTheAppBanner() {
         const mq = window.matchMedia('(max-width: 767px)');
         mq.addEventListener('change', sync);
         window.addEventListener('orientationchange', sync);
+        window.addEventListener('resize', sync);
 
         return () => {
             mq.removeEventListener('change', sync);
             window.removeEventListener('orientationchange', sync);
+            window.removeEventListener('resize', sync);
         };
     }, [evaluate]);
 

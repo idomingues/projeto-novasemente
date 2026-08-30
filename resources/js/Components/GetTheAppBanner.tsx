@@ -14,7 +14,7 @@ export default function GetTheAppBanner() {
 
     return (
         <div
-            className="fixed inset-x-0 top-0 z-[45] border-b border-zinc-200/90 bg-white/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md md:hidden dark:border-zinc-800 dark:bg-zinc-950/95"
+            className="fixed inset-x-0 top-0 z-[60] border-b border-zinc-200/90 bg-white/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md md:hidden dark:border-zinc-800 dark:bg-zinc-950/95"
             role="region"
             aria-label="Baixar o aplicativo"
         >

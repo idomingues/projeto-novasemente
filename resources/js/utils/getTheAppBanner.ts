@@ -24,7 +24,11 @@ export function getTheAppPlatform(): GetTheAppPlatform {
     return null;
 }
 
-/** Celular no navegador — não app nativo, não tablet, não desktop. */
+/**
+ * Celular no navegador (não o app instalado).
+ * Usa a largura da tela (breakpoint `md`) para funcionar no aparelho real e
+ * no modo dispositivo do Chrome/Safari — sem exigir user-agent de celular.
+ */
 export function isPhoneWebBrowser(): boolean {
     if (typeof window === 'undefined' || typeof navigator === 'undefined') {
         return false;
@@ -34,9 +38,12 @@ export function isPhoneWebBrowser(): boolean {
         return false;
     }
 
+    if (window.matchMedia('(min-width: 768px)').matches) {
+        return false;
+    }
+
     const ua = navigator.userAgent;
-    const iPad = /iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (iPad) {
+    if (/iPad/i.test(ua)) {
         return false;
     }
 
@@ -45,10 +52,16 @@ export function isPhoneWebBrowser(): boolean {
         return false;
     }
 
-    const phoneUa = /iPhone|iPod|Android.*Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-    const narrow = window.matchMedia('(max-width: 767px)').matches;
+    // iPadOS 13+ se identifica como Mac; não confundir com iPhone no modo dispositivo.
+    const iPadOsDesktopUa =
+        navigator.platform === 'MacIntel' &&
+        navigator.maxTouchPoints > 1 &&
+        !/iPhone|iPod|Android|Mobile/i.test(ua);
+    if (iPadOsDesktopUa) {
+        return false;
+    }
 
-    return phoneUa && narrow;
+    return true;
 }
 
 export function isGetTheAppBannerDismissed(): boolean {
