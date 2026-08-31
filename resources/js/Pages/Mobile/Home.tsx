@@ -1,7 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import VolunteerSignupIncompleteBanner from '@/Components/Volunteers/VolunteerSignupIncompleteBanner';
 import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import {
     AcademicCapIcon,
@@ -15,7 +15,6 @@ import {
     NewspaperIcon,
     PhotoIcon,
     PlayCircleIcon,
-    ChatBubbleLeftRightIcon,
     ChartBarIcon,
     ClipboardDocumentListIcon,
     SparklesIcon,
@@ -28,6 +27,7 @@ import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
 import WeeklyProgramHomeCarousel from '@/Components/Mobile/WeeklyProgramHomeCarousel';
 import type { WeeklyProgramHomeCardData } from '@/Components/Mobile/WeeklyProgramHomeCard';
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
+import MeditationHomeBanner, { type MeditationHomeBannerData } from '@/Components/Mobile/MeditationHomeBanner';
 import HomeGivingShortcuts from '@/Components/Mobile/HomeGivingShortcuts';
 import ConhecaNovaSementeHomeCard from '@/Components/Mobile/ConhecaNovaSementeHomeCard';
 import { type HomeModuleSpotlightPayload } from '@/Components/Mobile/HomeModuleSpotlightBanner';
@@ -35,13 +35,11 @@ import AppNoveltyOverlay, {
     type PendingAppNoveltyPayload,
 } from '@/Components/Mobile/AppNoveltyOverlay';
 import HomeCardBookmarkButton from '@/Components/Mobile/HomeCardBookmarkButton';
-import MeditationAudiencePicker from '@/Components/Mobile/MeditationAudiencePicker';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
 import {
     type DevotionalAudience,
     DEVOTIONAL_AUDIENCE_DEFAULT,
     readStoredDevotionalAudience,
-    storeDevotionalAudience,
 } from '@/data/devotionalAudience';
 import { useAppFeatures } from '@/hooks/useAppFeatures';
 
@@ -51,6 +49,7 @@ interface Props {
     showPostRegistrationBanner?: boolean;
     volunteerSignupCompletion?: VolunteerSignupCompletion | null;
     sabbathBanner?: SabbathHomeBannerData | null;
+    meditationBanner?: MeditationHomeBannerData | null;
     weeklyProgramCards?: WeeklyProgramHomeCardData[];
     moduleSpotlight?: HomeModuleSpotlightPayload | null;
     bookmarkedHomeCards?: string[];
@@ -97,14 +96,6 @@ const homeCardSpotlightClass =
 
 /** Atalhos da Home: itens exclusivos + todos do antigo menu Mais (sem duplicar por rota). */
 const homeQuickActions: QuickAction[] = [
-    {
-        id: 'ns-whats',
-        label: 'NS Conecta',
-        subtitle: 'Converse com departamentos, líderes e voluntários.',
-        route: 'mobile.ns-whats.index',
-        featureKey: 'ns_whats',
-        icon: ChatBubbleLeftRightIcon,
-    },
     {
         id: 'enquetes',
         label: 'Enquetes',
@@ -195,7 +186,7 @@ const homeQuickActions: QuickAction[] = [
     {
         id: 'meditacao-diaria',
         label: 'Meditação diária',
-        subtitle: 'Adulto, Mulher ou Jovem',
+        subtitle: 'Adulto, Mulher e Jovem',
         route: 'mobile.meditacao-diaria',
         featureKey: 'devotional',
         icon: BookOpenIcon,
@@ -295,6 +286,7 @@ export default function MobileHome({
     showPostRegistrationBanner = false,
     volunteerSignupCompletion = null,
     sabbathBanner = null,
+    meditationBanner = null,
     weeklyProgramCards = [],
     moduleSpotlight = null,
     bookmarkedHomeCards = [],
@@ -336,6 +328,7 @@ export default function MobileHome({
     };
 
     const { isEnabled } = useAppFeatures();
+    const showMeditationBanner = Boolean(meditationBanner) && isEnabled('devotional');
 
     const canBookmark = Boolean(user);
 
@@ -465,21 +458,30 @@ export default function MobileHome({
 
                 <header className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                        <p className="truncate text-lg font-bold leading-snug text-zinc-900 dark:text-white lg:text-2xl lg:font-semibold">
+                        <p className="truncate text-sm font-semibold leading-snug text-zinc-900 dark:text-white lg:text-base">
                             {user ? <>Bem-vindo, {displayName}!</> : <>Bem-vindo!</>}
                         </p>
                     </div>
                 </header>
 
+                {showMeditationBanner && meditationBanner ? (
+                    <MeditationHomeBanner
+                        banner={meditationBanner}
+                        appUrl={appUrl}
+                        audience={meditationAudience}
+                    />
+                ) : null}
+
                 {weeklyProgramCards.length > 0 ? (
                     <WeeklyProgramHomeCarousel cards={weeklyProgramCards} appUrl={appUrl} />
-                ) : sabbathBanner ? (
+                ) : sabbathBanner && !showMeditationBanner ? (
                     <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} />
                 ) : null}
 
-                <ConhecaNovaSementeHomeCard />
-
-                <HomeGivingShortcuts />
+                <div className="space-y-4">
+                    <HomeGivingShortcuts nsWhatsPendingReply={nsWhatsPendingReply} />
+                    <ConhecaNovaSementeHomeCard />
+                </div>
 
                 <section aria-label="Atalhos" className="relative z-[1]">
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
@@ -556,31 +558,16 @@ export default function MobileHome({
                                         >
                                             {label}
                                         </p>
-                                        {!isMeditationCard ? (
-                                            <p
-                                                className={`mt-1 text-[11px] font-medium leading-snug ${
-                                                    isSpotlightCard
-                                                        ? 'text-teal-900/75 dark:text-teal-100/80'
-                                                        : 'text-zinc-600 dark:text-zinc-300'
-                                                }`}
-                                            >
-                                                {subtitle}
-                                            </p>
-                                        ) : null}
+                                        <p
+                                            className={`mt-1 text-[11px] font-medium leading-snug ${
+                                                isSpotlightCard
+                                                    ? 'text-teal-900/75 dark:text-teal-100/80'
+                                                    : 'text-zinc-600 dark:text-zinc-300'
+                                            }`}
+                                        >
+                                            {subtitle}
+                                        </p>
                                     </div>
-                                    {isMeditationCard ? (
-                                        <div className="mt-2.5">
-                                            <MeditationAudiencePicker
-                                                size="compact"
-                                                value={meditationAudience}
-                                                onChange={(next) => {
-                                                    storeDevotionalAudience(next);
-                                                    setMeditationAudience(next);
-                                                    router.visit(route('mobile.meditacao-diaria', { audience: next }));
-                                                }}
-                                            />
-                                        </div>
-                                    ) : null}
                                 </>
                             );
 

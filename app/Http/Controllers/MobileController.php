@@ -30,6 +30,7 @@ use App\Services\DriveFolderCoverService;
 use App\Services\DriveFolderImagesService;
 use App\Services\LibraryEgwPdfService;
 use App\Services\LibraryExternalPageExtractService;
+use App\Services\MeditationHomeBannerService;
 use App\Services\RevistaAdventistaEditionPdfService;
 use App\Services\SabbathSunsetService;
 use App\Services\ScheduleAssignmentPresenter;
@@ -254,6 +255,7 @@ class MobileController extends Controller
             : null;
 
         $sabbathBanner = app(SabbathSunsetService::class)->homeBannerPayload();
+        $meditationBanner = app(MeditationHomeBannerService::class)->homeBannerPayload($church);
         $weeklyProgramCards = app(\App\Services\WeeklyProgramService::class)->homeCards($church);
         $moduleSpotlight = HomeModuleSpotlight::forChurch($church);
         $bookmarkedHomeCards = [];
@@ -278,6 +280,7 @@ class MobileController extends Controller
             'showPostRegistrationBanner' => $request->boolean('reg_ok') && $request->user() !== null,
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
             'sabbathBanner' => $weeklyProgramCards === [] ? $sabbathBanner : null,
+            'meditationBanner' => $meditationBanner,
             'weeklyProgramCards' => $weeklyProgramCards,
             'moduleSpotlight' => $moduleSpotlight,
             'bookmarkedHomeCards' => $bookmarkedHomeCards,
