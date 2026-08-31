@@ -34,10 +34,10 @@ export default function MobileServices({ churchName, services, weeklyProgram = [
             <div className="mx-auto w-full max-w-lg space-y-8 pb-6 sm:max-w-xl">
                 <header>
                     <Link
-                        href={route('mobile.home')}
+                        href={route('mobile.conheca')}
                         className="cursor-pointer text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
                     >
-                        ← Início
+                        ← Conheça a Nova Semente
                     </Link>
                     <h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
                         Horários

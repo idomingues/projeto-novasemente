@@ -244,6 +244,16 @@ export default function AppDownloadLanding({
                     <CheckIcon className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400" aria-hidden />
                     Download gratuito
                 </p>
+
+                <p className="mt-3 shrink-0 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                    Ou{' '}
+                    <a
+                        href="https://app.novasemente.com.br/"
+                        className="cursor-pointer font-medium text-brand-700 underline decoration-brand-200 underline-offset-4 transition hover:text-brand-800 dark:text-brand-300 dark:decoration-brand-800 dark:hover:text-brand-200"
+                    >
+                        continue no navegador
+                    </a>
+                </p>
             </div>
         </GuestLayout>
     );

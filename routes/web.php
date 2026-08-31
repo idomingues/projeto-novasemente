@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AcervoController;
+use App\Http\Controllers\AppDownloadLandingController;
 use App\Http\Controllers\AppNotificationController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\CampaignDonationController;
@@ -44,7 +45,6 @@ use App\Http\Controllers\MobileSupportController;
 use App\Http\Controllers\MusicaController;
 use App\Http\Controllers\MyMinistryVolunteersController;
 use App\Http\Controllers\NewsController;
-use App\Http\Controllers\AppDownloadLandingController;
 use App\Http\Controllers\OfferingLandingController;
 use App\Http\Controllers\OperationsDashboardController;
 use App\Http\Controllers\PastoralAgendaController;
@@ -263,6 +263,7 @@ Route::post('/mobile/ano-biblico/desafios/recalcular-atual', [MobileAnoBiblicoCo
     ->middleware('auth')
     ->name('mobile.ano-biblico.challenges.recalculate');
 Route::get('/mobile/sobre-o-app', [MobileController::class, 'sobreOApp'])->name('mobile.sobre-o-app');
+Route::get('/mobile/conheca-a-nova-semente', [MobileController::class, 'conhecaNovaSemente'])->name('mobile.conheca');
 Route::get('/mobile/crencas', [MobileController::class, 'beliefs'])->name('mobile.beliefs');
 Route::get('/mobile/quem-somos', [MobileController::class, 'quemSomos'])->name('mobile.quem-somos');
 Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])->name('mobile.classe-comecos');

@@ -1338,6 +1338,11 @@ class MobileController extends Controller
         return Inertia::render('Mobile/Beliefs');
     }
 
+    public function conhecaNovaSemente(): Response
+    {
+        return Inertia::render('Mobile/ConhecaNovaSemente');
+    }
+
     public function quemSomos(): Response
     {
         return Inertia::render('Mobile/QuemSomos');

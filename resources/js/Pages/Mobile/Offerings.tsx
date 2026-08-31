@@ -57,6 +57,41 @@ function SevenMeCard({ href, title }: { href: string; title: string }) {
     );
 }
 
+const CENTS_DESTINATIONS = [
+    { cents: '0,10', label: 'Dízimo', example: 'ex.: R$ 50,10' },
+    { cents: '0,20', label: 'Oferta da igreja ou pacto', example: 'ex.: R$ 50,20' },
+] as const;
+
+function CentsDestinationHint() {
+    return (
+        <div>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                Os centavos indicam o destino, em qualquer forma de contribuição.
+            </p>
+            <ul className="mt-2.5 space-y-2" role="list">
+                {CENTS_DESTINATIONS.map((item) => (
+                    <li
+                        key={item.cents}
+                        className="flex items-start gap-3 rounded-2xl bg-white px-3.5 py-3 shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800"
+                    >
+                        <span className="w-11 shrink-0 pt-px text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">
+                            {item.cents}
+                        </span>
+                        <span className="min-w-0">
+                            <span className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                                {item.label}
+                            </span>
+                            <span className="mt-0.5 block text-xs tabular-nums text-zinc-400 dark:text-zinc-500">
+                                {item.example}
+                            </span>
+                        </span>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
 export default function MobileOfferings({ donation, localOffer, offeringUrl }: Props) {
     const [copied, setCopied] = useState(false);
     const titheUrl = donation?.donation_url ?? null;
@@ -88,6 +123,8 @@ export default function MobileOfferings({ donation, localOffer, offeringUrl }: P
                             Dízimo, oferta e pacto
                         </h1>
                     </header>
+
+                    {hasAnyMethod && <CentsDestinationHint />}
 
                     {hasSevenMe && (
                         <div className="grid gap-3 sm:grid-cols-2">
@@ -129,38 +166,6 @@ export default function MobileOfferings({ donation, localOffer, offeringUrl }: P
                                     )}
                                 </button>
                             </div>
-
-                            <p className="mt-5 text-sm text-zinc-500 dark:text-zinc-400">
-                                No PIX, os centavos indicam o destino.
-                            </p>
-                            <ul className="mt-2.5 space-y-2" role="list">
-                                <li className="flex items-start gap-3 rounded-2xl bg-zinc-50 px-3.5 py-3 ring-1 ring-zinc-200/80 dark:bg-zinc-950/40 dark:ring-zinc-800">
-                                    <span className="w-11 shrink-0 pt-px text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">
-                                        0,10
-                                    </span>
-                                    <span className="min-w-0">
-                                        <span className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
-                                            Dízimo
-                                        </span>
-                                        <span className="mt-0.5 block text-xs tabular-nums text-zinc-400 dark:text-zinc-500">
-                                            ex.: R$ 50,10
-                                        </span>
-                                    </span>
-                                </li>
-                                <li className="flex items-start gap-3 rounded-2xl bg-zinc-50 px-3.5 py-3 ring-1 ring-zinc-200/80 dark:bg-zinc-950/40 dark:ring-zinc-800">
-                                    <span className="w-11 shrink-0 pt-px text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">
-                                        0,20
-                                    </span>
-                                    <span className="min-w-0">
-                                        <span className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">
-                                            Oferta da igreja ou pacto
-                                        </span>
-                                        <span className="mt-0.5 block text-xs tabular-nums text-zinc-400 dark:text-zinc-500">
-                                            ex.: R$ 50,20
-                                        </span>
-                                    </span>
-                                </li>
-                            </ul>
                         </div>
                     )}
 

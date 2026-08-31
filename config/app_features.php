@@ -17,6 +17,7 @@ return [
     'always_enabled_routes' => [
         'mobile.index',
         'mobile.home',
+        'mobile.conheca',
         'mobile.more',
         'more.index',
         'mobile.settings',

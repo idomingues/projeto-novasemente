@@ -23,8 +23,8 @@ export default function MobilePastors({ pastors, churchName }: Props) {
             <Head title="Pastores" />
             <div className="space-y-6">
                 <div>
-                    <Link href={route('mobile.home')} className="text-sm text-brand-600 dark:text-brand-400 hover:underline">
-                        ← Início
+                    <Link href={route('mobile.conheca')} className="cursor-pointer text-sm text-brand-600 hover:underline dark:text-brand-400">
+                        ← Conheça a Nova Semente
                     </Link>
                     <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Pastores</h1>
                     {churchName && <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{churchName}</p>}

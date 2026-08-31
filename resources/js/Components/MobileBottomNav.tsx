@@ -33,6 +33,7 @@ const navItems: NavItem[] = [
         route: 'mobile.home',
         activeRoutes: [
             'mobile.home',
+            'mobile.conheca',
             'volunteers.public-signup.page',
             'mobile.baptism',
             'mobile.sobre-o-app',

@@ -111,6 +111,7 @@ final class PageViewRouteLabels
         'mobile.shared-talents.index' => 'Doar Talentos',
         'mobile.location' => 'Localização',
         'mobile.pastors' => 'Pastores',
+        'mobile.conheca' => 'Conheça a Nova Semente',
         'mobile.quem-somos' => 'Quem somos',
         'mobile.beliefs' => 'Em que cremos',
         'mobile.acervo' => 'Séries',

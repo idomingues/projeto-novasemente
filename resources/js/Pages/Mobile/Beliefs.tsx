@@ -23,10 +23,10 @@ export default function MobileBeliefs() {
             <div className="space-y-5">
                 <div>
                     <Link
-                        href={route('mobile.home')}
-                        className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                        href={route('mobile.conheca')}
+                        className="cursor-pointer text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
                     >
-                        ← Início
+                        ← Conheça a Nova Semente
                     </Link>
                     <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Em que cremos</h1>
                     <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
