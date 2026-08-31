@@ -39,7 +39,6 @@ use App\Services\YoutubePlaylistImportService;
 use App\Support\ChurchAppFeatures;
 use App\Support\GivingLinks;
 use App\Support\HomeCardKeys;
-use App\Support\HomeFeaturedWeek;
 use App\Support\HomeModuleSpotlight;
 use App\Support\NewsLaunchDeepLinks;
 use App\Support\NotificationFeed;
@@ -256,7 +255,6 @@ class MobileController extends Controller
 
         $sabbathBanner = app(SabbathSunsetService::class)->homeBannerPayload();
         $weeklyProgramCards = app(\App\Services\WeeklyProgramService::class)->homeCards($church);
-        $featuredWeek = HomeFeaturedWeek::forChurch($church);
         $moduleSpotlight = HomeModuleSpotlight::forChurch($church);
         $bookmarkedHomeCards = [];
         if ($user !== null && Schema::hasTable('user_home_card_bookmarks')) {
@@ -280,7 +278,6 @@ class MobileController extends Controller
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
             'sabbathBanner' => $weeklyProgramCards === [] ? $sabbathBanner : null,
             'weeklyProgramCards' => $weeklyProgramCards,
-            'featuredWeek' => $featuredWeek,
             'moduleSpotlight' => $moduleSpotlight,
             'bookmarkedHomeCards' => $bookmarkedHomeCards,
             'nsWhatsPendingReply' => $nsWhatsPendingReply,

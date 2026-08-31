@@ -11,7 +11,6 @@ import {
     ClockIcon,
     FilmIcon,
     GlobeAltIcon,
-    HandRaisedIcon,
     HeartIcon,
     LifebuoyIcon,
     MapPinIcon,
@@ -33,7 +32,7 @@ import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
 import WeeklyProgramHomeCarousel from '@/Components/Mobile/WeeklyProgramHomeCarousel';
 import type { WeeklyProgramHomeCardData } from '@/Components/Mobile/WeeklyProgramHomeCard';
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
-import HomeFeaturedWeek, { type HomeFeaturedWeekPayload } from '@/Components/Mobile/HomeFeaturedWeek';
+import HomeGivingShortcuts from '@/Components/Mobile/HomeGivingShortcuts';
 import { type HomeModuleSpotlightPayload } from '@/Components/Mobile/HomeModuleSpotlightBanner';
 import AppNoveltyOverlay, {
     type PendingAppNoveltyPayload,
@@ -56,7 +55,6 @@ interface Props {
     volunteerSignupCompletion?: VolunteerSignupCompletion | null;
     sabbathBanner?: SabbathHomeBannerData | null;
     weeklyProgramCards?: WeeklyProgramHomeCardData[];
-    featuredWeek?: HomeFeaturedWeekPayload | null;
     moduleSpotlight?: HomeModuleSpotlightPayload | null;
     bookmarkedHomeCards?: string[];
     nsWhatsPendingReply?: number;
@@ -223,14 +221,6 @@ const homeQuickActions: QuickAction[] = [
         icon: ClipboardDocumentListIcon,
     },
     {
-        id: 'dizimos-pacto',
-        label: 'Dízimos e Pacto',
-        subtitle: 'Contribua com dízimos e pacto de forma simples',
-        route: 'mobile.offerings',
-        featureKey: 'offerings',
-        icon: HandRaisedIcon,
-    },
-    {
         id: 'doacao',
         label: 'Doação',
         subtitle: 'Seu gesto de amor pode transformar vidas e renovar esperanças',
@@ -303,14 +293,6 @@ const homeQuickActions: QuickAction[] = [
         icon: UserCircleIcon,
     },
     {
-        id: 'oferta-nova-semente',
-        label: 'Oferta Nova Semente',
-        subtitle: 'Contribuições para causas que transformam vidas',
-        route: 'mobile.campaigns.index',
-        featureKey: 'donation_campaigns',
-        icon: BanknotesIcon,
-    },
-    {
         id: 'oracao',
         label: 'Oração',
         subtitle: 'Pedidos de oração',
@@ -365,7 +347,6 @@ export default function MobileHome({
     volunteerSignupCompletion = null,
     sabbathBanner = null,
     weeklyProgramCards = [],
-    featuredWeek = null,
     moduleSpotlight = null,
     bookmarkedHomeCards = [],
     nsWhatsPendingReply = 0,
@@ -406,11 +387,6 @@ export default function MobileHome({
     };
 
     const { isEnabled } = useAppFeatures();
-
-    const featuredItems = useMemo(() => {
-        const raw = featuredWeek?.items ?? [];
-        return raw.filter((item) => !item.feature_key || isEnabled(item.feature_key));
-    }, [featuredWeek, isEnabled]);
 
     const canBookmark = Boolean(user);
 
@@ -552,7 +528,7 @@ export default function MobileHome({
                     <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} />
                 ) : null}
 
-                <HomeFeaturedWeek items={featuredItems} />
+                <HomeGivingShortcuts />
 
                 <section aria-label="Atalhos" className="relative z-[1]">
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">

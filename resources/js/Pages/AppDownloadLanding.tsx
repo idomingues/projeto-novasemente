@@ -1,8 +1,7 @@
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, usePage } from '@inertiajs/react';
-import { ArrowRightIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
-import { CheckIcon } from '@heroicons/react/24/solid';
-import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import { useEffect, useState, type ReactNode } from 'react';
 
 interface Props {
     churchName: string;
@@ -30,15 +29,6 @@ function PlayStoreLogo({ className = 'h-6 w-6' }: { className?: string }) {
             <path fill="#34A853" d="M13.1 11.9 16.3 8.1 5.3 1.7c-.3-.2-.7-.3-1-.3-.3 0-.5.1-.7.2l9.5 10.3z" />
         </svg>
     );
-}
-
-function displayStoreUrl(href: string): string {
-    try {
-        const url = new URL(href);
-        return `${url.host}${url.pathname}${url.search}`.replace(/\/$/, '');
-    } catch {
-        return href.replace(/^https?:\/\//i, '');
-    }
 }
 
 function useStoreHint(): StoreHint {
@@ -74,76 +64,36 @@ function StoreCard({
     icon: ReactNode;
     recommended: boolean;
 }) {
-    const [copied, setCopied] = useState(false);
-    const displayUrl = displayStoreUrl(href);
-
-    const copyAddress = async (event: MouseEvent<HTMLButtonElement>) => {
-        event.preventDefault();
-        event.stopPropagation();
-        try {
-            await navigator.clipboard.writeText(href);
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 2000);
-        } catch {
-            setCopied(false);
-        }
-    };
-
     return (
-        <article
-            className={`flex min-h-0 flex-col rounded-2xl bg-white p-3 shadow-sm ring-1 sm:rounded-3xl sm:p-5 md:p-6 dark:bg-zinc-900 ${
+        <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={cta}
+            className={`flex min-w-0 cursor-pointer flex-col items-center rounded-2xl bg-white px-2.5 py-3.5 text-center shadow-sm ring-1 transition hover:bg-zinc-50/90 active:scale-[0.99] sm:rounded-3xl sm:px-5 sm:py-5 md:px-6 md:py-6 dark:bg-zinc-900 dark:hover:bg-zinc-800/80 ${
                 recommended
                     ? 'ring-brand-300 dark:ring-brand-700'
                     : 'ring-zinc-200/90 dark:ring-zinc-800'
             }`}
         >
-            <div className="flex items-center gap-2.5 sm:gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-50 shadow-sm ring-1 ring-zinc-200/80 sm:h-12 sm:w-12 sm:rounded-2xl dark:bg-zinc-950 dark:ring-zinc-700">
-                    {icon}
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-50 shadow-sm ring-1 ring-zinc-200/80 sm:h-12 sm:w-12 sm:rounded-2xl dark:bg-zinc-950 dark:ring-zinc-700">
+                {icon}
+            </span>
+            <h2 className="mt-2 text-sm font-semibold tracking-tight text-zinc-900 sm:mt-3 sm:text-xl dark:text-white">
+                {title}
+            </h2>
+            <p className="mt-0.5 text-[11px] text-zinc-500 sm:text-sm dark:text-zinc-400">{subtitle}</p>
+            {recommended ? (
+                <span className="mt-1.5 hidden rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-800 ring-1 ring-inset ring-brand-200/80 sm:inline-flex dark:bg-brand-950/50 dark:text-brand-200 dark:ring-brand-800/70">
+                    Recomendado para este aparelho
                 </span>
-                <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                        <h2 className="text-base font-semibold tracking-tight text-zinc-900 sm:text-xl dark:text-white">
-                            {title}
-                        </h2>
-                        {recommended ? (
-                            <span className="hidden rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-800 ring-1 ring-inset ring-brand-200/80 sm:inline-flex dark:bg-brand-950/50 dark:text-brand-200 dark:ring-brand-800/70">
-                                Recomendado para este aparelho
-                            </span>
-                        ) : null}
-                    </div>
-                    <p className="text-xs text-zinc-500 sm:mt-0.5 sm:text-sm dark:text-zinc-400">{subtitle}</p>
-                </div>
-            </div>
-
-            <div className="mt-2.5 flex min-w-0 items-center gap-1.5 rounded-xl bg-zinc-50 px-2.5 py-2 ring-1 ring-zinc-200/80 sm:mt-5 sm:rounded-2xl sm:px-3.5 sm:py-3.5 dark:bg-zinc-950/50 dark:ring-zinc-800">
-                <p className="min-w-0 flex-1 truncate font-mono text-xs leading-snug text-zinc-700 sm:whitespace-normal sm:break-all sm:text-sm sm:text-[15px] sm:leading-relaxed dark:text-zinc-300">
-                    {displayUrl}
-                </p>
-                <button
-                    type="button"
-                    onClick={copyAddress}
-                    className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-zinc-500 transition hover:bg-white hover:text-zinc-800 sm:h-9 sm:w-9 sm:rounded-xl dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                    aria-label={copied ? 'Endereço copiado' : `Copiar endereço da ${title}`}
-                >
-                    {copied ? (
-                        <CheckIcon className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden />
-                    ) : (
-                        <ClipboardDocumentIcon className="h-4 w-4" aria-hidden />
-                    )}
-                </button>
-            </div>
-
-            <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group mt-2.5 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 active:scale-[0.99] sm:mt-4 sm:rounded-2xl sm:px-4 sm:py-3 dark:bg-brand-600 dark:hover:bg-brand-500"
-            >
-                {cta}
-                <ArrowRightIcon className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" aria-hidden />
-            </a>
-        </article>
+            ) : null}
+            <span className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-xl bg-brand-50 px-2 py-2 text-xs font-medium text-brand-800 ring-1 ring-brand-200/80 sm:mt-4 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-sm dark:bg-brand-950/40 dark:text-brand-200 dark:ring-brand-800/70">
+                <span className="sm:hidden">Abrir</span>
+                <span className="hidden sm:inline">{cta}</span>
+                <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+            </span>
+        </a>
     );
 }
 
@@ -183,15 +133,14 @@ export default function AppDownloadLanding({
                         Baixe o app
                     </h1>
                     <p className="mx-auto mt-1.5 max-w-md text-xs leading-snug text-zinc-500 sm:mt-3 sm:text-base sm:leading-relaxed dark:text-zinc-400">
-                        <span className="sm:hidden">Toque na loja do seu aparelho ou copie o endereço.</span>
+                        <span className="sm:hidden">Toque na loja do seu aparelho.</span>
                         <span className="hidden sm:inline">
-                            Acompanhe cultos, oração, eventos e a comunidade no celular. Toque na loja do seu aparelho
-                            ou copie o endereço.
+                            Acompanhe cultos, oração, eventos e a comunidade no celular. Toque na loja do seu aparelho.
                         </span>
                     </p>
                 </header>
 
-                <div className="mt-4 grid min-h-0 gap-2.5 sm:mt-8 sm:gap-3 md:mt-10 md:grid-cols-2 md:gap-4">
+                <div className="mt-4 grid min-h-0 grid-cols-2 gap-2.5 sm:mt-8 sm:gap-3 md:mt-10 md:gap-4">
                     {appleUrl ? (
                         <StoreCard
                             href={appleUrl}
