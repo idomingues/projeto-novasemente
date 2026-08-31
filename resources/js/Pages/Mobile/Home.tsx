@@ -33,6 +33,7 @@ import WeeklyProgramHomeCarousel from '@/Components/Mobile/WeeklyProgramHomeCaro
 import type { WeeklyProgramHomeCardData } from '@/Components/Mobile/WeeklyProgramHomeCard';
 import SabbathHomeBanner, { type SabbathHomeBannerData } from '@/Components/Mobile/SabbathHomeBanner';
 import HomeGivingShortcuts from '@/Components/Mobile/HomeGivingShortcuts';
+import ConhecaNovaSementeHomeCard from '@/Components/Mobile/ConhecaNovaSementeHomeCard';
 import { type HomeModuleSpotlightPayload } from '@/Components/Mobile/HomeModuleSpotlightBanner';
 import AppNoveltyOverlay, {
     type PendingAppNoveltyPayload,
@@ -529,6 +530,8 @@ export default function MobileHome({
                 ) : null}
 
                 <HomeGivingShortcuts />
+
+                <ConhecaNovaSementeHomeCard />
 
                 <section aria-label="Atalhos" className="relative z-[1]">
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
