@@ -384,7 +384,7 @@ class SolicitationAdminController extends Controller
             'typeOptions' => [
                 ['value' => '', 'label' => 'Todos os tipos'],
                 ['value' => 'bible_study', 'label' => 'Estudo bíblico'],
-                ['value' => 'baby_presentation', 'label' => 'Apresentação de bebé'],
+                ['value' => 'baby_presentation', 'label' => 'Apresentação de bebê'],
                 ['value' => 'pastor_visit', 'label' => 'Visita aos pastores'],
                 ['value' => MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL, 'label' => 'Atendimento informal'],
                 ['value' => 'other', 'label' => 'Outros'],

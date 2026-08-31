@@ -11,7 +11,6 @@ import {
     CakeIcon,
     ChatBubbleLeftRightIcon,
     SparklesIcon,
-    LifebuoyIcon,
     ChevronRightIcon,
     PencilSquareIcon,
     UserGroupIcon,
@@ -30,8 +29,6 @@ interface Props {
         pastoral_agenda: number | null;
         /** Notificações pessoais ainda não lidas (mesmo critério do sino). */
         notifications: number;
-        /** Conversas NS Conecta aguardando sua resposta. */
-        ns_whats_pending?: number;
     };
 }
 
@@ -284,39 +281,13 @@ export default function MobileProfile({ user, profileCounts, volunteerSignupComp
                   },
               ] as Row[])
             : []),
-        ...(route().has('mobile.ns-whats.index')
-            ? ([
-                  {
-                      title: 'NS Conecta',
-                      description: 'Converse com departamentos, líderes e voluntários.',
-                      icon: ChatBubbleLeftRightIcon,
-                      href: route('mobile.ns-whats.index'),
-                      tone: 'member',
-                      badgeCount:
-                          typeof profileCounts.ns_whats_pending === 'number' && profileCounts.ns_whats_pending > 0
-                              ? profileCounts.ns_whats_pending
-                              : null,
-                  },
-              ] as Row[])
-            : []),
         ...(route().has('mobile.solicitations.hub')
             ? ([
                   {
                       title: 'Solicitações',
-                      description: 'Batismo, apresentação e outros pedidos',
+                      description: 'Batismo, apresentação, horário com pastor e outros pedidos',
                       icon: SparklesIcon,
                       href: route('mobile.solicitations.hub'),
-                      tone: 'member',
-                  },
-              ] as Row[])
-            : []),
-        ...(route().has('mobile.pastoral-appointments.request')
-            ? ([
-                  {
-                      title: 'Agendamento pastoral',
-                      description: 'Marque um horário com um pastor da igreja',
-                      icon: ClockIcon,
-                      href: route('mobile.pastoral-appointments.request'),
                       tone: 'member',
                   },
               ] as Row[])
@@ -332,13 +303,6 @@ export default function MobileProfile({ user, profileCounts, volunteerSignupComp
                   },
               ] as Row[])
             : []),
-        {
-            title: 'Suporte do APP',
-            description: 'Problema ou sugestão sobre a aplicação',
-            icon: LifebuoyIcon,
-            href: route('mobile.support.index'),
-            tone: 'member',
-        },
     ];
 
     const publicRows: Row[] = [];

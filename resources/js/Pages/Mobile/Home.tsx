@@ -8,12 +8,9 @@ import {
     BanknotesIcon,
     BookOpenIcon,
     CalendarDaysIcon,
-    ClockIcon,
     FilmIcon,
     GlobeAltIcon,
     HeartIcon,
-    LifebuoyIcon,
-    MapPinIcon,
     MusicalNoteIcon,
     NewspaperIcon,
     PhotoIcon,
@@ -22,7 +19,6 @@ import {
     ChartBarIcon,
     ClipboardDocumentListIcon,
     SparklesIcon,
-    UserCircleIcon,
     UserGroupIcon,
     UserPlusIcon,
 } from '@heroicons/react/24/outline';
@@ -197,14 +193,6 @@ const homeQuickActions: QuickAction[] = [
         icon: FilmIcon,
     },
     {
-        id: 'horarios',
-        label: 'Horários',
-        subtitle: 'Dias e horários dos cultos',
-        route: 'mobile.services',
-        featureKey: 'services',
-        icon: ClockIcon,
-    },
-    {
         id: 'meditacao-diaria',
         label: 'Meditação diária',
         subtitle: 'Adulto, Mulher ou Jovem',
@@ -238,14 +226,6 @@ const homeQuickActions: QuickAction[] = [
         icon: UserGroupIcon,
     },
     {
-        id: 'em-que-cremos',
-        label: 'Em que cremos',
-        subtitle: '28 princípios de fé (IASD)',
-        route: 'mobile.beliefs',
-        featureKey: 'beliefs',
-        icon: BookOpenIcon,
-    },
-    {
         id: 'eventos',
         label: 'Eventos',
         subtitle: 'Agenda de eventos da igreja',
@@ -260,14 +240,6 @@ const homeQuickActions: QuickAction[] = [
         route: 'mobile.fotos',
         featureKey: 'photos',
         icon: PhotoIcon,
-    },
-    {
-        id: 'localizacao',
-        label: 'Localização',
-        subtitle: 'Endereço e mapa da igreja',
-        route: 'mobile.location',
-        featureKey: 'location',
-        icon: MapPinIcon,
     },
     {
         id: 'missao',
@@ -286,28 +258,12 @@ const homeQuickActions: QuickAction[] = [
         icon: MusicalNoteIcon,
     },
     {
-        id: 'pastores',
-        label: 'Pastores',
-        subtitle: 'Conheça a equipe pastoral',
-        route: 'mobile.pastors',
-        featureKey: 'pastors',
-        icon: UserCircleIcon,
-    },
-    {
         id: 'oracao',
         label: 'Oração',
         subtitle: 'Pedidos de oração',
         route: 'mobile.prayer',
         featureKey: 'prayer',
         icon: PrayingHandsIcon,
-    },
-    {
-        id: 'quem-somos',
-        label: 'Quem somos',
-        subtitle: 'História e significado do nome',
-        route: 'mobile.quem-somos',
-        featureKey: 'quem_somos',
-        icon: UserGroupIcon,
     },
     {
         id: 'revista-adventista',
@@ -332,14 +288,6 @@ const homeQuickActions: QuickAction[] = [
         route: 'mobile.acervo',
         featureKey: 'acervo',
         icon: PlayCircleIcon,
-    },
-    {
-        id: 'suporte-app',
-        label: 'Suporte APP',
-        subtitle: 'Problema, sugestão ou elogio sobre o app',
-        route: 'mobile.support.index',
-        featureKey: 'support',
-        icon: LifebuoyIcon,
     },
 ];
 
@@ -529,9 +477,9 @@ export default function MobileHome({
                     <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} />
                 ) : null}
 
-                <HomeGivingShortcuts />
-
                 <ConhecaNovaSementeHomeCard />
+
+                <HomeGivingShortcuts />
 
                 <section aria-label="Atalhos" className="relative z-[1]">
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">

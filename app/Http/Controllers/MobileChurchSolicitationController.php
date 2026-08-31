@@ -9,6 +9,7 @@ use App\Models\Pastor;
 use App\Models\PastoralAvailability;
 use App\Services\SolicitationChatNotifier;
 use App\Support\BaptismSolicitationStatus;
+use App\Support\MemberPastoralAppointmentHubPayload;
 use App\Support\PastoralBookingInertiaProps;
 use App\Support\SolicitationAssignees;
 use Carbon\Carbon;
@@ -21,7 +22,7 @@ use Inertia\Response;
 
 class MobileChurchSolicitationController extends Controller
 {
-    /** Tipos listados no hub (pedidos formais). «Falar com líder» é só em Mais → Contato; visita pastoral em «Agendamento pastoral». */
+    /** Tipos listados no hub (pedidos formais). «Falar com líder» é só em Mais → Contato; horário com pastor é o tipo sintético `pastoral`. */
     private const HUB_TYPES = ['baptism', 'bible_study', 'baby_presentation', 'other'];
 
     /** Tipos visíveis na lista do membro (inclui legados). */
@@ -53,8 +54,8 @@ class MobileChurchSolicitationController extends Controller
     {
         return match ($type) {
             'baptism' => 'Batismo',
-            'bible_study' => 'Pedido de estudo bíblico',
-            'baby_presentation' => 'Apresentação de bebé',
+            'bible_study' => 'Estudo bíblico',
+            'baby_presentation' => 'Apresentação de bebê',
             'pastor_visit' => 'Visita aos pastores',
             'leader_chat' => 'NS Conecta',
             'volunteer_request' => 'Pedido de voluntário',
@@ -88,6 +89,48 @@ class MobileChurchSolicitationController extends Controller
             'cancelled' => 'Cancelada',
             default => self::statusLabel($status),
         };
+    }
+
+    private static function hubTypeDescription(string $type): string
+    {
+        return match ($type) {
+            'pastoral' => 'Marcar conversa presencial ou online',
+            'baptism' => 'Quero ser batizado',
+            'baby_presentation' => 'Apresentar uma criança à igreja',
+            'bible_study' => 'Quero estudar a Bíblia com alguém',
+            'other' => 'Outro pedido à igreja',
+            default => '',
+        };
+    }
+
+    /**
+     * @return list<array{type: string, label: string, description: string}>
+     */
+    private static function hubTypeItems(bool $includePastoral): array
+    {
+        $items = [];
+        if ($includePastoral) {
+            $items[] = [
+                'type' => 'pastoral',
+                'label' => 'Horário com pastor',
+                'description' => self::hubTypeDescription('pastoral'),
+            ];
+        }
+
+        foreach (self::HUB_TYPES as $t) {
+            $items[] = [
+                'type' => $t,
+                'label' => self::typeLabel($t),
+                'description' => self::hubTypeDescription($t),
+            ];
+        }
+
+        return $items;
+    }
+
+    private static function pastoralHubDeepLink(): string
+    {
+        return route('mobile.solicitations.hub', ['novo' => 1, 'tipo' => 'pastoral'], false);
     }
 
     /**
@@ -152,13 +195,12 @@ class MobileChurchSolicitationController extends Controller
             ]);
         }
 
-        $types = collect(self::HUB_TYPES)->map(fn (string $t) => [
-            'type' => $t,
-            'label' => self::typeLabel($t),
-        ])->values()->all();
+        $types = self::hubTypeItems(true);
 
         $hubUrl = route('mobile.solicitations.hub');
         $mySolicitations = [];
+        $appointments = [];
+        $pastoralBooking = null;
         if ($user) {
             $mySolicitations = ChurchSolicitation::query()
                 ->when($churchId !== null, fn ($q) => $q->where('church_id', $churchId))
@@ -190,6 +232,11 @@ class MobileChurchSolicitationController extends Controller
                 })
                 ->values()
                 ->all();
+
+            if ($churchId !== null) {
+                $pastoralBooking = PastoralBookingInertiaProps::forRequest($request);
+                $appointments = MemberPastoralAppointmentHubPayload::rowsForMember($request, (int) $churchId, (int) $user->id);
+            }
         }
 
         return Inertia::render('Mobile/Solicitations/Hub', [
@@ -198,7 +245,9 @@ class MobileChurchSolicitationController extends Controller
             'storeUrl' => route('mobile.solicitations.store'),
             'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
             'mySolicitations' => $mySolicitations,
-            'pastoralAgendaUrl' => route('mobile.pastoral-appointments.request', [], false),
+            'appointments' => $appointments,
+            'pastoralBooking' => $pastoralBooking,
+            'pastoralAgendaUrl' => self::pastoralHubDeepLink(),
         ]);
     }
 
@@ -218,9 +267,7 @@ class MobileChurchSolicitationController extends Controller
             ]);
         }
 
-        $types = [
-            ['type' => 'baptism', 'label' => self::typeLabel('baptism')],
-        ];
+        $types = self::hubTypeItems(false);
         $hubUrl = route('mobile.baptism');
 
         $mySolicitations = ChurchSolicitation::query()
@@ -262,7 +309,9 @@ class MobileChurchSolicitationController extends Controller
             'storeUrl' => route('mobile.solicitations.store'),
             'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
             'mySolicitations' => $mySolicitations,
-            'pastoralAgendaUrl' => route('mobile.pastoral-appointments.request', [], false),
+            'appointments' => [],
+            'pastoralBooking' => null,
+            'pastoralAgendaUrl' => self::pastoralHubDeepLink(),
             'pageTitle' => 'Pedido de batismo',
             'pageSubtitle' => 'Envie seu pedido e acompanhe a conversa com a igreja.',
             'singleBaptismType' => true,
@@ -282,7 +331,7 @@ class MobileChurchSolicitationController extends Controller
             'storeUrl' => route('mobile.solicitations.store'),
             'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
             'volunteerOptions' => [],
-            'pastoralAgendaUrl' => route('mobile.pastoral-appointments.request', [], false),
+            'pastoralAgendaUrl' => self::pastoralHubDeepLink(),
         ]);
     }
 
@@ -299,7 +348,7 @@ class MobileChurchSolicitationController extends Controller
 
         if ($typeInput === 'pastor_visit') {
             throw ValidationException::withMessages([
-                'type' => 'Para marcar horário com pastor, use «Agendamento pastoral» em Mais.',
+                'type' => 'Para marcar horário com pastor, use Solicitações e escolha «Horário com pastor».',
             ]);
         }
 
@@ -416,7 +465,7 @@ class MobileChurchSolicitationController extends Controller
                     'memberPastoralBooking' => $solicitation->type === 'pastor_visit' && $solicitation->status === 'pending' && $churchId !== null
                         ? PastoralBookingInertiaProps::pastorPayload($request, null, (int) $solicitation->id)
                         : null,
-                    'pastoralAgendaUrl' => route('mobile.pastoral-appointments.request', [], false),
+                    'pastoralAgendaUrl' => self::pastoralHubDeepLink(),
                 ],
             ),
         );

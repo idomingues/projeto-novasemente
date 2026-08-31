@@ -95,4 +95,49 @@ class HomeCardBookmarkTest extends TestCase
             ->postJson(route('mobile.home.bookmarks.toggle'), ['card_key' => 'admin-panel'])
             ->assertStatus(422);
     }
+
+    public function test_legacy_suporte_app_bookmark_is_aliased_to_sobre_o_app(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create([
+            'church_id' => $church->id,
+            'email' => 'legacy-bookmark@example.com',
+        ]);
+
+        UserHomeCardBookmark::query()->create([
+            'user_id' => $user->id,
+            'card_key' => 'suporte-app',
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('bookmarkedHomeCards', ['sobre-o-app']));
+
+        $this->actingAs($user)
+            ->postJson(route('mobile.home.bookmarks.toggle'), ['card_key' => 'suporte-app'])
+            ->assertOk()
+            ->assertJsonPath('bookmarked', false)
+            ->assertJsonPath('bookmarkedHomeCards', []);
+
+        $this->assertSame(0, UserHomeCardBookmark::query()->where('user_id', $user->id)->count());
+
+        $this->actingAs($user)
+            ->postJson(route('mobile.home.bookmarks.toggle'), ['card_key' => 'suporte-app'])
+            ->assertOk()
+            ->assertJsonPath('bookmarked', true)
+            ->assertJsonPath('bookmarkedHomeCards.0', 'sobre-o-app');
+
+        $this->assertDatabaseHas('user_home_card_bookmarks', [
+            'user_id' => $user->id,
+            'card_key' => 'sobre-o-app',
+        ]);
+        $this->assertDatabaseMissing('user_home_card_bookmarks', [
+            'user_id' => $user->id,
+            'card_key' => 'suporte-app',
+        ]);
+    }
 }

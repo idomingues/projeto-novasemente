@@ -49,7 +49,7 @@ export default function PastorVisitScheduleSection({
         return (
             <div className="rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
                 <p className="font-medium">Ainda não há pastores cadastrados para esta igreja.</p>
-                <p className="mt-1 text-xs opacity-90">Entre em contato a secretaria ou tente mais tarde.</p>
+                <p className="mt-1 text-xs opacity-90">Entre em contato com a secretaria ou tente mais tarde.</p>
             </div>
         );
     }
@@ -64,9 +64,9 @@ export default function PastorVisitScheduleSection({
                 {pastoralAgendaUrl ? (
                     <Link
                         href={pastoralAgendaUrl}
-                        className="inline-block text-sm font-semibold text-primary-600 underline dark:text-primary-400"
+                        className="inline-block cursor-pointer text-sm font-semibold text-primary-600 underline dark:text-primary-400"
                     >
-                        Abrir «Agendar com pastor»
+                        Marcar horário com pastor
                     </Link>
                 ) : null}
             </div>
@@ -157,7 +157,7 @@ export default function PastorVisitScheduleSection({
                         </>
                     ) : (
                         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                            Este pastor não tem horários livres de momento. Escolha outro ou volte mais tarde.
+                            Este pastor não tem horários livres no momento. Escolha outro ou volte mais tarde.
                         </p>
                     )}
                     {selectedSlot?.modality === 'both' && selectedPastor.slots.length > 0 ? (

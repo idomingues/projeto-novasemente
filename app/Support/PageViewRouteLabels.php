@@ -148,7 +148,7 @@ final class PageViewRouteLabels
         'mobile.support.index' => 'Suporte APP',
         'mobile.support.ticket' => 'Suporte — ticket',
         'mobile.support.ticket.messages' => 'Suporte — mensagens do ticket',
-        'mobile.pastoral-appointments.request' => 'Agendar com pastor',
+        'mobile.pastoral-appointments.request' => 'Solicitações — horário com pastor',
         'mobile.pastor-availability' => 'Minha disponibilidade pastoral',
         'pastoral-agenda.index' => 'Agenda pastoral (painel)',
         'mobile.settings' => 'Definições (app)',

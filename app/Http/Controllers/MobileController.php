@@ -258,12 +258,13 @@ class MobileController extends Controller
         $moduleSpotlight = HomeModuleSpotlight::forChurch($church);
         $bookmarkedHomeCards = [];
         if ($user !== null && Schema::hasTable('user_home_card_bookmarks')) {
-            $bookmarkedHomeCards = UserHomeCardBookmark::query()
-                ->where('user_id', $user->id)
-                ->orderByDesc('created_at')
-                ->pluck('card_key')
-                ->values()
-                ->all();
+            $bookmarkedHomeCards = HomeCardKeys::normalizeList(
+                UserHomeCardBookmark::query()
+                    ->where('user_id', $user->id)
+                    ->orderByDesc('created_at')
+                    ->pluck('card_key')
+                    ->all()
+            );
         }
 
         $nsWhatsPendingReply = 0;
@@ -293,16 +294,21 @@ class MobileController extends Controller
         $data = $request->validate([
             'card_key' => ['required', 'string', 'max:64'],
         ]);
-        $cardKey = trim((string) $data['card_key']);
+        $cardKey = HomeCardKeys::canonicalize(trim((string) $data['card_key']));
         abort_unless(HomeCardKeys::isAllowed($cardKey), 422);
+
+        $storageKeys = HomeCardKeys::storageKeysFor($cardKey);
 
         $existing = UserHomeCardBookmark::query()
             ->where('user_id', $user->id)
-            ->where('card_key', $cardKey)
-            ->first();
+            ->whereIn('card_key', $storageKeys)
+            ->exists();
 
-        if ($existing !== null) {
-            $existing->delete();
+        if ($existing) {
+            UserHomeCardBookmark::query()
+                ->where('user_id', $user->id)
+                ->whereIn('card_key', $storageKeys)
+                ->delete();
             $bookmarked = false;
         } else {
             UserHomeCardBookmark::query()->create([
@@ -312,12 +318,13 @@ class MobileController extends Controller
             $bookmarked = true;
         }
 
-        $keys = UserHomeCardBookmark::query()
-            ->where('user_id', $user->id)
-            ->orderByDesc('created_at')
-            ->pluck('card_key')
-            ->values()
-            ->all();
+        $keys = HomeCardKeys::normalizeList(
+            UserHomeCardBookmark::query()
+                ->where('user_id', $user->id)
+                ->orderByDesc('created_at')
+                ->pluck('card_key')
+                ->all()
+        );
 
         return response()->json([
             'bookmarked' => $bookmarked,
@@ -881,6 +888,7 @@ class MobileController extends Controller
     {
         $categories = [
             ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
+            ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
         ];
 
         if ($this->revistaAdventistaAcervoAvailable($church)) {
@@ -2159,9 +2167,6 @@ class MobileController extends Controller
                 'atendimento_open' => $atendimentoOpen,
                 'pastoral_agenda' => $pastoralAgendaItems,
                 'notifications' => $notificationsUnread,
-                'ns_whats_pending' => $churchId !== null
-                    ? NsWhatsAccess::pendingReplyCount($user, (int) $churchId)
-                    : 0,
             ],
             'volunteerSignupCompletion' => $volunteerSignupCompletion,
         ]);

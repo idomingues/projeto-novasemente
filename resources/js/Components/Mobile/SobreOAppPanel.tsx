@@ -1,10 +1,12 @@
 import AppVersionHistoryModal from '@/Components/AppVersionHistoryModal';
+import { useAppFeatures } from '@/hooks/useAppFeatures';
 import { useAppVersionLabels } from '@/hooks/useAppVersionLabels';
-import { usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
     ArrowTopRightOnSquareIcon,
     ChevronRightIcon,
     GlobeAltIcon,
+    LifebuoyIcon,
 } from '@heroicons/react/24/outline';
 import { useState, type ReactNode } from 'react';
 
@@ -71,6 +73,8 @@ function StoreLinkCard({
 
 export default function SobreOAppPanel({ className = '' }: { className?: string }) {
     const { webLabel: webVersionLabel, installedLabel } = useAppVersionLabels();
+    const { isEnabled } = useAppFeatures();
+    const showSupport = isEnabled('support');
     const { iosAppStoreUrl = null, androidPlayStoreUrl = null } = usePage().props as {
         iosAppStoreUrl?: string | null;
         androidPlayStoreUrl?: string | null;
@@ -132,6 +136,27 @@ export default function SobreOAppPanel({ className = '' }: { className?: string 
                 onClose={() => setVersionsOpen(false)}
                 highlightLabel={webVersionLabel}
             />
+
+            {showSupport ? (
+                <Link
+                    href={route('mobile.support.index')}
+                    className="group flex cursor-pointer items-center gap-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-zinc-200/90 transition hover:bg-zinc-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/60"
+                >
+                    <span className={`${LINK_ICON_WRAP} text-teal-700 dark:text-teal-300`}>
+                        <LifebuoyIcon className="h-5 w-5" aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-zinc-900 dark:text-white">Suporte</span>
+                        <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+                            Problema, sugestão ou elogio sobre o app
+                        </span>
+                    </span>
+                    <ChevronRightIcon
+                        className="h-5 w-5 shrink-0 text-zinc-300 transition group-hover:translate-x-0.5 group-hover:text-teal-600 dark:text-zinc-600 dark:group-hover:text-teal-300"
+                        aria-hidden
+                    />
+                </Link>
+            ) : null}
 
             {hasStores ? (
                 <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-800">

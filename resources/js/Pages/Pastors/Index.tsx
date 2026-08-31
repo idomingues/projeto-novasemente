@@ -213,28 +213,32 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                     {pastors.map((p) => (
                         <div
                             key={p.id}
-                            className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 shadow-sm flex flex-col"
+                            className="flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
                         >
-                            <div className="flex gap-4">
-                                <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 shrink-0 flex items-center justify-center">
-                                    {p.photo_path ? (
-                                        <img src={p.photo_path} alt="" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <UserCircleIcon className="w-12 h-12 text-zinc-400" />
-                                    )}
-                                    {p.photo_path ? (
-                                        <ImageDownloadButton
-                                            src={p.photo_path}
-                                            appUrl={appUrl}
-                                            filenameBase={`pastor-${p.id}`}
-                                            className="absolute bottom-1 right-1 z-10"
-                                            size="sm"
-                                        />
-                                    ) : null}
+                            {p.photo_path ? (
+                                <div className="relative w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                    <img
+                                        src={p.photo_path}
+                                        alt=""
+                                        className="block h-auto w-full object-contain object-center"
+                                    />
+                                    <ImageDownloadButton
+                                        src={p.photo_path}
+                                        appUrl={appUrl}
+                                        filenameBase={`pastor-${p.id}`}
+                                        className="absolute bottom-2 right-2 z-10"
+                                        size="sm"
+                                    />
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                    <h2 className="font-semibold text-zinc-900 dark:text-white truncate">{p.name}</h2>
-                                    <p className="text-xs text-zinc-500 mt-0.5">Ordem: {p.sort_order}</p>
+                            ) : (
+                                <div className="flex aspect-square w-full items-center justify-center bg-zinc-100 dark:bg-zinc-800">
+                                    <UserCircleIcon className="h-16 w-16 text-zinc-400" />
+                                </div>
+                            )}
+                            <div className="flex flex-col p-4">
+                                <div className="min-w-0">
+                                    <h2 className="truncate font-semibold text-zinc-900 dark:text-white">{p.name}</h2>
+                                    <p className="mt-0.5 text-xs text-zinc-500">Ordem: {p.sort_order}</p>
                                     {p.linked_user_email ? (
                                         <p
                                             className="mt-1 truncate text-xs text-zinc-600 dark:text-zinc-300"
@@ -247,48 +251,48 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                                         <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">Sem conta da app associada.</p>
                                     )}
                                     {p.scheduleSummary ? (
-                                        <p className="text-xs text-primary-700 dark:text-primary-300 mt-1 font-medium">
+                                        <p className="mt-1 text-xs font-medium text-primary-700 dark:text-primary-300">
                                             Horários: {p.scheduleSummary}
                                         </p>
                                     ) : (
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Sem faixas na agenda pastoral.</p>
+                                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Sem faixas na agenda pastoral.</p>
                                     )}
                                     {canManage ? (
                                         <Link
                                             href={route('pastoral-agenda.index', { pastor: p.id })}
-                                            className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-white dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+                                            className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-white dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                                         >
                                             <ClockIcon className="h-3.5 w-3.5" aria-hidden />
                                             Agenda pastoral
                                         </Link>
                                     ) : null}
                                     {p.bio && (
-                                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-2 line-clamp-4 whitespace-pre-wrap">
+                                        <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-sm text-zinc-600 dark:text-zinc-400">
                                             {p.bio}
                                         </p>
                                     )}
                                 </div>
+                                {canManage && (
+                                    <div className="mt-4 flex justify-end gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                                        <button
+                                            type="button"
+                                            onClick={() => openEditModal(p)}
+                                            className="cursor-pointer rounded-lg p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                                            title="Editar"
+                                        >
+                                            <PencilIcon className="h-5 w-5" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleDelete(p.id)}
+                                            className="cursor-pointer rounded-lg p-2 text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
+                                            title="Remover"
+                                        >
+                                            <TrashIcon className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            {canManage && (
-                                <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => openEditModal(p)}
-                                        className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-white rounded-lg"
-                                        title="Editar"
-                                    >
-                                        <PencilIcon className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => void handleDelete(p.id)}
-                                        className="p-2 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg"
-                                        title="Remover"
-                                    >
-                                        <TrashIcon className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            )}
                         </div>
                     ))}
                 </div>
@@ -318,12 +322,18 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                 Aparece neste cartão e na página pública (Mais → Pastores). Formatos: JPG ou PNG, até 4&nbsp;MB.
                             </p>
-                            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                                <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800">
+                            <div className="mt-3 flex flex-col gap-3">
+                                <div className="relative flex w-full items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800">
                                     {photoPreviewSrc ? (
-                                        <img src={photoPreviewSrc} alt="" className="h-full w-full object-cover" />
+                                        <img
+                                            src={photoPreviewSrc}
+                                            alt=""
+                                            className="block h-auto w-full object-contain object-center"
+                                        />
                                     ) : (
-                                        <UserCircleIcon className="h-16 w-16 text-zinc-400" aria-hidden />
+                                        <div className="flex aspect-square w-full max-w-[12rem] items-center justify-center">
+                                            <UserCircleIcon className="h-16 w-16 text-zinc-400" aria-hidden />
+                                        </div>
                                     )}
                                 </div>
                                 <div className="min-w-0 flex-1 space-y-2">
@@ -338,7 +348,7 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                                         <button
                                             type="button"
                                             onClick={clearPickedPhotoFile}
-                                            className="text-xs font-medium text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+                                            className="cursor-pointer text-xs font-medium text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
                                         >
                                             Desfazer arquivo novo (mantém a foto já guardada)
                                         </button>

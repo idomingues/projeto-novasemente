@@ -19,7 +19,6 @@ import {
     GlobeAltIcon,
     BanknotesIcon,
     SparklesIcon,
-    LifebuoyIcon,
     NewspaperIcon,
 } from '@heroicons/react/24/outline';
 import PrayingHandsIcon from '@/Components/PrayingHandsIcon';
@@ -105,13 +104,6 @@ const items: MoreMenuItem[] = [
     },
     { name: 'Séries', description: 'Veja todas as séries já passadas na Nova Semente', route: 'mobile.acervo', featureKey: 'acervo', icon: PlayCircleIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', featureKey: 'classe_comecos', icon: AcademicCapIcon },
-    {
-        name: 'Suporte APP',
-        description: 'Problema, sugestão ou elogio sobre o app',
-        route: 'mobile.support.index',
-        featureKey: 'support',
-        icon: LifebuoyIcon,
-    },
 ];
 
 export default function MobileMore(_: Props) {

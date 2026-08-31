@@ -26,7 +26,8 @@ class LibraryBookBookmarkTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Mobile/Library')
-                ->where('bookmarkedLibraryBookIds', []));
+                ->where('bookmarkedLibraryBookIds', [])
+                ->where('categories', fn ($categories) => collect($categories)->pluck('value')->contains('magazines')));
     }
 
     public function test_user_can_toggle_library_book_bookmark(): void

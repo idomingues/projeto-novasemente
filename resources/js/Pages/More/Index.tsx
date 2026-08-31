@@ -1,4 +1,5 @@
 import AdminLayout from '@/Layouts/AdminLayout';
+import SobreOAppNavItem from '@/Components/Mobile/SobreOAppNavItem';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ClockIcon,
@@ -13,7 +14,6 @@ import {
     UserPlusIcon,
     FilmIcon,
     HandRaisedIcon,
-    LifebuoyIcon,
     NewspaperIcon,
     ChatBubbleLeftRightIcon,
     ChartBarIcon,
@@ -33,7 +33,7 @@ interface Props {
     latestPrayerRequests?: unknown[];
 }
 
-const PASTORAL_ROUTE = 'mobile.pastoral-appointments.request' as const;
+const SOLICITATIONS_ROUTE = 'mobile.solicitations.hub' as const;
 
 const items: MoreMenuItem[] = [
     {
@@ -82,13 +82,6 @@ const items: MoreMenuItem[] = [
     },
     { name: 'Séries', description: 'Veja todas as séries já passadas na Nova Semente', route: 'mobile.acervo', featureKey: 'acervo', icon: PlayCircleIcon },
     { name: 'Classe Começos', description: 'Estudo bíblico presencial ou on-line', route: 'varios.classe-comecos', featureKey: 'classe_comecos', icon: AcademicCapIcon },
-    {
-        name: 'Suporte APP',
-        description: 'Problema, sugestão ou elogio sobre o app',
-        route: 'mobile.support.index',
-        featureKey: 'support',
-        icon: LifebuoyIcon,
-    },
 ];
 
 export default function MoreIndex(_: Props) {
@@ -121,15 +114,15 @@ export default function MoreIndex(_: Props) {
                     </div>
                 </div>
 
-                {authUser ? (
+                {authUser && route().has(SOLICITATIONS_ROUTE) ? (
                     <div className="grid gap-3 sm:grid-cols-2">
                         <Link
-                            href={route(PASTORAL_ROUTE)}
-                            className="block rounded-2xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 p-5 shadow-sm hover:border-zinc-400 dark:hover:border-zinc-500 transition-colors"
+                            href={route(SOLICITATIONS_ROUTE)}
+                            className="block cursor-pointer rounded-2xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 p-5 shadow-sm hover:border-zinc-400 dark:hover:border-zinc-500 transition-colors"
                         >
-                            <span className="text-sm font-semibold text-zinc-900 dark:text-white">Agendar com pastor</span>
+                            <span className="text-sm font-semibold text-zinc-900 dark:text-white">Solicitações</span>
                             <span className="block text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                Os meus pedidos e novo agendamento
+                                Batismo, apresentação, horário com pastor e outros pedidos
                             </span>
                         </Link>
                     </div>
@@ -169,6 +162,8 @@ export default function MoreIndex(_: Props) {
                             </Link>
                         );
                     })}
+
+                    <SobreOAppNavItem variant="more" />
                 </div>
             </div>
         </AdminLayout>

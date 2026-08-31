@@ -629,7 +629,7 @@ export default function SolicitationDetailPanel({
                     {!isLeaderChat && solicitation.type === 'pastor_visit' && !memberPastoralBooking ? (
                         <p className="text-xs text-amber-700 dark:text-amber-300">
                             Não foi possível carregar a lista de horários. Pode alterar a mensagem; para mudar data ou pastor,
-                            contacte a igreja ou use «Agendar com pastor» em Mais.
+                            contacte a igreja ou use Solicitações e escolha «Horário com pastor».
                         </p>
                     ) : null}
                     <div className="flex justify-end">

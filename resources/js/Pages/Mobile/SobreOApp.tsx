@@ -40,7 +40,7 @@ export default function MobileSobreOApp({ backRoute, backLabel }: Props) {
                         Sobre o APP
                     </h1>
                     <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                        Versão, lojas e links oficiais da Nova Semente.
+                        Versão, lojas, links e suporte.
                     </p>
                 </div>
 

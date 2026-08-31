@@ -65,6 +65,9 @@ export default function SobreOAppNavItem({
                 </div>
                 <div className="mt-3 min-w-0">
                     <p className="text-[15px] font-semibold leading-tight text-zinc-900 dark:text-white">Sobre o APP</p>
+                    <p className="mt-1 text-[11px] font-medium leading-snug text-zinc-600 dark:text-zinc-300">
+                        Versão, lojas, links e suporte
+                    </p>
                 </div>
             </>
         );
@@ -96,6 +99,9 @@ export default function SobreOAppNavItem({
                     </div>
                     <div className="min-w-0 flex-1">
                         <span className="block font-semibold text-zinc-900 dark:text-white">Sobre o APP</span>
+                        <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                            Versão, lojas, links e suporte
+                        </span>
                     </div>
                 </button>
                 <SobreOAppModal show={open} onClose={() => setOpen(false)} />
@@ -110,6 +116,9 @@ export default function SobreOAppNavItem({
             </div>
             <div className="min-w-0 flex-1">
                 <span className="block font-semibold text-zinc-900 dark:text-white">Sobre o APP</span>
+                <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                    Versão, lojas, links e suporte
+                </span>
             </div>
         </Link>
     );

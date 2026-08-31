@@ -5,6 +5,7 @@ import SelectInput from '@/Components/SelectInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import InputError from '@/Components/InputError';
 import { FormEventHandler, useMemo } from 'react';
+import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 export interface PastoralSlotOpt {
     value: string;
@@ -24,6 +25,8 @@ export interface PastoralAppointmentFormProps {
     defaultRequesterName: string;
     /** Prefixo para ids únicos (ex.: `more` no modal, `page` na página dedicada). */
     fieldIdPrefix?: string;
+    initialPastorId?: number | string | null;
+    onSuccess?: () => void;
 }
 
 export default function PastoralAppointmentForm({
@@ -31,12 +34,19 @@ export default function PastoralAppointmentForm({
     storeUrl,
     defaultRequesterName,
     fieldIdPrefix = 'pa',
+    initialPastorId = null,
+    onSuccess,
 }: PastoralAppointmentFormProps) {
     const id = (suffix: string) => `${fieldIdPrefix}_${suffix}`;
+    const hideRequesterName = defaultRequesterName.trim() !== '';
+    const initialPastor =
+        initialPastorId !== null && initialPastorId !== undefined && String(initialPastorId) !== ''
+            ? String(initialPastorId)
+            : '';
 
     const { data, setData, post, processing, errors } = useForm({
         requester_name: defaultRequesterName,
-        preferred_pastor_id: '' as string | number,
+        preferred_pastor_id: initialPastor as string | number,
         subject: '',
         notes: '',
         preferred_start: '',
@@ -56,25 +66,27 @@ export default function PastoralAppointmentForm({
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(storeUrl);
+        post(storeUrl, {
+            ...inertiaListModalSave,
+            onSuccess: () => onSuccess?.(),
+        });
     };
 
     return (
         <form onSubmit={submit} className="space-y-4">
-            <div>
-                <InputLabel htmlFor={id('name')} value="O seu nome" />
-                <TextInput
-                    id={id('name')}
-                    className="mt-1 block w-full"
-                    value={data.requester_name}
-                    onChange={(e) => setData('requester_name', e.target.value)}
-                    autoComplete="name"
-                />
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    Por omissão usa o nome da sua conta; pode alterar se preferir outro nome de apresentação.
-                </p>
-                <InputError message={errors.requester_name} className="mt-1" />
-            </div>
+            {hideRequesterName ? null : (
+                <div>
+                    <InputLabel htmlFor={id('name')} value="Nome" />
+                    <TextInput
+                        id={id('name')}
+                        className="mt-1 block w-full"
+                        value={data.requester_name}
+                        onChange={(e) => setData('requester_name', e.target.value)}
+                        autoComplete="name"
+                    />
+                    <InputError message={errors.requester_name} className="mt-1" />
+                </div>
+            )}
             <div>
                 <InputLabel htmlFor={id('pastor')} value="Pastor" />
                 <SelectInput
@@ -100,13 +112,13 @@ export default function PastoralAppointmentForm({
                 <InputError message={errors.preferred_pastor_id} className="mt-1" />
                 {pastors.length === 0 ? (
                     <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                        Ainda não há pastores cadastrados. Entre em contato a secretaria.
+                        Ainda não há pastores cadastrados. Entre em contato com a secretaria.
                     </p>
                 ) : null}
             </div>
             {selectedPastor ? (
                 <div>
-                    <InputLabel htmlFor={id('slots')} value="Data e horário" />
+                    <InputLabel htmlFor={id('slots')} value="Horário" />
                     {selectedPastor.slots.length > 0 ? (
                         <>
                             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -135,12 +147,12 @@ export default function PastoralAppointmentForm({
                         </>
                     ) : (
                         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                            De momento, os horários deste pastor estão todos preenchidos. Tente novamente mais tarde.
+                            No momento, os horários deste pastor estão todos preenchidos. Tente novamente mais tarde.
                         </p>
                     )}
                     {selectedSlot?.modality === 'both' && selectedPastor.slots.length > 0 ? (
                         <div className="mt-4 space-y-2">
-                            <InputLabel value="Como prefere o atendimento?" />
+                            <InputLabel value="Modalidade" />
                             <div className="flex flex-col gap-2">
                                 <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 px-3 py-2 dark:border-zinc-700 has-[:checked]:border-primary-500 dark:has-[:checked]:border-primary-600">
                                     <input
@@ -192,7 +204,7 @@ export default function PastoralAppointmentForm({
             </div>
             <PrimaryButton
                 type="submit"
-                className="w-full justify-center"
+                className="w-full cursor-pointer justify-center"
                 disabled={
                     processing ||
                     pastors.length === 0 ||

@@ -87,7 +87,7 @@ export default function Create({
                                 <div className="rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
                                     <p className="font-medium">Não foi possível carregar os horários da igreja.</p>
                                     <p className="mt-1 text-xs opacity-90">
-                                        Confirme que tem uma igreja activa na app ou utilize «Agendar com pastor» em Mais.
+                                        Confirme que tem uma igreja ativa no app ou use Solicitações e escolha «Horário com pastor».
                                     </p>
                                 </div>
                             ) : (

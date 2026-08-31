@@ -7,6 +7,7 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
+import MagazineReader from '@/Components/Mobile/MagazineReader';
 import PdfReflowReader from '@/Components/Mobile/PdfReflowReader';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -130,15 +131,27 @@ export default function MobileLibraryShow({ book }: Props) {
                         </Link>
                     </div>
 
-                    <PdfReflowReader
-                        title={book.title}
-                        subtitle={book.subtitle}
-                        coverUrl={cover || null}
-                        pdfUrl={pdf}
-                        downloadUrl={route('mobile.biblioteca.pdf-download', book.id)}
-                        contentKey={`library:book:${book.id}`}
-                        className="sm:px-0"
-                    />
+                    {book.category === 'magazines' ? (
+                        <MagazineReader
+                            title={book.title}
+                            subtitle={book.subtitle}
+                            coverUrl={cover || null}
+                            pdfUrl={pdf}
+                            downloadUrl={route('mobile.biblioteca.pdf-download', book.id)}
+                            contentKey={`library:book:${book.id}`}
+                            className="sm:px-0"
+                        />
+                    ) : (
+                        <PdfReflowReader
+                            title={book.title}
+                            subtitle={book.subtitle}
+                            coverUrl={cover || null}
+                            pdfUrl={pdf}
+                            downloadUrl={route('mobile.biblioteca.pdf-download', book.id)}
+                            contentKey={`library:book:${book.id}`}
+                            className="sm:px-0"
+                        />
+                    )}
 
                     {description ? (
                         <div className="mx-4 mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950 sm:mx-0">

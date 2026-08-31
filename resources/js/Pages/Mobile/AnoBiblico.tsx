@@ -1,6 +1,15 @@
 import MobileLayout from '@/Layouts/MobileLayout';
+import Modal from '@/Components/Modal';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { AcademicCapIcon, BookOpenIcon, CheckCircleIcon, CalendarDaysIcon, ArrowPathIcon, Squares2X2Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+    AcademicCapIcon,
+    ArrowLeftIcon,
+    BookOpenIcon,
+    CheckCircleIcon,
+    CalendarDaysIcon,
+    ArrowPathIcon,
+    Squares2X2Icon,
+} from '@heroicons/react/24/outline';
 import { useEffect, useMemo, useState } from 'react';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
@@ -53,20 +62,40 @@ export default function MobileAnoBiblico(props: Props) {
     const [customEnd, setCustomEnd] = useState<string>('');
     const [resetReadings, setResetReadings] = useState(false);
     const [setupCopied, setSetupCopied] = useState(false);
-    useEffect(() => {
-        const mustChoose = (props as any).challenge?.mustChoose === true;
-        const available = ((props as any).challenge?.available as any[]) ?? [];
-        if (!mustChoose) return;
-        setChallenges(Array.isArray(available) ? available : []);
-        setChallengeOpen(true);
-    }, [props]);
-
     const [reprogramMode, setReprogramMode] = useState<'keep_end' | 'new_end' | 'start_today_keep_end'>('keep_end');
     const [newEndDate, setNewEndDate] = useState<string>('');
+
+    const challengeMeta = props.needsLogin === false && props.installed === true ? props.challenge : undefined;
+    const mustChooseChallenge = challengeMeta?.mustChoose === true;
+    const activeChallenge = challengeMeta?.active ?? null;
+    const canDismissChallengePicker = Boolean(activeChallenge) && !mustChooseChallenge;
+    const availableFromProps = challengeMeta?.available;
+    const availableKey = mustChooseChallenge
+        ? (availableFromProps ?? []).map((c) => c.id).join(',')
+        : '';
+
+    useEffect(() => {
+        if (!mustChooseChallenge) return;
+        setChallenges(Array.isArray(availableFromProps) ? availableFromProps : []);
+        setChallengeOpen(true);
+    }, [mustChooseChallenge, availableKey]);
 
     const canComplete = props.needsLogin === false && props.installed === true && props.finished === false && typeof props.day === 'number';
     const canStartReading = props.needsLogin === false && props.installed === true && props.finished === false && typeof props.day === 'number';
     const isLate = props.needsLogin === false && props.installed === true && (props as any).status?.kind === 'late';
+    const hidePlanWhileChoosing = mustChooseChallenge && challengeOpen;
+
+    const closeChallengePicker = () => {
+        if (!canDismissChallengePicker) return;
+        setChallengeOpen(false);
+    };
+
+    const startChallenge = (challengeId: number, extra: Record<string, unknown> = {}) => {
+        router.post(route('mobile.ano-biblico.challenges.start'), { challengeId, resetReadings, ...extra }, {
+            ...inertiaListModalSave,
+            onSuccess: () => setChallengeOpen(false),
+        });
+    };
     const loginRedirectHref = `${route('login')}?redirect=${encodeURIComponent(route('mobile.ano-biblico'))}`;
 
     const preview = useMemo(() => {
@@ -137,17 +166,20 @@ export default function MobileAnoBiblico(props: Props) {
                         <div className="grid w-full min-w-0 grid-cols-2 gap-1.5 sm:max-w-md sm:gap-2">
                             <Link
                                 href={route('mobile.ano-biblico.history')}
-                                className="inline-flex min-h-[2.5rem] w-full min-w-0 items-center justify-center rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 py-2.5 text-[11px] font-bold leading-tight text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/40 sm:min-h-[2.75rem] sm:px-4 sm:text-xs"
+                                className="inline-flex min-h-[2.5rem] w-full min-w-0 cursor-pointer items-center justify-center rounded-full border border-zinc-200 bg-white px-2 py-2.5 text-[11px] font-bold leading-tight text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800/40 sm:min-h-[2.75rem] sm:px-4 sm:text-xs"
                             >
                                 <span className="truncate text-center">Ver histórico</span>
                             </Link>
                             <button
                                 type="button"
-                                disabled={challengeLoading || (props as any).challenge?.enabled !== true}
+                                disabled={challengeLoading || challengeMeta?.enabled !== true}
                                 onClick={async () => {
-                                    if ((props as any).challenge?.enabled !== true) return;
-                                    const mustChoose = (props as any).challenge?.mustChoose === true;
-                                    if (mustChoose) {
+                                    if (challengeMeta?.enabled !== true) return;
+                                    if (challengeOpen && canDismissChallengePicker) {
+                                        closeChallengePicker();
+                                        return;
+                                    }
+                                    if (mustChooseChallenge) {
                                         setChallengeOpen(true);
                                         return;
                                     }
@@ -161,11 +193,23 @@ export default function MobileAnoBiblico(props: Props) {
                                         setChallengeLoading(false);
                                     }
                                 }}
-                                className="inline-flex min-h-[2.5rem] w-full min-w-0 items-center justify-center gap-1 rounded-full bg-zinc-100 px-2 py-2.5 text-[11px] font-bold leading-tight text-zinc-700 hover:bg-zinc-200/70 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-800/50 dark:text-zinc-200 dark:hover:bg-zinc-800 sm:min-h-[2.75rem] sm:gap-2 sm:px-4 sm:text-xs"
+                                className={`inline-flex min-h-[2.5rem] w-full min-w-0 cursor-pointer items-center justify-center gap-1 rounded-full px-2 py-2.5 text-[11px] font-bold leading-tight disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[2.75rem] sm:gap-2 sm:px-4 sm:text-xs ${
+                                    challengeOpen
+                                        ? 'border border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800'
+                                        : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200/70 dark:bg-zinc-800/50 dark:text-zinc-200 dark:hover:bg-zinc-800'
+                                }`}
                             >
-                                <Squares2X2Icon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                                {challengeOpen && canDismissChallengePicker ? (
+                                    <ArrowLeftIcon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                                ) : (
+                                    <Squares2X2Icon className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                                )}
                                 <span className="min-w-0 truncate text-center">
-                                    {(props as any).challenge?.active ? 'Trocar desafio' : 'Escolher desafio'}
+                                    {challengeOpen && canDismissChallengePicker
+                                        ? 'Voltar'
+                                        : activeChallenge
+                                          ? 'Trocar desafio'
+                                          : 'Escolher desafio'}
                                 </span>
                             </button>
                         </div>
@@ -181,7 +225,7 @@ export default function MobileAnoBiblico(props: Props) {
                         <div className="mt-4">
                             <Link
                                 href={loginRedirectHref}
-                                className="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-800 active:bg-emerald-900 transition-colors"
+                                className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900"
                             >
                                 Fazer login
                             </Link>
@@ -243,6 +287,163 @@ export default function MobileAnoBiblico(props: Props) {
                     </div>
                 ) : (
                     <div className="space-y-4">
+                        {challengeOpen ? (
+                            <section
+                                id="ano-biblico-desafios"
+                                className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-5"
+                            >
+                                <div className="flex items-start gap-3">
+                                    {canDismissChallengePicker ? (
+                                        <button
+                                            type="button"
+                                            onClick={closeChallengePicker}
+                                            className="mt-0.5 inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+                                            aria-label="Voltar ao plano"
+                                        >
+                                            <ArrowLeftIcon className="h-5 w-5" aria-hidden />
+                                        </button>
+                                    ) : null}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Desafios</div>
+                                        <h2 className="mt-0.5 text-lg font-bold text-zinc-900 dark:text-white">
+                                            {activeChallenge ? 'Trocar desafio' : 'Escolha um desafio'}
+                                        </h2>
+                                        {mustChooseChallenge ? (
+                                            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                                                Para começar, escolha um plano de leitura. Você pode trocar depois (o anterior fica
+                                                arquivado com o histórico).
+                                            </p>
+                                        ) : activeChallenge ? (
+                                            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                                                Atual:{' '}
+                                                <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                                                    {activeChallenge.name}
+                                                </span>
+                                                . Seu plano de hoje continua abaixo.
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                </div>
+
+                                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 p-3 dark:border-zinc-800">
+                                    <input
+                                        type="checkbox"
+                                        checked={resetReadings}
+                                        onChange={(e) => setResetReadings(e.target.checked)}
+                                        className="mt-0.5 cursor-pointer"
+                                    />
+                                    <span className="text-sm text-zinc-700 dark:text-zinc-200">
+                                        Reiniciar leituras já feitas (não aproveitar histórico)
+                                    </span>
+                                </label>
+
+                                {activeChallenge ? (
+                                    <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-800/40">
+                                        <div className="text-sm font-semibold text-zinc-900 dark:text-white">Desafio atual</div>
+                                        <p className="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                            Redistribui só o que falta ler até a data final, mantendo capítulos já concluídos. A
+                                            meta por dia usa os versículos que ainda faltam.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            disabled={recalculatingChallenge}
+                                            onClick={() => {
+                                                if (
+                                                    !confirm(
+                                                        'Recalcular o desafio atual? As leituras pendentes serão reorganizadas a partir de hoje até a data final, sem apagar o que você já leu.',
+                                                    )
+                                                ) {
+                                                    return;
+                                                }
+                                                postRecalculateChallenge(route('mobile.ano-biblico.challenges.recalculate'), {
+                                                    ...inertiaListModalSave,
+                                                });
+                                            }}
+                                            className="mt-3 inline-flex w-full cursor-pointer items-center justify-center rounded-full border border-zinc-300 px-4 py-2.5 text-sm font-bold text-zinc-800 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                                        >
+                                            {recalculatingChallenge ? 'Recalculando…' : 'Recalcular desafio atual'}
+                                        </button>
+                                    </div>
+                                ) : null}
+
+                                {challenges.length === 0 ? (
+                                    <div className="mt-3 rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-600 dark:bg-zinc-800/40 dark:text-zinc-300">
+                                        Nenhum desafio disponível.
+                                    </div>
+                                ) : (
+                                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                                        {challenges.map((c) => {
+                                            const isCurrent = activeChallenge?.challengeId === c.id;
+                                            return (
+                                                <div
+                                                    key={c.id}
+                                                    className={`rounded-2xl border p-4 ${
+                                                        isCurrent
+                                                            ? 'border-emerald-200/90 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/20'
+                                                            : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
+                                                    } ${c.type === 'data_personalizada' ? 'md:col-span-2' : ''}`}
+                                                >
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="font-bold text-zinc-900 dark:text-white">{c.name}</div>
+                                                        {isCurrent ? (
+                                                            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200">
+                                                                Atual
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
+                                                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{c.description}</p>
+
+                                                    {c.type === 'data_personalizada' ? (
+                                                        <div className="mt-3 space-y-2">
+                                                            <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                                                                Data final
+                                                                <input
+                                                                    type="date"
+                                                                    value={customEnd}
+                                                                    onChange={(e) => setCustomEnd(e.target.value)}
+                                                                    className="mt-1 w-full cursor-pointer rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+                                                                />
+                                                            </label>
+                                                            <button
+                                                                type="button"
+                                                                disabled={!customEnd}
+                                                                onClick={() => startChallenge(c.id, { dataFim: customEnd })}
+                                                                className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
+                                                            >
+                                                                Iniciar desafio
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="mt-3">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => startChallenge(c.id)}
+                                                                className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900"
+                                                            >
+                                                                Iniciar desafio
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {canDismissChallengePicker ? (
+                                    <button
+                                        type="button"
+                                        onClick={closeChallengePicker}
+                                        className="mt-4 inline-flex w-full cursor-pointer items-center justify-center rounded-full border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                    >
+                                        Voltar ao plano
+                                    </button>
+                                ) : null}
+                            </section>
+                        ) : null}
+
+                        {!hidePlanWhileChoosing ? (
+                        <>
                         {isLate ? (
                             <div className="rounded-2xl border border-amber-200/80 dark:border-amber-900/60 bg-amber-50/90 dark:bg-amber-950/30 p-4">
                                 <div className="font-bold text-amber-950 dark:text-amber-100">
@@ -254,14 +455,14 @@ export default function MobileAnoBiblico(props: Props) {
                                 <div className="mt-4 grid grid-cols-1 gap-2">
                                     <Link
                                         href={canStartReading && typeof props.day === 'number' ? route('mobile.ano-biblico.day', { day: props.day }) : route('mobile.ano-biblico')}
-                                        className="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-800 active:bg-emerald-900 transition-colors"
+                                        className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900"
                                     >
                                         Continuar de onde parei
                                     </Link>
                                     <button
                                         type="button"
                                         onClick={() => setReprogramOpen(true)}
-                                        className="inline-flex w-full items-center justify-center rounded-full border border-amber-300/80 dark:border-amber-900/60 bg-white/70 dark:bg-zinc-950/10 px-4 py-3 text-sm font-bold text-amber-950 dark:text-amber-100 hover:bg-white transition-colors"
+                                        className="inline-flex w-full cursor-pointer items-center justify-center rounded-full border border-amber-300/80 bg-white/70 px-4 py-3 text-sm font-bold text-amber-950 transition-colors hover:bg-white dark:border-amber-900/60 dark:bg-zinc-950/10 dark:text-amber-100"
                                     >
                                         Reprogramar meu plano
                                     </button>
@@ -272,7 +473,7 @@ export default function MobileAnoBiblico(props: Props) {
                                             if (!confirm('Recomeçar do zero vai zerar seu progresso. Deseja continuar?')) return;
                                             postRestartZero(route('mobile.ano-biblico.restart-zero'), { preserveScroll: true });
                                         }}
-                                        className="inline-flex w-full items-center justify-center rounded-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-3 text-sm font-bold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        className="inline-flex w-full cursor-pointer items-center justify-center rounded-full border border-zinc-300 bg-white px-4 py-3 text-sm font-bold text-zinc-900 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800/40"
                                     >
                                         Recomeçar do zero
                                     </button>
@@ -309,7 +510,7 @@ export default function MobileAnoBiblico(props: Props) {
                                           ? route('mobile.ano-biblico.day', { day: props.day })
                                           : route('mobile.bible')
                                 }
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-800 active:bg-emerald-900 transition-colors"
+                                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900"
                             >
                                 <BookOpenIcon className="h-5 w-5" aria-hidden />
                                 {props.finished ? 'Abrir Bíblia' : 'Iniciar leitura'}
@@ -322,7 +523,7 @@ export default function MobileAnoBiblico(props: Props) {
                                     if (!canComplete || typeof props.day !== 'number') return;
                                     post(route('mobile.ano-biblico.complete'), { preserveScroll: true });
                                 }}
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-emerald-700 px-4 py-3 text-sm font-bold text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-emerald-700 px-4 py-3 text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-emerald-950/30"
                             >
                                 <CheckCircleIcon className="h-5 w-5" aria-hidden />
                                 Já li / Marcar como concluído
@@ -344,7 +545,7 @@ export default function MobileAnoBiblico(props: Props) {
                                         type="button"
                                         disabled={starting}
                                         onClick={() => postStart(route('mobile.ano-biblico.start'), { preserveScroll: true })}
-                                        className="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-800 active:bg-emerald-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         Iniciar plano
                                     </button>
@@ -392,256 +593,111 @@ export default function MobileAnoBiblico(props: Props) {
                                 </div>
                             ) : null}
                         </div>
+                        </>
+                        ) : null}
                     </div>
                 )}
             </div>
 
-            {reprogramOpen ? (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-                    <div className="absolute inset-0 bg-black/40" onClick={() => setReprogramOpen(false)} />
-                    <div className="relative w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Reprogramar</div>
-                                <div className="mt-1 text-lg font-bold text-zinc-900 dark:text-white">Reprogramar Ano Bíblico</div>
-                                <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                                    Vamos redistribuir apenas os capítulos que faltam, mantendo o que você já concluiu.
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setReprogramOpen(false)}
-                                className="cursor-pointer rounded-full p-2 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800/60 dark:hover:text-white"
-                                aria-label="Fechar"
-                            >
-                                <XMarkIcon className="h-5 w-5" aria-hidden />
-                            </button>
-                        </div>
-
-                        <div className="mt-5 space-y-3">
-                            <label className="flex items-start gap-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-3 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="mode"
-                                    checked={reprogramMode === 'keep_end'}
-                                    onChange={() => setReprogramMode('keep_end')}
-                                    className="mt-1"
-                                />
-                                <div>
-                                    <div className="font-bold text-zinc-900 dark:text-white">Manter data final original</div>
-                                    <div className="text-sm text-zinc-600 dark:text-zinc-400">Redistribui o restante até a data final atual.</div>
-                                </div>
-                            </label>
-
-                            <label className="flex items-start gap-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-3 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="mode"
-                                    checked={reprogramMode === 'new_end'}
-                                    onChange={() => setReprogramMode('new_end')}
-                                    className="mt-1"
-                                />
-                                <div className="flex-1">
-                                    <div className="font-bold text-zinc-900 dark:text-white">Escolher nova data final</div>
-                                    <div className="text-sm text-zinc-600 dark:text-zinc-400">Você define até quando quer terminar.</div>
-                                    {reprogramMode === 'new_end' ? (
-                                        <div className="mt-2">
-                                            <input
-                                                type="date"
-                                                value={newEndDate}
-                                                onChange={(e) => setNewEndDate(e.target.value)}
-                                                className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white"
-                                            />
-                                        </div>
-                                    ) : null}
-                                </div>
-                            </label>
-
-                            <label className="flex items-start gap-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-3 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="mode"
-                                    checked={reprogramMode === 'start_today_keep_end'}
-                                    onChange={() => setReprogramMode('start_today_keep_end')}
-                                    className="mt-1"
-                                />
-                                <div>
-                                    <div className="font-bold text-zinc-900 dark:text-white">Recomeçar a partir de hoje</div>
-                                    <div className="text-sm text-zinc-600 dark:text-zinc-400">Mantém a data final e reorganiza o restante a partir de hoje.</div>
-                                </div>
-                            </label>
-                        </div>
-
-                        {preview ? (
-                            <div className="mt-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 p-4">
-                                <div className="text-sm font-bold text-zinc-900 dark:text-white">Resumo</div>
-                                <div className="mt-1 text-sm text-zinc-700 dark:text-zinc-200">
-                                    Faltam <span className="font-bold">{preview.remaining}</span> capítulos em{' '}
-                                    <span className="font-bold">{preview.daysRemaining}</span> dia(s). Você precisará ler cerca de{' '}
-                                    <span className="font-bold">{preview.perDay}</span> capítulo(s) por dia.
-                                </div>
-                            </div>
-                        ) : null}
-
-                        <div className="mt-5 grid grid-cols-1 gap-2">
-                            <button
-                                type="button"
-                                disabled={reprogramming || (reprogramMode === 'new_end' && !newEndDate)}
-                                onClick={() => {
-                                    setReprogramming(true);
-                                    router.post(
-                                        route('mobile.ano-biblico.reprogram'),
-                                        reprogramMode === 'new_end'
-                                            ? { mode: 'new_end', data_fim: newEndDate }
-                                            : { mode: reprogramMode },
-                                        {
-                                            ...inertiaListModalSave,
-                                            onFinish: () => setReprogramming(false),
-                                        }
-                                    );
-                                }}
-                                className="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-800 active:bg-emerald-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                Salvar reprogramação
-                            </button>
-                        </div>
+            <Modal show={reprogramOpen} onClose={() => setReprogramOpen(false)} maxWidth="lg">
+                <div className="p-4 sm:p-6">
+                    <div className="pr-10">
+                        <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Reprogramar</div>
+                        <div className="mt-1 text-lg font-bold text-zinc-900 dark:text-white">Reprogramar Ano Bíblico</div>
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                            Vamos redistribuir apenas os capítulos que faltam, mantendo o que você já concluiu.
+                        </p>
                     </div>
-                </div>
-            ) : null}
 
-            {challengeOpen ? (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-                    <div
-                        className="absolute inset-0 bg-black/40"
-                        onClick={() => {
-                            if ((props as any).challenge?.mustChoose === true) return;
-                            setChallengeOpen(false);
-                        }}
-                    />
-                    <div className="relative w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
-                        <div className="flex items-start justify-between gap-3">
+                    <div className="mt-5 space-y-3">
+                        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 p-3 dark:border-zinc-800">
+                            <input
+                                type="radio"
+                                name="mode"
+                                checked={reprogramMode === 'keep_end'}
+                                onChange={() => setReprogramMode('keep_end')}
+                                className="mt-1 cursor-pointer"
+                            />
                             <div>
-                                <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Desafios</div>
-                                <div className="mt-1 text-lg font-bold text-zinc-900 dark:text-white">Escolha um desafio</div>
-                                {(props as any).challenge?.mustChoose ? (
-                                    <div className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                                        Para começar, escolha um plano de leitura. Você pode trocar depois (o anterior fica arquivado com o histórico).
-                                    </div>
-                                ) : null}
-                                {(props as any).challenge?.active ? (
-                                    <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                                        Atual: <span className="font-bold">{(props as any).challenge.active.name}</span>
+                                <div className="font-bold text-zinc-900 dark:text-white">Manter data final original</div>
+                                <div className="text-sm text-zinc-600 dark:text-zinc-400">Redistribui o restante até a data final atual.</div>
+                            </div>
+                        </label>
+
+                        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 p-3 dark:border-zinc-800">
+                            <input
+                                type="radio"
+                                name="mode"
+                                checked={reprogramMode === 'new_end'}
+                                onChange={() => setReprogramMode('new_end')}
+                                className="mt-1 cursor-pointer"
+                            />
+                            <div className="flex-1">
+                                <div className="font-bold text-zinc-900 dark:text-white">Escolher nova data final</div>
+                                <div className="text-sm text-zinc-600 dark:text-zinc-400">Você define até quando quer terminar.</div>
+                                {reprogramMode === 'new_end' ? (
+                                    <div className="mt-2">
+                                        <input
+                                            type="date"
+                                            value={newEndDate}
+                                            onChange={(e) => setNewEndDate(e.target.value)}
+                                            className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white"
+                                        />
                                     </div>
                                 ) : null}
                             </div>
-                            {(props as any).challenge?.mustChoose !== true ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setChallengeOpen(false)}
-                                    className="cursor-pointer rounded-full p-2 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800/60 dark:hover:text-white"
-                                    aria-label="Fechar"
-                                >
-                                    <XMarkIcon className="h-5 w-5" aria-hidden />
-                                </button>
-                            ) : null}
+                        </label>
+
+                        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 p-3 dark:border-zinc-800">
+                            <input
+                                type="radio"
+                                name="mode"
+                                checked={reprogramMode === 'start_today_keep_end'}
+                                onChange={() => setReprogramMode('start_today_keep_end')}
+                                className="mt-1 cursor-pointer"
+                            />
+                            <div>
+                                <div className="font-bold text-zinc-900 dark:text-white">Recomeçar a partir de hoje</div>
+                                <div className="text-sm text-zinc-600 dark:text-zinc-400">Mantém a data final e reorganiza o restante a partir de hoje.</div>
+                            </div>
+                        </label>
+                    </div>
+
+                    {preview ? (
+                        <div className="mt-4 rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-800/40">
+                            <div className="text-sm font-bold text-zinc-900 dark:text-white">Resumo</div>
+                            <div className="mt-1 text-sm text-zinc-700 dark:text-zinc-200">
+                                Faltam <span className="font-bold">{preview.remaining}</span> capítulos em{' '}
+                                <span className="font-bold">{preview.daysRemaining}</span> dia(s). Você precisará ler cerca de{' '}
+                                <span className="font-bold">{preview.perDay}</span> capítulo(s) por dia.
+                            </div>
                         </div>
+                    ) : null}
 
-                        <div className="mt-4 space-y-3">
-                            <label className="flex items-center gap-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-3">
-                                <input type="checkbox" checked={resetReadings} onChange={(e) => setResetReadings(e.target.checked)} />
-                                <div className="text-sm text-zinc-700 dark:text-zinc-200">
-                                    Reiniciar leituras já feitas (não aproveitar histórico)
-                                </div>
-                            </label>
-
-                            {(props as any).challenge?.active ? (
-                                <div className="rounded-2xl border border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/25 p-3">
-                                    <div className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">Desafio atual</div>
-                                    <p className="mt-1 text-xs text-emerald-900/85 dark:text-emerald-100/80">
-                                        Redistribui só o que falta ler até a data final, mantendo capítulos já concluídos. A meta por dia
-                                        usa os versículos que ainda faltam (média por dia até o fim do prazo).
-                                    </p>
-                                    <button
-                                        type="button"
-                                        disabled={recalculatingChallenge}
-                                        onClick={() => {
-                                            if (
-                                                !confirm(
-                                                    'Recalcular o desafio atual? As leituras pendentes serão reorganizadas a partir de hoje até a data final, sem apagar o que você já leu.',
-                                                )
-                                            ) {
-                                                return;
-                                            }
-                                            postRecalculateChallenge(route('mobile.ano-biblico.challenges.recalculate'), {
-                                                ...inertiaListModalSave,
-                                            });
-                                        }}
-                                        className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-emerald-700 px-4 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100/80 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-500 dark:text-emerald-100 dark:hover:bg-emerald-950/40 transition-colors"
-                                    >
-                                        {recalculatingChallenge ? 'Recalculando…' : 'Recalcular desafio atual'}
-                                    </button>
-                                </div>
-                            ) : null}
-
-                            {challenges.length === 0 ? (
-                                <div className="rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 p-4 text-sm text-zinc-600 dark:text-zinc-300">
-                                    Nenhum desafio disponível.
-                                </div>
-                            ) : (
-                                <div className="space-y-2 max-h-[55vh] overflow-auto pr-1">
-                                    {challenges.map((c) => (
-                                        <div key={c.id} className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-3">
-                                            <div className="font-bold text-zinc-900 dark:text-white">{c.name}</div>
-                                            <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{c.description}</div>
-
-                                            {c.type === 'data_personalizada' ? (
-                                                <div className="mt-3 space-y-2">
-                                                    <input
-                                                        type="date"
-                                                        value={customEnd}
-                                                        onChange={(e) => setCustomEnd(e.target.value)}
-                                                        className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        disabled={!customEnd}
-                                                        onClick={() => {
-                                                            router.post(
-                                                                route('mobile.ano-biblico.challenges.start'),
-                                                                { challengeId: c.id, dataFim: customEnd, resetReadings },
-                                                                { ...inertiaListModalSave }
-                                                            );
-                                                        }}
-                                                        className="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 active:bg-emerald-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                                    >
-                                                        Iniciar desafio
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <div className="mt-3">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            router.post(
-                                                                route('mobile.ano-biblico.challenges.start'),
-                                                                { challengeId: c.id, resetReadings },
-                                                                { ...inertiaListModalSave }
-                                                            );
-                                                        }}
-                                                        className="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 active:bg-emerald-900 transition-colors"
-                                                    >
-                                                        Iniciar desafio
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                    <div className="mt-5">
+                        <button
+                            type="button"
+                            disabled={reprogramming || (reprogramMode === 'new_end' && !newEndDate)}
+                            onClick={() => {
+                                setReprogramming(true);
+                                router.post(
+                                    route('mobile.ano-biblico.reprogram'),
+                                    reprogramMode === 'new_end'
+                                        ? { mode: 'new_end', data_fim: newEndDate }
+                                        : { mode: reprogramMode },
+                                    {
+                                        ...inertiaListModalSave,
+                                        onFinish: () => setReprogramming(false),
+                                    },
+                                );
+                            }}
+                            className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Salvar reprogramação
+                        </button>
                     </div>
                 </div>
-            ) : null}
+            </Modal>
         </MobileLayout>
     );
 }

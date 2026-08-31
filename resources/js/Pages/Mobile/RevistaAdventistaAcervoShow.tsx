@@ -1,5 +1,5 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import PdfReflowReader from '@/Components/Mobile/PdfReflowReader';
+import MagazineReader from '@/Components/Mobile/MagazineReader';
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
@@ -37,7 +37,7 @@ export default function MobileRevistaAdventistaAcervoShow({ edition }: Props) {
                     </Link>
                 </div>
 
-                <PdfReflowReader
+                <MagazineReader
                     title={edition.title}
                     subtitle={subtitle}
                     coverUrl={edition.cover_url}

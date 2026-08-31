@@ -1,0 +1,264 @@
+import { fetchPdfBytes, loadPdfDocument } from '@/lib/pdfjsClient';
+import { type PDFDocumentProxy, type PDFPageProxy } from 'pdfjs-dist';
+import {
+    ArrowDownTrayIcon,
+    ArrowPathIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+} from '@heroicons/react/24/outline';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+type Props = {
+    pdfUrl: string;
+    title: string;
+    downloadUrl?: string | null;
+    className?: string;
+};
+
+const toolbarBtnClass =
+    'inline-flex h-9 min-w-9 cursor-pointer touch-manipulation items-center justify-center rounded-xl border border-zinc-200 bg-white px-2.5 text-sm font-semibold text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
+
+export default function PdfOriginalViewer({ pdfUrl, title, downloadUrl = null, className = '' }: Props) {
+    const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
+    const [pageCount, setPageCount] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+    const loadPdf = useCallback(async () => {
+        setStatus('loading');
+        setErrorMessage('');
+        setPdf(null);
+        setPageCount(0);
+        setCurrentPage(1);
+
+        try {
+            const { bytes } = await fetchPdfBytes(pdfUrl);
+            const documentProxy = await loadPdfDocument(bytes);
+            setPdf(documentProxy);
+            setPageCount(documentProxy.numPages);
+            setStatus('ok');
+        } catch (error) {
+            setStatus('error');
+            setErrorMessage(
+                error instanceof Error ? error.message : 'Não foi possível abrir o PDF original.',
+            );
+        }
+    }, [pdfUrl]);
+
+    useEffect(() => {
+        void loadPdf();
+        return () => {
+            setPdf(null);
+        };
+    }, [loadPdf]);
+
+    const scrollToPage = useCallback((pageNumber: number) => {
+        const element = pageRefs.current[pageNumber - 1];
+        element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setCurrentPage(pageNumber);
+    }, []);
+
+    return (
+        <div className={`mx-auto w-full min-w-0 max-w-3xl ${className}`}>
+            {status === 'loading' ? (
+                <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-12 text-center shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                    <p className="text-base font-medium text-zinc-800 dark:text-zinc-100">Abrindo a revista original…</p>
+                    <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Carregando as páginas do PDF.</p>
+                </div>
+            ) : null}
+
+            {status === 'error' ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-6 text-center dark:border-amber-900/60 dark:bg-amber-950/40">
+                    <p className="text-base font-medium text-amber-950 dark:text-amber-100">Não foi possível abrir o PDF.</p>
+                    <p className="mt-2 text-sm leading-relaxed text-amber-900/90 dark:text-amber-200/90">{errorMessage}</p>
+                    <button type="button" onClick={() => void loadPdf()} className={`${toolbarBtnClass} mt-4 gap-2 px-4`}>
+                        <ArrowPathIcon className="h-4 w-4 shrink-0" aria-hidden />
+                        Tentar novamente
+                    </button>
+                </div>
+            ) : null}
+
+            {status === 'ok' && pdf ? (
+                <>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Página {currentPage} de {pageCount}
+                        </p>
+                        <div className="flex items-center gap-2" role="group" aria-label="Navegar páginas">
+                            <button
+                                type="button"
+                                className={toolbarBtnClass}
+                                disabled={currentPage <= 1}
+                                onClick={() => scrollToPage(Math.max(1, currentPage - 1))}
+                                aria-label="Página anterior"
+                            >
+                                <ChevronLeftIcon className="h-5 w-5" aria-hidden />
+                            </button>
+                            <button
+                                type="button"
+                                className={toolbarBtnClass}
+                                disabled={currentPage >= pageCount}
+                                onClick={() => scrollToPage(Math.min(pageCount, currentPage + 1))}
+                                aria-label="Próxima página"
+                            >
+                                <ChevronRightIcon className="h-5 w-5" aria-hidden />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3" aria-label={`PDF original de ${title}`}>
+                        {Array.from({ length: pageCount }, (_, index) => (
+                            <PdfPageCanvas
+                                key={index + 1}
+                                pdf={pdf}
+                                pageNumber={index + 1}
+                                onVisible={() => setCurrentPage(index + 1)}
+                                containerRef={(element) => {
+                                    pageRefs.current[index] = element;
+                                }}
+                            />
+                        ))}
+                    </div>
+
+                    {downloadUrl ? (
+                        <a
+                            href={downloadUrl}
+                            className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        >
+                            <ArrowDownTrayIcon className="h-5 w-5 shrink-0" aria-hidden />
+                            Baixar PDF
+                        </a>
+                    ) : null}
+                </>
+            ) : null}
+        </div>
+    );
+}
+
+function PdfPageCanvas({
+    pdf,
+    pageNumber,
+    onVisible,
+    containerRef,
+}: {
+    pdf: PDFDocumentProxy;
+    pageNumber: number;
+    onVisible: () => void;
+    containerRef: (element: HTMLDivElement | null) => void;
+}) {
+    const hostRef = useRef<HTMLDivElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const pageRef = useRef<PDFPageProxy | null>(null);
+    const renderedRef = useRef(false);
+    const onVisibleRef = useRef(onVisible);
+    const [ready, setReady] = useState(false);
+    onVisibleRef.current = onVisible;
+
+    useEffect(() => {
+        const host = hostRef.current;
+        if (!host) {
+            return;
+        }
+
+        let cancelled = false;
+        let observer: IntersectionObserver | null = null;
+
+        const renderPage = async () => {
+            const canvas = canvasRef.current;
+            if (!canvas || cancelled || renderedRef.current) {
+                return;
+            }
+            renderedRef.current = true;
+
+            try {
+                const page = await pdf.getPage(pageNumber);
+                if (cancelled) {
+                    return;
+                }
+                pageRef.current = page;
+
+                const width = host.clientWidth || 320;
+                const unscaled = page.getViewport({ scale: 1 });
+                const cssScale = width / unscaled.width;
+                const outputScale = Math.min(2, window.devicePixelRatio || 1);
+                const viewport = page.getViewport({ scale: cssScale * outputScale });
+
+                canvas.width = Math.floor(viewport.width);
+                canvas.height = Math.floor(viewport.height);
+                canvas.style.width = `${Math.floor(unscaled.width * cssScale)}px`;
+                canvas.style.height = `${Math.floor(unscaled.height * cssScale)}px`;
+
+                const context = canvas.getContext('2d', { alpha: false });
+                if (!context) {
+                    renderedRef.current = false;
+                    return;
+                }
+
+                await page.render({
+                    canvasContext: context,
+                    viewport,
+                }).promise;
+
+                if (!cancelled) {
+                    setReady(true);
+                }
+            } catch {
+                renderedRef.current = false;
+            }
+        };
+
+        observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0];
+                if (!entry) {
+                    return;
+                }
+                if (entry.isIntersecting) {
+                    onVisibleRef.current();
+                    void renderPage();
+                    return;
+                }
+
+                if (renderedRef.current && canvasRef.current) {
+                    const canvas = canvasRef.current;
+                    canvas.width = 0;
+                    canvas.height = 0;
+                    canvas.style.width = '';
+                    canvas.style.height = '';
+                    renderedRef.current = false;
+                    setReady(false);
+                    pageRef.current?.cleanup();
+                    pageRef.current = null;
+                }
+            },
+            { rootMargin: '640px 0px', threshold: 0.05 },
+        );
+        observer.observe(host);
+
+        return () => {
+            cancelled = true;
+            observer?.disconnect();
+            pageRef.current?.cleanup();
+            pageRef.current = null;
+        };
+    }, [pdf, pageNumber]);
+
+    return (
+        <div
+            ref={(element) => {
+                hostRef.current = element;
+                containerRef(element);
+            }}
+            className="overflow-hidden rounded-2xl bg-white ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-700"
+        >
+            <canvas ref={canvasRef} className="block h-auto w-full" aria-label={`Página ${pageNumber}`} />
+            {!ready ? (
+                <div className="flex aspect-[3/4] items-center justify-center text-sm text-zinc-400 dark:text-zinc-500">
+                    Página {pageNumber}
+                </div>
+            ) : null}
+        </div>
+    );
+}

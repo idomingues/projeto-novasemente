@@ -1,8 +1,6 @@
-import { GlobalWorkerOptions, getDocument, type PDFDocumentProxy } from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { type PDFDocumentProxy } from 'pdfjs-dist';
 import { buildPdfTextCacheKey, readPdfTextCache, writePdfTextCache } from '@/lib/pdfTextCache';
-
-GlobalWorkerOptions.workerSrc = pdfWorker;
+import { fetchPdfBytes, loadPdfDocument, throwIfAborted } from '@/lib/pdfjsClient';
 
 type PdfTextItem = {
     str: string;
@@ -11,7 +9,7 @@ type PdfTextItem = {
     width?: number;
 };
 
-type PositionedTextItem = {
+export type PositionedTextItem = {
     str: string;
     x: number;
     y: number;
@@ -19,7 +17,7 @@ type PositionedTextItem = {
     width: number;
 };
 
-type TextLine = {
+export type TextLine = {
     text: string;
     y: number;
     height: number;
@@ -42,25 +40,7 @@ export type ExtractPdfTextOptions = {
 const MIN_USEFUL_CHARS = 40;
 const EARLY_EMPTY_PAGE_PROBE = 3;
 
-export async function fetchPdfBytes(url: string): Promise<{ bytes: ArrayBuffer; byteLength: number }> {
-    const response = await fetch(url, { credentials: 'include' });
-    if (!response.ok) {
-        throw new Error(`Não foi possível carregar o PDF (${response.status}).`);
-    }
-
-    const bytes = await response.arrayBuffer();
-    return { bytes, byteLength: bytes.byteLength };
-}
-
-async function loadPdfDocument(bytes: ArrayBuffer): Promise<PDFDocumentProxy> {
-    return getDocument({ data: bytes }).promise;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-    if (signal?.aborted) {
-        throw new DOMException('Extração cancelada.', 'AbortError');
-    }
-}
+export { fetchPdfBytes, loadPdfDocument };
 
 function isPdfTextItem(item: unknown): item is PdfTextItem {
     return (
@@ -137,7 +117,7 @@ function joinLineParts(parts: PositionedTextItem[]): string {
     return text.replace(/\s+/g, ' ').trim();
 }
 
-function positionedItemsFromPage(pageItems: unknown[]): PositionedTextItem[] {
+export function positionedItemsFromPage(pageItems: unknown[]): PositionedTextItem[] {
     return pageItems
         .filter(isPdfTextItem)
         .map((item) => {
@@ -158,7 +138,7 @@ function positionedItemsFromPage(pageItems: unknown[]): PositionedTextItem[] {
         .filter((item) => item.str.trim() !== '');
 }
 
-function groupItemsIntoLines(items: PositionedTextItem[]): TextLine[] {
+export function groupItemsIntoLines(items: PositionedTextItem[]): TextLine[] {
     if (items.length === 0) {
         return [];
     }
@@ -205,7 +185,7 @@ function groupItemsIntoLines(items: PositionedTextItem[]): TextLine[] {
         .filter((line) => line.text !== '');
 }
 
-function median(values: number[]): number {
+export function median(values: number[]): number {
     if (values.length === 0) {
         return 0;
     }
@@ -238,7 +218,7 @@ function modeRounded(values: number[], bucket = 2): number {
     return best;
 }
 
-function isNoiseLine(text: string): boolean {
+export function isNoiseLine(text: string): boolean {
     const trimmed = text.trim();
     if (!trimmed) {
         return true;
@@ -270,7 +250,7 @@ function isNoiseLine(text: string): boolean {
     return false;
 }
 
-function joinLineIntoParagraph(current: string, line: string): string {
+export function joinLineIntoParagraph(current: string, line: string): string {
     const trimmed = line.trim();
     if (!trimmed) {
         return current;
@@ -331,7 +311,7 @@ function linesToParagraphs(lines: TextLine[]): string[] {
     return paragraphs.filter((paragraph) => paragraph.length > 0);
 }
 
-function paragraphContinuesFromPrevious(last: string, next: string): boolean {
+export function paragraphContinuesFromPrevious(last: string, next: string): boolean {
     const left = last.trimEnd();
     const right = next.trimStart();
 
@@ -362,7 +342,7 @@ function paragraphContinuesFromPrevious(last: string, next: string): boolean {
     return true;
 }
 
-function mergeIncomingPageParagraphs(finalized: string[], pendingTail: string | null, pageParagraphs: string[]): {
+export function mergeIncomingPageParagraphs(finalized: string[], pendingTail: string | null, pageParagraphs: string[]): {
     finalized: string[];
     pendingTail: string | null;
 } {

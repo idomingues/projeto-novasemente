@@ -78,7 +78,7 @@ export default function BaptismGuest({ registerUrl, redirectAfterLogin, redirect
                                 <BookOpenIcon className="size-6 text-white dark:text-zinc-900" aria-hidden />
                             </div>
                             <div className="min-w-0">
-                                <p className="font-semibold text-zinc-900 dark:text-white">Pedido de estudo bíblico</p>
+                                <p className="font-semibold text-zinc-900 dark:text-white">Estudo bíblico</p>
                                 <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
                                     Podemos colocar você em contato com alguém da igreja para estudar a Bíblia. Para isso, faça o cadastro (ou entre).
                                 </p>

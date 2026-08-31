@@ -7,6 +7,7 @@ import {
     ArrowTopRightOnSquareIcon,
     MagnifyingGlassIcon,
     XMarkIcon,
+    NewspaperIcon,
     SparklesIcon,
     MoonIcon,
     ClipboardDocumentListIcon,
@@ -109,6 +110,8 @@ function libraryCategoryPresentation(value: string, label: string): CategoryPres
     switch (value) {
         case 'books':
             return { icon: BookOpenIcon, line1: 'Livros' };
+        case 'magazines':
+            return { icon: NewspaperIcon, line1: 'Revistas' };
         case 'egw':
             return { icon: SparklesIcon, line1: 'Ellen G.', line2: 'White' };
         case 'meditation':

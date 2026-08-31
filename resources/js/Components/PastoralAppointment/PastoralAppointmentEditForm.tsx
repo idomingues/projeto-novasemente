@@ -92,14 +92,14 @@ export default function PastoralAppointmentEditForm({
             <div className="flex flex-wrap justify-end gap-2">
                 <button
                     type="button"
-                    className="text-xs font-semibold text-zinc-500 underline dark:text-zinc-400"
+                    className="cursor-pointer text-xs font-semibold text-zinc-500 underline dark:text-zinc-400"
                     onClick={revert}
                 >
-                    Repor alterações
+                    Desfazer alterações
                 </button>
             </div>
             <div>
-                <InputLabel htmlFor={id('name')} value="O seu nome" />
+                <InputLabel htmlFor={id('name')} value="Nome" />
                 <TextInput
                     id={id('name')}
                     className="mt-1 block w-full"
@@ -137,7 +137,7 @@ export default function PastoralAppointmentEditForm({
             ) : null}
             {isPending && selectedPastor ? (
                 <div>
-                    <InputLabel htmlFor={id('slots')} value="Horário disponível" />
+                    <InputLabel htmlFor={id('slots')} value="Horário" />
                     {selectedPastor.slots.length > 0 ? (
                         <ul className="mt-2 space-y-2" id={id('slots')}>
                             {selectedPastor.slots.map((slot, i) => (
@@ -167,7 +167,7 @@ export default function PastoralAppointmentEditForm({
                     )}
                     {selectedSlot?.modality === 'both' && selectedPastor.slots.length > 0 ? (
                         <div className="mt-4 space-y-2">
-                            <InputLabel value="Como prefere o atendimento?" />
+                            <InputLabel value="Modalidade" />
                             <div className="flex flex-col gap-2">
                                 <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 px-3 py-2 dark:border-zinc-700 has-[:checked]:border-primary-500 dark:has-[:checked]:border-primary-600">
                                     <input
@@ -198,7 +198,7 @@ export default function PastoralAppointmentEditForm({
             ) : null}
             {!isPending ? (
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    O estado deste pedido já não permite alterar pastor ou horário. Pode atualizar o nome, o assunto e a descrição.
+                    O estado deste pedido não permite mais alterar pastor ou horário. Você pode atualizar o nome, o assunto e a descrição.
                 </p>
             ) : null}
             <div>
@@ -224,7 +224,7 @@ export default function PastoralAppointmentEditForm({
             </div>
             <PrimaryButton
                 type="submit"
-                className="w-full justify-center"
+                className="w-full cursor-pointer justify-center"
                 disabled={
                     processing ||
                     (isPending &&

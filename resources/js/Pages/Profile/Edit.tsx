@@ -26,9 +26,6 @@ export default function Edit({
     const { auth } = usePage().props as {
         auth?: { permissions?: string[] };
     };
-    const perms = auth?.permissions ?? [];
-    /** Suporte administrativo fica só no menu ADM (super admin); no perfil web usamos sempre o fluxo da app. */
-    const supportRouteName = 'mobile.support.index';
     const showPastorsCadastro = canAccessPastorsCadastro(auth?.permissions);
 
     return (
@@ -80,21 +77,6 @@ export default function Edit({
                             </div>
                         </div>
                     )}
-
-                    <div className="bg-white dark:bg-zinc-800 p-4 shadow sm:rounded-lg sm:p-8">
-                        <div className="max-w-xl">
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Suporte do app</h3>
-                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                Envie pedidos de ajuda ou acompanhe os seus tickets.
-                            </p>
-                            <Link
-                                href={route(supportRouteName)}
-                                className="mt-4 inline-flex text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
-                            >
-                                Abrir suporte do app
-                            </Link>
-                        </div>
-                    </div>
 
                     <div className="bg-white dark:bg-zinc-800 p-4 shadow sm:rounded-lg sm:p-8">
                         <DeleteUserForm className="max-w-xl" />

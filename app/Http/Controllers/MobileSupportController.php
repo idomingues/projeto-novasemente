@@ -531,7 +531,7 @@ class MobileSupportController extends Controller
 
         $returnTo = $valid['return_to'] ?? null;
         if ($returnTo === 'pastoral_hub' && $ticket->pastoral_appointment_id) {
-            return redirect()->route('mobile.pastoral-appointments.request', [
+            return redirect()->route('mobile.solicitations.hub', [
                 'appointment' => $ticket->pastoral_appointment_id,
                 'painel' => 'chat',
             ]);

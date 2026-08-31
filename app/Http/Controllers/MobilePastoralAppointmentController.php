@@ -2,21 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AppSupportMessage;
 use App\Models\Church;
 use App\Models\Pastor;
 use App\Models\PastoralAppointment;
 use App\Models\PastoralAvailability;
 use App\Support\PastoralAppointmentConversation;
-use App\Support\PastoralBookingInertiaProps;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class MobilePastoralAppointmentController extends Controller
 {
@@ -25,119 +20,26 @@ class MobilePastoralAppointmentController extends Controller
         return Church::resolveWorkingId($request);
     }
 
-    public function hub(Request $request): Response
+    public function hub(Request $request): RedirectResponse
     {
-        $user = $request->user();
-        abort_unless($user, 401);
-        $churchId = $this->churchId($request);
-        abort_unless($churchId, 404, 'Nenhuma igreja ativa.');
-
-        $booking = PastoralBookingInertiaProps::forRequest($request);
-        abort_unless($booking !== null, 404, 'Nenhuma igreja ativa.');
-
-        $appointmentsQuery = PastoralAppointment::query()
-            ->where('church_id', $churchId)
-            ->where('requester_user_id', (int) $user->id)
-            ->with(['preferredPastor:id,name', 'supportTicket:id,public_token'])
-            ->orderByDesc('created_at')
-            ->limit(80);
-
-        $appointments = $appointmentsQuery
-            ->get()
-            ->map(fn (PastoralAppointment $a) => [
-                'id' => $a->id,
-                'status' => $a->status,
-                'subject' => $a->subject,
-                'notesPreview' => Str::limit((string) ($a->notes ?? ''), 120),
-                'preferredStart' => $a->preferred_start?->toIso8601String(),
-                'preferredModality' => $a->preferred_modality,
-                'pastorName' => $a->preferredPastor?->name,
-                'createdAt' => $a->created_at?->toIso8601String(),
-            ])
-            ->values()
-            ->all();
-
-        $modal = null;
-        $appointmentId = $request->query('appointment');
-        if (is_string($appointmentId) && $appointmentId !== '' && ctype_digit($appointmentId)) {
-            $apt = PastoralAppointment::query()
-                ->where('church_id', $churchId)
-                ->where('requester_user_id', (int) $user->id)
-                ->with(['preferredPastor:id,name', 'supportTicket:id,public_token,status,user_id,message,solution_text,created_at,closed_at'])
-                ->find((int) $appointmentId);
-
-            if ($apt) {
-                $ticket = $apt->supportTicket ?: PastoralAppointmentConversation::ensureTicket($apt);
-                $apt->refresh();
-                $apt->loadMissing(['supportTicket:id,public_token,status,user_id,message,solution_text,created_at,closed_at']);
-                $ticket = $apt->supportTicket;
-
-                $messages = [];
-                if ($ticket) {
-                    $messages = AppSupportMessage::query()
-                        ->where('ticket_id', $ticket->id)
-                        ->with('senderUser:id,name')
-                        ->orderBy('created_at')
-                        ->get()
-                        ->map(fn (AppSupportMessage $m) => [
-                            'id' => $m->id,
-                            'senderType' => $m->sender_type,
-                            'senderUserId' => $m->sender_user_id,
-                            'senderName' => $m->senderUser?->name,
-                            'content' => $m->content,
-                            'createdAt' => $m->created_at?->toIso8601String(),
-                        ])
-                        ->values()
-                        ->all();
-                }
-
-                $hasOwner = $ticket && ! empty($ticket->user_id);
-                $isOwner = $ticket && (int) $ticket->user_id === (int) $user->id;
-                $canChat = (bool) $hasOwner && (bool) $isOwner && $ticket->status === 'open';
-
-                $modal = [
-                    'appointment' => [
-                        'id' => $apt->id,
-                        'status' => $apt->status,
-                        'requesterName' => $apt->requester_name,
-                        'preferredPastorId' => $apt->preferred_pastor_id,
-                        'preferredStart' => $apt->preferred_start?->toIso8601String(),
-                        'preferredModality' => $apt->preferred_modality,
-                        'subject' => $apt->subject,
-                        'notes' => $apt->notes,
-                        'pastorName' => $apt->preferredPastor?->name,
-                        'updateUrl' => route('mobile.pastoral-appointments.update', $apt),
-                        'createdAt' => $apt->created_at?->toIso8601String(),
-                    ],
-                    'ticket' => $ticket ? [
-                        'publicToken' => $ticket->public_token,
-                        'status' => $ticket->status,
-                        'message' => $ticket->message,
-                        'solutionText' => $ticket->solution_text,
-                        'createdAt' => $ticket->created_at?->toIso8601String(),
-                        'closedAt' => $ticket->closed_at?->toIso8601String(),
-                    ] : null,
-                    'messages' => $messages,
-                    'canChat' => $canChat,
-                    'messageStoreUrl' => $ticket ? route('mobile.support.messages.store', ['token' => $ticket->public_token]) : null,
-                ];
+        $query = [];
+        $appointment = $request->query('appointment');
+        if (is_string($appointment) && $appointment !== '' && ctype_digit($appointment)) {
+            $query['appointment'] = $appointment;
+            $painel = $request->query('painel');
+            if (is_string($painel) && in_array($painel, ['detalhes', 'chat'], true)) {
+                $query['painel'] = $painel;
+            }
+        } else {
+            $query['novo'] = '1';
+            $query['tipo'] = 'pastoral';
+            $pastor = $request->query('pastor');
+            if (is_string($pastor) && $pastor !== '' && ctype_digit($pastor)) {
+                $query['pastor'] = $pastor;
             }
         }
 
-        $editPastors = null;
-        if ($modal !== null) {
-            $editPayload = PastoralBookingInertiaProps::pastorPayload($request, (int) $modal['appointment']['id']);
-            $editPastors = $editPayload['pastors'];
-        }
-
-        return Inertia::render('Mobile/PastoralAppointmentsHub', [
-            'appointments' => $appointments,
-            'pastors' => $booking['pastors'],
-            'editPastors' => $editPastors,
-            'storeUrl' => $booking['storeUrl'],
-            'defaultRequesterName' => $booking['defaultRequesterName'],
-            'modalDetail' => $modal,
-        ]);
+        return redirect()->route('mobile.solicitations.hub', $query);
     }
 
     public function store(Request $request): RedirectResponse
@@ -230,7 +132,10 @@ class MobilePastoralAppointmentController extends Controller
             : 'Pedido registrado. Utilize o chat para combinar detalhes com a equipe pastoral, se necessário.';
 
         return redirect()
-            ->route('mobile.pastoral-appointments.request')
+            ->route('mobile.solicitations.hub', [
+                'appointment' => $appointment->id,
+                'painel' => 'detalhes',
+            ])
             ->with('success', $msg);
     }
 
@@ -245,7 +150,7 @@ class MobilePastoralAppointmentController extends Controller
 
         if (in_array($appointment->status, ['cancelled', 'completed'], true)) {
             throw ValidationException::withMessages([
-                'status' => 'Este pedido já não pode ser alterado.',
+                'status' => 'Este pedido não pode mais ser alterado.',
             ]);
         }
 
@@ -339,7 +244,7 @@ class MobilePastoralAppointmentController extends Controller
         $appointment->save();
 
         return redirect()
-            ->route('mobile.pastoral-appointments.request', [
+            ->route('mobile.solicitations.hub', [
                 'appointment' => $appointment->id,
                 'painel' => 'detalhes',
             ])
