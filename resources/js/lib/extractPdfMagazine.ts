@@ -119,6 +119,18 @@ function splitColumns(items: PositionedTextItem[], pageWidth: number): Positione
     return [items];
 }
 
+type PdfEmbeddedImage = {
+    width?: number;
+    height?: number;
+    kind?: number;
+    data?: Uint8ClampedArray | Uint8Array;
+    bitmap?: ImageBitmap;
+};
+
+function isPdfEmbeddedImage(value: unknown): value is PdfEmbeddedImage {
+    return typeof value === 'object' && value !== null && 'width' in value && 'height' in value;
+}
+
 function getPageImage(page: PDFPageProxy, objId: string): Promise<unknown> {
     return new Promise((resolve, reject) => {
         try {
@@ -234,22 +246,17 @@ async function extractLargestPageImage(page: PDFPageProxy): Promise<string | nul
             }
 
             const arg = operators.argsArray[index]?.[0];
-            let image: {
-                width?: number;
-                height?: number;
-                kind?: number;
-                data?: Uint8ClampedArray | Uint8Array;
-                bitmap?: ImageBitmap;
-            } | null = null;
+            let image: PdfEmbeddedImage | null = null;
 
             if (typeof arg === 'string') {
                 if (seen.has(arg)) {
                     continue;
                 }
                 seen.add(arg);
-                image = (await getPageImage(page, arg)) as typeof image;
-            } else if (arg && typeof arg === 'object' && 'width' in (arg as object)) {
-                image = arg as typeof image;
+                const loaded = await getPageImage(page, arg);
+                image = isPdfEmbeddedImage(loaded) ? loaded : null;
+            } else if (isPdfEmbeddedImage(arg)) {
+                image = arg;
             }
 
             if (!image || !image.width || !image.height) {
