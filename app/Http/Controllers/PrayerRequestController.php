@@ -30,6 +30,7 @@ class PrayerRequestController extends Controller
         $churchId = $this->currentChurchId();
 
         return PrayerRequest::query()
+            ->inLastTwoMonths()
             ->where(function ($q) use ($churchId) {
                 $q->whereNull('church_id');
                 if ($churchId !== null) {

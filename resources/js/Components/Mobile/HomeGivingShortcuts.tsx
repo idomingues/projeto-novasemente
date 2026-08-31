@@ -48,7 +48,7 @@ export default function HomeGivingShortcuts({ nsWhatsPendingReply = 0 }: { nsWha
     }
 
     return (
-        <section aria-label="Atalhos rápidos">
+        <section aria-label="Atalhos rápidos" className="py-1">
             <div className="flex w-full items-start justify-between px-4">
                 {items.map((item) => {
                     const Icon = item.icon;
@@ -59,7 +59,7 @@ export default function HomeGivingShortcuts({ nsWhatsPendingReply = 0 }: { nsWha
                         <Link
                             key={item.id}
                             href={route(item.route)}
-                            className="group flex shrink-0 cursor-pointer flex-col items-center gap-2 py-1 text-center first:items-start first:text-left last:items-end last:text-right"
+                            className="group flex shrink-0 cursor-pointer flex-col items-center gap-2 py-2 text-center first:items-start first:text-left last:items-end last:text-right"
                         >
                             <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800 dark:bg-emerald-950/45 dark:text-emerald-200">
                                 <Icon className="h-6 w-6" aria-hidden strokeWidth={1.7} />

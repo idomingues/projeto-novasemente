@@ -396,13 +396,6 @@ export default function MobileHome({
         const items = [...actions, { kind: 'sobre' as const, id: 'sobre-o-app', label: 'Sobre o APP' }];
 
         return items.sort((a, b) => {
-            // Meditação diária fica fixa no primeiro lugar da grade.
-            const aPinned = a.id === 'meditacao-diaria' ? 0 : 1;
-            const bPinned = b.id === 'meditacao-diaria' ? 0 : 1;
-            if (aPinned !== bPinned) {
-                return aPinned - bPinned;
-            }
-
             const aSpotlight = spotlightRank.has(a.id);
             const bSpotlight = spotlightRank.has(b.id);
             if (aSpotlight !== bSpotlight) {
@@ -478,10 +471,8 @@ export default function MobileHome({
                     <SabbathHomeBanner banner={sabbathBanner} appUrl={appUrl} />
                 ) : null}
 
-                <div className="space-y-4">
-                    <HomeGivingShortcuts nsWhatsPendingReply={nsWhatsPendingReply} />
-                    <ConhecaNovaSementeHomeCard />
-                </div>
+                <HomeGivingShortcuts nsWhatsPendingReply={nsWhatsPendingReply} />
+                <ConhecaNovaSementeHomeCard />
 
                 <section aria-label="Atalhos" className="relative z-[1]">
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">

@@ -28,6 +28,14 @@ class PrayerRequest extends Model
         'needs_review' => 'boolean',
     ];
 
+    /**
+     * Pedidos do mês atual e do mês anterior (os últimos dois meses civis).
+     */
+    public function scopeInLastTwoMonths($query)
+    {
+        return $query->where('created_at', '>=', now()->startOfMonth()->subMonth());
+    }
+
     public function church(): BelongsTo
     {
         return $this->belongsTo(Church::class);

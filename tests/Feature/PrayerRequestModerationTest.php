@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Church;
+use App\Models\PrayerRequest;
 use App\Models\User;
 use Database\Seeders\ChurchSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -159,6 +160,50 @@ class PrayerRequestModerationTest extends TestCase
             'is_anonymous' => 0,
             'active' => 1,
         ]);
+    }
+
+    public function test_prayer_list_shows_only_last_two_months(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+
+        $recent = PrayerRequest::query()->create([
+            'church_id' => $church->id,
+            'name_or_nickname' => 'Recente',
+            'request' => 'Pedido recente',
+            'is_anonymous' => false,
+            'active' => true,
+            'needs_review' => false,
+        ]);
+        $recent->created_at = now()->subMonth();
+        $recent->save();
+
+        $old = PrayerRequest::query()->create([
+            'church_id' => $church->id,
+            'name_or_nickname' => 'Antigo',
+            'request' => 'Pedido antigo',
+            'is_anonymous' => false,
+            'active' => true,
+            'needs_review' => false,
+        ]);
+        $old->created_at = now()->startOfMonth()->subMonths(2);
+        $old->save();
+
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.prayer'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Prayer/Mobile')
+                ->has('requests', 1)
+                ->where('requests.0.id', $recent->id));
+
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('prayer.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Prayer/Index')
+                ->has('requests', 1)
+                ->where('requests.0.id', $recent->id));
     }
 }
 
