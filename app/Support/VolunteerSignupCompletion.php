@@ -104,6 +104,7 @@ final class VolunteerSignupCompletion
             'photo_file' => 'Foto',
             'full_name' => 'Nome completo',
             'birth_date' => 'Data de nascimento válida (mínimo 10 anos)',
+            'phone' => 'Telefone',
             'has_whatsapp' => 'WhatsApp no telefone',
             'email' => 'E-mail',
             'has_social_networks' => 'Uso de redes sociais',
@@ -173,8 +174,11 @@ final class VolunteerSignupCompletion
         $birthDate = trim((string) ($initial['birth_date'] ?? ''));
         $track('birth_date', true, $birthDate !== '' && self::isBirthDateAtLeastMinAge($birthDate, 10));
 
+        // Telefone obrigatório só em cadastro novo (PublicSignup). Voluntários já existentes
+        // sem telefone não entram no alerta de «Finalize seu cadastro».
+        $requirePhone = ($initial['require_phone'] ?? false) === true;
         $phoneFilled = trim((string) ($initial['phone'] ?? '')) !== '';
-        $track('phone', true, $phoneFilled);
+        $track('phone', $requirePhone, $phoneFilled);
         $track('has_whatsapp', $phoneFilled, $phoneFilled ? self::isBoolSet($initial['has_whatsapp'] ?? null) : true);
 
         $email = trim((string) ($initial['email'] ?? ''));

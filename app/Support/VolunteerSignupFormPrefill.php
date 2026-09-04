@@ -57,7 +57,9 @@ final class VolunteerSignupFormPrefill
             'birth_date' => $volunteer->birth_date?->format('Y-m-d') ?? '',
             'has_whatsapp' => $volunteer->has_whatsapp,
             'email' => (string) ($user->email ?: $volunteer->email),
-            'phone' => (string) ($volunteer->phone ?? ''),
+            'phone' => (string) (trim((string) ($volunteer->phone ?? '')) !== ''
+                ? $volunteer->phone
+                : ($user->phone ?? '')),
             'has_social_networks' => $volunteer->has_social_networks,
             'social_network_profiles' => (string) ($volunteer->social_network_profiles ?? ''),
             'professional_area' => (string) ($volunteer->professional_area ?? ''),

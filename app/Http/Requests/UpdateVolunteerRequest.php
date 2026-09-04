@@ -24,7 +24,7 @@ class UpdateVolunteerRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'phone' => ['required', 'string', 'max:50'],
+            'phone' => ['nullable', 'string', 'max:50'],
             'ministry_ids' => ['nullable', 'array'],
             'ministry_ids.*' => ['exists:ministries,id'],
             'role' => ['nullable', 'string', 'max:100'],

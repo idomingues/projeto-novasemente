@@ -100,6 +100,8 @@ export interface VolunteerSignupInitial {
     service_greatest_strength: string;
     service_greatest_challenge: string;
     lgpd_data_consent: boolean | null;
+    /** Só cadastro novo exige telefone; edição de voluntários existentes deixa opcional. */
+    require_phone?: boolean;
 }
 
 interface Props {
@@ -1382,11 +1384,12 @@ export default function PublicSignup({
         (prepared: Record<string, unknown>) => {
             const completionInput = buildVolunteerSignupCompletionInput(prepared, {
                 hasExistingPhoto: hasExistingPhoto || data.photo_file !== null,
+                requirePhone: !isEdit,
             });
 
             return computeVolunteerSignupCompletion(completionInput);
         },
-        [data.photo_file, hasExistingPhoto, initial],
+        [data.photo_file, hasExistingPhoto, initial, isEdit],
     );
 
     const flagPendingSignupFields = useCallback((pendingFields: string[]) => {

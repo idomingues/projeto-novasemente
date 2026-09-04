@@ -81,7 +81,7 @@ class VolunteerSignupCompletionTest extends TestCase
         $this->assertSame(['social_network_profiles'], $completion['missing_fields']);
     }
 
-    public function test_whatsapp_not_required_when_phone_empty(): void
+    public function test_existing_volunteer_without_phone_is_not_incomplete(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
 
@@ -104,9 +104,37 @@ class VolunteerSignupCompletionTest extends TestCase
 
         $completion = VolunteerSignupCompletion::forUser($user->fresh());
 
+        $this->assertTrue($completion['is_complete']);
+        $this->assertNotContains('phone', $completion['missing_fields']);
+        $this->assertNotContains('has_whatsapp', $completion['missing_fields']);
+    }
+
+    public function test_new_signup_completion_still_requires_phone(): void
+    {
+        $completion = VolunteerSignupCompletion::fromInitial([
+            'require_phone' => true,
+            'has_existing_photo' => true,
+            'full_name' => 'Novo Voluntário',
+            'birth_date' => '1990-01-15',
+            'phone' => '',
+            'has_whatsapp' => null,
+            'email' => 'novo.voluntario@example.com',
+            'has_social_networks' => false,
+            'social_network_profiles' => '',
+            'professional_area' => 'Educação',
+            'attendance_duration' => 'years_1_2',
+            'is_official_member' => false,
+            'volunteer_phase' => 'interested',
+            'service_ease_areas' => ['music'],
+            'service_activity_types' => ['adults_direct'],
+            'comfortable_with_digital_tools' => true,
+            'service_greatest_strength' => 'Comunicação',
+            'service_greatest_challenge' => 'Horário',
+            'lgpd_data_consent' => true,
+        ]);
+
         $this->assertFalse($completion['is_complete']);
         $this->assertContains('phone', $completion['missing_fields']);
-        $this->assertNotContains('has_whatsapp', $completion['missing_fields']);
     }
 
     public function test_invalid_birth_date_counts_as_missing(): void

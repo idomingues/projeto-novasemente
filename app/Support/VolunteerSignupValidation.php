@@ -33,6 +33,8 @@ final class VolunteerSignupValidation
     {
         $rules = self::baseRules(new User, $request, $minBirthDate);
         $rules['email'] = ['required', 'string', 'lowercase', 'email', 'max:255'];
+        // Cadastro novo: telefone obrigatório. Edição de voluntários existentes mantém opcional.
+        $rules['phone'] = ['required', 'string', 'max:50'];
 
         return $rules;
     }
@@ -46,7 +48,7 @@ final class VolunteerSignupValidation
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:155'],
             'birth_date' => ['required', 'date', 'before_or_equal:'.$minBirthDate],
-            'phone' => ['required', 'string', 'max:50'],
+            'phone' => ['nullable', 'string', 'max:50'],
             'has_whatsapp' => [
                 Rule::requiredIf(fn () => trim((string) $request->input('phone', '')) !== ''),
                 'nullable',
@@ -161,7 +163,7 @@ final class VolunteerSignupValidation
                     Rule::unique('users', 'email')->ignore($user->id),
                 ],
             ],
-            'phone' => ['phone' => ['required', 'string', 'max:50']],
+            'phone' => ['phone' => ['nullable', 'string', 'max:50']],
             'has_social_networks' => ['has_social_networks' => ['required', 'boolean']],
             'social_network_profiles' => [
                 'social_network_profiles' => [

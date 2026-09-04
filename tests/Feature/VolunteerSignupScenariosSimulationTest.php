@@ -251,7 +251,7 @@ class VolunteerSignupScenariosSimulationTest extends TestCase
 
         $outcomes[] = '7_autosave_ease_areas';
 
-        // 8) Sem telefone: cadastro incompleto (telefone obrigatório); WhatsApp só após informar o número
+        // 8) Sem telefone: voluntário já existente não fica incompleto (telefone só obrigatório em cadastro novo)
         $user8 = User::factory()->create([
             'church_id' => $churchId,
             'is_volunteer' => true,
@@ -267,10 +267,10 @@ class VolunteerSignupScenariosSimulationTest extends TestCase
         $volunteer8->forceFill(['phone' => null, 'has_whatsapp' => null])->save();
 
         $completion8 = VolunteerSignupCompletion::forUser($user8->fresh());
-        $this->assertFalse($completion8['is_complete']);
-        $this->assertContains('phone', $completion8['missing_fields']);
+        $this->assertTrue($completion8['is_complete']);
+        $this->assertNotContains('phone', $completion8['missing_fields']);
         $this->assertNotContains('has_whatsapp', $completion8['missing_fields']);
-        $outcomes[] = '8_no_phone_incomplete';
+        $outcomes[] = '8_existing_without_phone_complete';
 
         // 9) Rede social = sim sem perfil → incompleto; completar perfil via autosave
         $user9 = User::factory()->create([

@@ -106,7 +106,7 @@ export function computeVolunteerSignupPageErrors({
         } else if (visible('birth_date') && !isBirthDateAtLeastMinAge(data.birth_date, MIN_VOLUNTEER_SIGNUP_AGE)) {
             next.birth_date = `O voluntário deve ter pelo menos ${MIN_VOLUNTEER_SIGNUP_AGE} anos de idade.`;
         }
-        if (visible('phone') && !data.phone.trim()) {
+        if (visible('phone') && !isEdit && !data.phone.trim()) {
             next.phone = 'Informe um telefone de contato.';
         }
         if (visible('has_whatsapp') && shouldAskVolunteerWhatsapp(data.phone) && normalizeSignupBool(data.has_whatsapp) === null) {

@@ -112,10 +112,11 @@ export function applyVolunteerSignupBranchingCleanup(payload: Record<string, unk
 /** Monta o snapshot usado pelo cálculo de pendências a partir do payload enviado. */
 export function buildVolunteerSignupCompletionInput(
     payload: Record<string, unknown>,
-    options: { hasExistingPhoto: boolean },
+    options: { hasExistingPhoto: boolean; requirePhone?: boolean },
 ): VolunteerSignupInitial {
     return {
         has_existing_photo: options.hasExistingPhoto,
+        require_phone: options.requirePhone ?? true,
         full_name: `${String(payload.first_name ?? '').trim()} ${String(payload.last_name ?? '').trim()}`.trim(),
         first_name: String(payload.first_name ?? ''),
         last_name: String(payload.last_name ?? ''),
@@ -201,7 +202,8 @@ export function computeVolunteerSignupCompletion(initial: VolunteerSignupInitial
     track('birth_date', true, isBirthDateAtLeastMinAge(initial.birth_date, MIN_VOLUNTEER_AGE));
 
     const phoneFilled = initial.phone.trim() !== '';
-    track('phone', true, phoneFilled);
+    const requirePhone = initial.require_phone !== false;
+    track('phone', requirePhone, phoneFilled);
     track('has_whatsapp', phoneFilled, phoneFilled ? isBoolSet(initial.has_whatsapp) : true);
 
     track('email', true, initial.email.trim() !== '' && isValidEmail(initial.email));
