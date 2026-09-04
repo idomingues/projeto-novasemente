@@ -372,8 +372,8 @@ export default function VolunteerRequestsIndex({
     const title = mode === 'staff' ? 'Pedidos de voluntário' : 'Solicitar voluntário';
     const subtitle =
         mode === 'staff'
-            ? 'Pedidos ordenados por data (mais antigos primeiro). Abra um pedido para ver detalhes, chat, alterar dados ou anexar voluntário no mesmo painel. Se na criação indicar quantidade > 1, o sistema gera uma linha por pessoa. Use + para novos pedidos.'
-            : 'Os seus pedidos à secretaria (ordenados por data). Abra um pedido para ver detalhes e chat no mesmo painel. Use + para indicar quantidade e departamento; observações e função na escala são opcionais. Quantidade maior que 1 gera um pedido por pessoa.';
+            ? 'Pedidos ordenados por data (mais antigos primeiro). Abra um pedido para ver detalhes, chat, alterar dados ou anexar voluntário no mesmo painel. Se na criação indicar quantidade > 1, o sistema gera uma linha por pessoa. Use Novo pedido para criar.'
+            : 'Os seus pedidos à secretaria (ordenados por data). Abra um pedido para ver detalhes e chat no mesmo painel. Use Novo pedido para indicar quantidade e departamento; observações e função na escala são opcionais. Quantidade maior que 1 gera um pedido por pessoa.';
 
     const canAdd = ministries.length > 0;
 
@@ -656,7 +656,7 @@ export default function VolunteerRequestsIndex({
                 actions={
                     <div className="flex items-center gap-2">
                         <AddButton
-                            variant="icon"
+                            variant="label"
                             onClick={openModal}
                             disabled={!canAdd}
                             title={
@@ -733,8 +733,9 @@ export default function VolunteerRequestsIndex({
                     <Card className="p-10 text-center text-sm text-zinc-600 dark:text-zinc-400">
                         {canAdd ? (
                             <p>
-                                Ainda não há pedidos registrados. Toque em <strong className="text-zinc-900 dark:text-white">+</strong>{' '}
-                                para enviar o primeiro.
+                                Ainda não há pedidos registrados. Toque em{' '}
+                                <strong className="text-zinc-900 dark:text-white">Novo pedido</strong> para enviar o
+                                primeiro.
                             </p>
                         ) : (
                             <p>Quando existirem departamentos e funções, poderá criar pedidos aqui.</p>

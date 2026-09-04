@@ -101,7 +101,7 @@ export default function MissionEventsAdmin({ events, canManage }: Props) {
                     subtitle="Cadastre os próximos eventos da comunidade missionária — o mesmo formato dos eventos gerais do app."
                     actions={
                         canManage ? (
-                            <AddButton variant="icon" onClick={openCreate} title="Novo evento">
+                            <AddButton variant="label" onClick={openCreate} title="Novo evento">
                                 Novo evento
                             </AddButton>
                         ) : undefined
@@ -115,7 +115,7 @@ export default function MissionEventsAdmin({ events, canManage }: Props) {
                         <p className="mt-3 font-medium text-zinc-600">Nenhum evento cadastrado</p>
                         {canManage ? (
                             <div className="mt-4">
-                                <AddButton variant="icon" onClick={openCreate} title="Novo evento">
+                                <AddButton variant="label" onClick={openCreate} title="Novo evento">
                                     Novo evento
                                 </AddButton>
                             </div>

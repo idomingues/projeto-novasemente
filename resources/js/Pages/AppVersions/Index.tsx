@@ -157,7 +157,7 @@ export default function AppVersionsIndex({ versions, latestVersion, schemaReady 
                 subtitle="Cadastre novas versões e consulte o histórico (a mais recente aparece primeiro)."
                 actions={
                     schemaReady ? (
-                        <AddButton variant="icon" onClick={openCreateModal} title="Nova versão">
+                        <AddButton variant="label" onClick={openCreateModal} title="Nova versão">
                             Nova versão
                         </AddButton>
                     ) : undefined
@@ -179,7 +179,7 @@ export default function AppVersionsIndex({ versions, latestVersion, schemaReady 
                         </div>
                         <p className="font-medium text-zinc-600 dark:text-zinc-400">Nenhuma versão cadastrada</p>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">Registe a primeira versão da app.</p>
-                        <AddButton variant="icon" onClick={openCreateModal} className="mt-4" title="Nova versão">
+                        <AddButton variant="label" onClick={openCreateModal} className="mt-4" title="Nova versão">
                             Nova versão
                         </AddButton>
                     </div>

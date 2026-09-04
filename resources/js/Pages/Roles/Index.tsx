@@ -575,7 +575,7 @@ export default function RolesIndex({
                 }
                 actions={
                     <AddButton
-                        variant="icon"
+                        variant="label"
                         onClick={() => {
                             setCreateSaveMessage(null);
                             setCreateOpen(true);

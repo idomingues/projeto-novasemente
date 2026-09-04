@@ -380,8 +380,8 @@ export default function TalentConnectionAdminListingsPanel({
             {showSectionHeader && (
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Publicações</h2>
-                    <AddButton variant="icon" onClick={openCreate} title="Cadastrar publicação">
-                        Cadastrar publicação
+                    <AddButton variant="label" onClick={openCreate} title="Cadastrar publicação">
+                        Nova publicação
                     </AddButton>
                 </div>
             )}

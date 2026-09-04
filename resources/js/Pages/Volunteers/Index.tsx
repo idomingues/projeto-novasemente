@@ -537,7 +537,7 @@ export default function Index({
                                 Excel Missão
                             </a>
                         ) : null}
-                        <AddButton variant="icon" onClick={openCreateModal} title="Novo voluntário">
+                        <AddButton variant="label" onClick={openCreateModal} title="Novo voluntário">
                             Novo Voluntário
                         </AddButton>
                     </div>
@@ -940,12 +940,13 @@ export default function Index({
                                 </div>
                                 <div className="flex flex-col gap-4 sm:grid sm:grid-cols-2">
                                     <div>
-                                        <InputLabel htmlFor="phone" value="Telefone (opcional)" />
+                                        <InputLabel htmlFor="phone" value="Telefone" />
                                         <TextInput
                                             id="phone"
                                             value={data.phone}
                                             onChange={(e) => setData('phone', e.target.value)}
                                             className="mt-1 block w-full"
+                                            required
                                         />
                                         <InputError message={errors.phone} className="mt-1" />
                                     </div>

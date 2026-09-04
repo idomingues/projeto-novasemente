@@ -564,7 +564,7 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                 title="Eventos"
                 actions={
                     canManage ? (
-                        <AddButton variant="icon" onClick={openCreateModal} title="Novo evento">
+                        <AddButton variant="label" onClick={openCreateModal} title="Novo evento">
                             Novo evento
                         </AddButton>
                     ) : undefined

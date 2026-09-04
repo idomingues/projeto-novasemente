@@ -148,14 +148,11 @@ class MobileNsWhatsController extends Controller
         $openId = $request->query('conversa');
         $selected = null;
         if ($openId) {
+            // Deep link do sino: usa a policy (líder do depto na fila, responsável, etc.),
+            // não só assignee/preferido — senão a notificação abre o NS Conecta sem a conversa.
             $row = ChurchConversation::query()
                 ->where('church_id', $churchId)
                 ->whereKey((int) $openId)
-                ->where(function ($q) use ($user) {
-                    $q->where('member_user_id', $user->id)
-                        ->orWhere('assignee_user_id', $user->id)
-                        ->orWhere('preferred_leader_user_id', $user->id);
-                })
                 ->first();
             if ($row && $user->can('view', $row)) {
                 app(MarkConversationRead::class)->handle($row, $user);

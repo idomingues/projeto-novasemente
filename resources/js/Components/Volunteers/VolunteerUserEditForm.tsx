@@ -193,12 +193,13 @@ export default function VolunteerUserEditForm({
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <InputLabel htmlFor={`${idPrefix}_phone`} value="Telefone (opcional)" />
+                        <InputLabel htmlFor={`${idPrefix}_phone`} value="Telefone" />
                         <TextInput
                             id={`${idPrefix}_phone`}
                             value={data.phone}
                             onChange={(e) => setField('phone', e.target.value)}
                             className="mt-1 block w-full"
+                            required
                         />
                         <InputError message={errors.phone} className="mt-1" />
                     </div>

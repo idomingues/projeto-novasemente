@@ -136,7 +136,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
                 }
                 actions={
                     canManage ? (
-                        <AddButton variant="icon" onClick={openCreateModal} title="Novo álbum">
+                        <AddButton variant="label" onClick={openCreateModal} title="Novo álbum">
                             Novo álbum
                         </AddButton>
                     ) : undefined
@@ -155,7 +155,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
                         </p>
                         {canManage && (
                             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                                <AddButton variant="icon" onClick={openCreateModal} title="Novo álbum">
+                                <AddButton variant="label" onClick={openCreateModal} title="Novo álbum">
                                     Novo álbum
                                 </AddButton>
                             </div>

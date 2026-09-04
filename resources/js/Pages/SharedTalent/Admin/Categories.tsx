@@ -46,7 +46,7 @@ export default function SharedTalentAdminCategories({ categories }: Props) {
                 }
                 title="Categorias"
                 actions={
-                    <AddButton variant="icon" onClick={() => setOpen(true)}>
+                    <AddButton variant="label" onClick={() => setOpen(true)}>
                         Nova categoria
                     </AddButton>
                 }

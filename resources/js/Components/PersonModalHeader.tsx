@@ -14,6 +14,8 @@ export default function PersonModalHeader({
         <RecordDetailHeader
             title={(person.name ?? '').trim() || '—'}
             subtitle={subtitle ?? undefined}
+            email={person.email}
+            phone={person.phone}
             photoUrl={person.photoUrl}
             badge={badge ?? undefined}
         />

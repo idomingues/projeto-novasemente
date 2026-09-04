@@ -140,7 +140,7 @@ export default function AcervoIndex({ items, canManage }: Props) {
                     subtitle="Veja todas as séries já passadas na Nova Semente."
                     actions={
                         canManage ? (
-                            <AddButton variant="icon" onClick={openCreateModal} title="Adicionar link">
+                            <AddButton variant="label" onClick={openCreateModal} title="Adicionar link">
                                 Adicionar link
                             </AddButton>
                         ) : undefined

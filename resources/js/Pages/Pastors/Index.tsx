@@ -178,7 +178,7 @@ export default function PastorsIndex({ pastors, canManage, linkableUsers }: Prop
                 title="Pastores"
                 actions={
                     canManage ? (
-                        <AddButton variant="icon" onClick={openCreateModal} title="Novo pastor">
+                        <AddButton variant="label" onClick={openCreateModal} title="Novo pastor">
                             Novo pastor
                         </AddButton>
                     ) : undefined

@@ -753,7 +753,7 @@ export default function Index({
                             ) : null}
                         </button>
                         {canManageMembers ? (
-                            <AddButton variant="icon" onClick={openCreateModal} title="Novo usuário">
+                            <AddButton variant="label" onClick={openCreateModal} title="Novo usuário">
                                 Novo usuário
                             </AddButton>
                         ) : null}

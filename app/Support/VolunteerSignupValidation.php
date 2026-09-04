@@ -46,6 +46,7 @@ final class VolunteerSignupValidation
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:155'],
             'birth_date' => ['required', 'date', 'before_or_equal:'.$minBirthDate],
+            'phone' => ['required', 'string', 'max:50'],
             'has_whatsapp' => [
                 Rule::requiredIf(fn () => trim((string) $request->input('phone', '')) !== ''),
                 'nullable',
@@ -59,7 +60,6 @@ final class VolunteerSignupValidation
                 'max:255',
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
-            'phone' => ['nullable', 'string', 'max:50'],
             'has_social_networks' => ['required', 'boolean'],
             'social_network_profiles' => [
                 Rule::requiredIf(fn () => $request->boolean('has_social_networks')),
@@ -161,7 +161,7 @@ final class VolunteerSignupValidation
                     Rule::unique('users', 'email')->ignore($user->id),
                 ],
             ],
-            'phone' => ['phone' => ['nullable', 'string', 'max:50']],
+            'phone' => ['phone' => ['required', 'string', 'max:50']],
             'has_social_networks' => ['has_social_networks' => ['required', 'boolean']],
             'social_network_profiles' => [
                 'social_network_profiles' => [

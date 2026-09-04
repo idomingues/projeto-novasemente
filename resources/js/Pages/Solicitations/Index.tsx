@@ -30,9 +30,12 @@ type DemandRow = {
     statusLabel: string;
     messageExcerpt: string;
     preferredDate: string | null;
+    createdAt?: string | null;
     updatedAt: string;
     memberLabel: string;
     memberPhotoUrl?: string | null;
+    memberEmail?: string | null;
+    memberPhone?: string | null;
 };
 
 type TabKey = 'pendente' | 'concluidos' | 'cancelados' | 'arquivados';
@@ -107,6 +110,15 @@ function listTabClass(active: boolean): string {
             ? 'border-teal-600 text-teal-800 dark:border-teal-400 dark:text-teal-200'
             : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200',
     ].join(' ');
+}
+
+function formatPedidoWhen(iso: string | null | undefined): string {
+    if (!iso) return '';
+    try {
+        return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    } catch {
+        return '';
+    }
 }
 
 function statusBadgeClass(status: string): string {
@@ -484,6 +496,8 @@ export default function SolicitationsIndex({
                                             <div className="mb-3">
                                                 <PersonListIdentity
                                                     name={s.memberLabel}
+                                                    email={s.memberEmail}
+                                                    phone={s.memberPhone}
                                                     photoUrl={s.memberPhotoUrl}
                                                     nameClassName="font-semibold text-zinc-900 dark:text-white"
                                                 />
@@ -497,9 +511,14 @@ export default function SolicitationsIndex({
                                             </span>
                                             <span className={statusBadgeClass(s.status)}>{s.statusLabel}</span>
                                         </div>
+                                        {s.createdAt ? (
+                                            <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                Enviado em {formatPedidoWhen(s.createdAt)}
+                                            </div>
+                                        ) : null}
                                         {s.preferredDate ? (
                                             <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                Data: {s.preferredDate}
+                                                Data pretendida: {s.preferredDate}
                                             </div>
                                         ) : null}
                                         <div className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-200">
@@ -707,6 +726,8 @@ export default function SolicitationsIndex({
                             <PersonModalHeader
                                 person={{
                                     name: modalDetail.payload.solicitation.memberLabel ?? null,
+                                    email: modalDetail.payload.solicitation.memberEmail,
+                                    phone: modalDetail.payload.solicitation.memberPhone,
                                     photoUrl: modalDetail.payload.solicitation.memberPhotoUrl,
                                 }}
                                 subtitle={modalDetail.payload.solicitation.typeLabel ?? 'Pedido'}

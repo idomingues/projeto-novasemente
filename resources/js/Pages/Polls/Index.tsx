@@ -425,7 +425,7 @@ export default function Index({
                     subtitle="Publique perguntas objetivas no estilo WhatsApp para a congregação responder."
                     actions={
                         canManage ? (
-                            <AddButton variant="icon" onClick={openCreateModal} title="Nova enquete">
+                            <AddButton variant="label" onClick={openCreateModal} title="Nova enquete">
                                 Nova enquete
                             </AddButton>
                         ) : undefined

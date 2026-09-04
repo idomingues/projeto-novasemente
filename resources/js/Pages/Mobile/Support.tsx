@@ -166,7 +166,7 @@ export default function MobileSupport({
                             )}
                         </>
                     }
-                    actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo chamado de suporte">Novo chamado</AddButton>}
+                    actions={<AddButton variant="label" onClick={openCreateModal} title="Novo chamado de suporte">Novo chamado</AddButton>}
                 />
 
                 <div>

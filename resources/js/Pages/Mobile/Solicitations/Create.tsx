@@ -4,6 +4,7 @@ import { solicitationsBackLinkClass } from '@/Pages/Mobile/Solicitations/solicit
 import { FormEventHandler, useMemo } from 'react';
 import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
+import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
@@ -23,6 +24,8 @@ interface Props {
     pastorOptions: Option[];
     pastoralBooking?: MemberPastoralBookingPayload | null;
     pastoralAgendaUrl?: string;
+    contactEmail?: string;
+    contactPhone?: string;
 }
 
 export default function Create({
@@ -32,6 +35,8 @@ export default function Create({
     pastorOptions,
     pastoralBooking = null,
     pastoralAgendaUrl = '',
+    contactEmail = '',
+    contactPhone = '',
 }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         type,
@@ -40,6 +45,8 @@ export default function Create({
         assigned_pastor_id: '',
         preferred_start: '',
         preferred_modality: '' as '' | 'presential' | 'online',
+        email: contactEmail,
+        phone: contactPhone,
     });
 
     const pastorVisitPastor = useMemo(() => {
@@ -59,6 +66,8 @@ export default function Create({
         return true;
     }, [pastorVisitPastor, data.preferred_start, data.preferred_modality]);
 
+    const contactReady = data.email.trim() !== '' && data.phone.trim() !== '';
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(storeUrl);
@@ -76,7 +85,8 @@ export default function Create({
                     </Link>
                     <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">{typeLabel}</h1>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                        A igreja responderá pelo seu pedido através do App e email.
+                        A igreja responderá pelo seu pedido através do App e e-mail. Informe telefone e e-mail para
+                        contato.
                     </p>
                 </div>
 
@@ -168,6 +178,35 @@ export default function Create({
                             )}
                         </>
                     )}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <InputLabel htmlFor="sol_email" value="E-mail de contato" />
+                            <TextInput
+                                id="sol_email"
+                                type="email"
+                                value={data.email}
+                                onChange={(e) => setData('email', e.target.value)}
+                                className="mt-1 block w-full"
+                                autoComplete="email"
+                                required
+                            />
+                            <InputError message={errors.email} className="mt-1" />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="sol_phone" value="Telefone de contato" />
+                            <TextInput
+                                id="sol_phone"
+                                type="tel"
+                                value={data.phone}
+                                onChange={(e) => setData('phone', e.target.value)}
+                                className="mt-1 block w-full"
+                                autoComplete="tel"
+                                placeholder="(11) 99999-9999"
+                                required
+                            />
+                            <InputError message={errors.phone} className="mt-1" />
+                        </div>
+                    </div>
                     <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
                         <SecondaryButton type="button" className="justify-center" onClick={() => router.visit(route('mobile.solicitations.hub'))}>
                             Cancelar
@@ -176,6 +215,7 @@ export default function Create({
                             type="submit"
                             disabled={
                                 processing ||
+                                !contactReady ||
                                 (isPastorVisit ? !pastoralBooking || !pastorVisitReady : !data.message.trim())
                             }
                             className="justify-center"

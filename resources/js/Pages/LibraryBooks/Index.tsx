@@ -335,7 +335,7 @@ export default function LibraryBooksIndex({
                                     {syncingEgw ? 'Sincronizando…' : 'Sincronizar catálogo'}
                                 </SecondaryButton>
                             ) : (
-                                <AddButton variant="icon" onClick={openCreateModal} title="Nova publicação">
+                                <AddButton variant="label" onClick={openCreateModal} title="Nova publicação">
                                     Nova publicação
                                 </AddButton>
                             )}
@@ -468,7 +468,7 @@ export default function LibraryBooksIndex({
                         ) : null}
                         {canManage && !librarySetupMessage && activeTab === 'church' ? (
                             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                                <AddButton variant="icon" onClick={openCreateModal} title="Nova publicação">
+                                <AddButton variant="label" onClick={openCreateModal} title="Nova publicação">
                                     Nova publicação
                                 </AddButton>
                             </div>

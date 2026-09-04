@@ -18,6 +18,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import PrimaryButton from '@/Components/PrimaryButton';
 import InputLabel from '@/Components/InputLabel';
 import Textarea from '@/Components/Textarea';
+import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import SelectInput from '@/Components/SelectInput';
 import SolicitationDetailPanel, {
@@ -83,6 +84,8 @@ interface Props {
     singleBaptismType?: boolean;
     /** Redirecionamento após «excluir da minha app» (batismo vs hub geral). */
     hideConversationReturnTo?: 'hub' | 'baptism_hub';
+    contactEmail?: string;
+    contactPhone?: string;
 }
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -161,6 +164,8 @@ export default function Hub({
     pageSubtitle,
     singleBaptismType = false,
     hideConversationReturnTo = 'hub',
+    contactEmail = '',
+    contactPhone = '',
 }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [step, setStep] = useState<'pick' | 'form'>('pick');
@@ -180,6 +185,8 @@ export default function Hub({
         message: '',
         preferred_date: '',
         assigned_pastor_id: '',
+        email: contactEmail,
+        phone: contactPhone,
     });
 
     const typeLabelByType = useMemo(() => {
@@ -218,6 +225,11 @@ export default function Hub({
 
     const openCreate = useCallback(() => {
         reset();
+        setData((prev) => ({
+            ...prev,
+            email: contactEmail,
+            phone: contactPhone,
+        }));
         setCreatePastorId('');
         if (singleBaptismType && types.length === 1) {
             const t = types[0].type;
@@ -229,7 +241,7 @@ export default function Hub({
             setTypeLabel('');
         }
         setCreateOpen(true);
-    }, [reset, setData, singleBaptismType, types, typeLabelByType]);
+    }, [reset, setData, singleBaptismType, types, typeLabelByType, contactEmail, contactPhone]);
 
     const closeCreate = () => {
         setCreateOpen(false);
@@ -237,6 +249,11 @@ export default function Hub({
         setTypeLabel('');
         setCreatePastorId('');
         reset();
+        setData((prev) => ({
+            ...prev,
+            email: contactEmail,
+            phone: contactPhone,
+        }));
     };
 
     const pickType = (type: string, pastorId?: string) => {
@@ -365,8 +382,8 @@ export default function Hub({
                     title={heading}
                     subtitle={<span className="text-zinc-600 dark:text-zinc-400">{sub}</span>}
                     actions={
-                        <AddButton variant="icon" onClick={openCreate} title="Nova solicitação">
-                            Nova solicitação
+                        <AddButton variant="label" onClick={openCreate} title="Nova solicitação">
+                            Novo pedido
                         </AddButton>
                     }
                 />
@@ -377,12 +394,13 @@ export default function Hub({
                         <p className="rounded-2xl border border-dashed border-zinc-200 px-4 py-8 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
                             {singleBaptismType ? (
                                 <>
-                                    Você ainda não tem pedidos de batismo. Toque em <strong>+</strong> para enviar o
-                                    primeiro.
+                                    Você ainda não tem pedidos de batismo. Toque em <strong>Novo pedido</strong> para
+                                    enviar o primeiro.
                                 </>
                             ) : (
                                 <>
-                                    Você ainda não tem pedidos. Toque em <strong>+</strong> para enviar o primeiro.
+                                    Você ainda não tem pedidos. Toque em <strong>Novo pedido</strong> para enviar o
+                                    primeiro.
                                 </>
                             )}
                         </p>
@@ -571,6 +589,35 @@ export default function Hub({
                                     />
                                     <InputError message={errors.message} className="mt-1" />
                                 </div>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel htmlFor="hub_sol_email" value="E-mail de contato" />
+                                        <TextInput
+                                            id="hub_sol_email"
+                                            type="email"
+                                            value={data.email}
+                                            onChange={(e) => setData('email', e.target.value)}
+                                            className="mt-1 block w-full"
+                                            autoComplete="email"
+                                            required
+                                        />
+                                        <InputError message={errors.email} className="mt-1" />
+                                    </div>
+                                    <div>
+                                        <InputLabel htmlFor="hub_sol_phone" value="Telefone de contato" />
+                                        <TextInput
+                                            id="hub_sol_phone"
+                                            type="tel"
+                                            value={data.phone}
+                                            onChange={(e) => setData('phone', e.target.value)}
+                                            className="mt-1 block w-full"
+                                            autoComplete="tel"
+                                            placeholder="(11) 99999-9999"
+                                            required
+                                        />
+                                        <InputError message={errors.phone} className="mt-1" />
+                                    </div>
+                                </div>
                                 <div>
                                     <InputLabel htmlFor="hub_sol_pref_date" value="Data desejada ou relevante (opcional)" />
                                     <input
@@ -607,7 +654,12 @@ export default function Hub({
                                     </SecondaryButton>
                                     <PrimaryButton
                                         type="submit"
-                                        disabled={processing || !data.message.trim()}
+                                        disabled={
+                                            processing ||
+                                            !data.message.trim() ||
+                                            !data.email.trim() ||
+                                            !data.phone.trim()
+                                        }
                                         className="cursor-pointer justify-center"
                                     >
                                         Enviar pedido

@@ -330,7 +330,7 @@ export default function MobileInventory({ items, filters, canManage }: Props) {
                         Inventário
                     </h1>
                     {canManage ? (
-                        <AddButton variant="icon" onClick={openNewItemForm} title="Novo item">
+                        <AddButton variant="label" onClick={openNewItemForm} title="Novo item">
                             Novo item
                         </AddButton>
                     ) : null}

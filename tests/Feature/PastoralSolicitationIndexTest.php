@@ -27,6 +27,10 @@ class PastoralSolicitationIndexTest extends TestCase
     public function test_solicitations_index_filters_by_tab(): void
     {
         $admin = $this->actingAsAdmin();
+        $admin->forceFill([
+            'email' => 'membro.pastoral@example.com',
+            'phone' => '(11) 97777-6666',
+        ])->save();
         $church = Church::query()->firstOrFail();
 
         $pending = ChurchSolicitation::query()->create([
@@ -65,7 +69,9 @@ class PastoralSolicitationIndexTest extends TestCase
                 ->component('Solicitations/Index')
                 ->where('filters.aba', 'pendente')
                 ->has('demands', 1)
-                ->where('demands.0.id', $pending->id));
+                ->where('demands.0.id', $pending->id)
+                ->where('demands.0.memberEmail', 'membro.pastoral@example.com')
+                ->where('demands.0.memberPhone', '(11) 97777-6666'));
 
         $this->actingAs($admin)
             ->withSession(['working_church_id' => $church->id])

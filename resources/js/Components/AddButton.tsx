@@ -7,7 +7,7 @@ const titleBarAddBaseClass =
 /** Classes do botão + ao lado do título (reutilizável em `<Link>` quando não for `button`). */
 export const titleBarAddIconClass = `${titleBarAddBaseClass} w-11`;
 
-/** Pílula compacta com ícone + texto, mesma linguagem visual do + redondo. */
+/** Pílula compacta com ícone + texto, mesma linguagem visual do + redondo. Preferir em listas. */
 export const titleBarAddLabelClass = `${titleBarAddBaseClass} gap-1.5 whitespace-nowrap px-3.5 text-sm font-semibold`;
 
 interface AddButtonProps {
@@ -16,7 +16,11 @@ interface AddButtonProps {
     className?: string;
     disabled?: boolean;
     title?: string;
-    /** `icon`: só o + redondo. `label`: + e texto em todos os tamanhos. `default`: texto no desktop e + no mobile. */
+    /**
+     * `label`: + e texto em todos os tamanhos (padrão recomendado nas listas).
+     * `icon`: só o + redondo (headers apertados: filtro + ordenação + outros botões).
+     * `default`: texto no desktop e + no mobile.
+     */
     variant?: 'default' | 'icon' | 'label';
 }
 

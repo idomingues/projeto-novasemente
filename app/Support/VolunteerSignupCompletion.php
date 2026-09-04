@@ -12,7 +12,6 @@ final class VolunteerSignupCompletion
 {
     /** @var list<string> */
     public const OPTIONAL_FIELD_KEYS = [
-        'phone',
         'password',
         'password_confirmation',
     ];
@@ -175,6 +174,7 @@ final class VolunteerSignupCompletion
         $track('birth_date', true, $birthDate !== '' && self::isBirthDateAtLeastMinAge($birthDate, 10));
 
         $phoneFilled = trim((string) ($initial['phone'] ?? '')) !== '';
+        $track('phone', true, $phoneFilled);
         $track('has_whatsapp', $phoneFilled, $phoneFilled ? self::isBoolSet($initial['has_whatsapp'] ?? null) : true);
 
         $email = trim((string) ($initial['email'] ?? ''));

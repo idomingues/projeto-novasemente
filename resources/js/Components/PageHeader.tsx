@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 
 /**
  * Cabeçalho padronizado de listas/admin: distância ao topo vem do layout (pt-6); aqui só margem inferior.
- * Linha 1 opcional: `lead` (ex.: « Voltar »). Linha 2: título + `actions` (ex.: + redondo). Depois subtítulo e conteúdo extra.
+ * Linha 1 opcional: `lead` (ex.: « Voltar »). Linha 2: título + `actions` (ex.: Novo pedido). Depois subtítulo e conteúdo extra.
  */
 export default function PageHeader({
     lead,

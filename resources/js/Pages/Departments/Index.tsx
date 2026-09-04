@@ -1189,7 +1189,7 @@ export default function Index({
                             </button>
                         </div>
                         {canManage ? (
-                            <AddButton variant="icon" onClick={openCreateModal} title="Novo departamento">
+                            <AddButton variant="label" onClick={openCreateModal} title="Novo departamento">
                                 Novo Departamento
                             </AddButton>
                         ) : null}

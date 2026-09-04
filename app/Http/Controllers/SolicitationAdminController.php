@@ -165,7 +165,7 @@ class SolicitationAdminController extends Controller
         $solRows = [];
         if ($kindStr !== 'pastoral') {
             $query = ChurchSolicitation::query()->with([
-                'user:id,name,photo_url',
+                'user:id,name,email,phone,photo_url',
                 'assignedPastor:id,name',
                 'assignedVolunteer.user:id,name',
             ]);
@@ -202,16 +202,21 @@ class SolicitationAdminController extends Controller
                 ->values()
                 ->all();
 
-            $informalPhotoByUserId = $informalMemberIds === []
+            $informalContactByUserId = $informalMemberIds === []
                 ? []
-                : User::query()->whereIn('id', $informalMemberIds)->pluck('photo_url', 'id')->all();
+                : User::query()
+                    ->whereIn('id', $informalMemberIds)
+                    ->get(['id', 'email', 'phone', 'photo_url'])
+                    ->keyBy('id')
+                    ->all();
 
             $solRows = $solicitations
-                ->map(function (ChurchSolicitation $s) use ($informalPhotoByUserId) {
+                ->map(function (ChurchSolicitation $s) use ($informalContactByUserId) {
                     $linkedMemberId = $s->informalPastoralLinkedMemberUserId();
-                    $memberPhotoUrl = $s->type === MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL
-                        ? ($linkedMemberId !== null ? ($informalPhotoByUserId[$linkedMemberId] ?? null) : null)
-                        : $s->user?->photo_url;
+                    $isInformal = $s->type === MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL;
+                    $informalContact = $isInformal && $linkedMemberId !== null
+                        ? ($informalContactByUserId[$linkedMemberId] ?? null)
+                        : null;
 
                     return [
                         'kind' => 'solicitation',
@@ -225,9 +230,18 @@ class SolicitationAdminController extends Controller
                             : PastoralSolicitationStatus::label((string) $s->status),
                         'messageExcerpt' => mb_strimwidth(strip_tags($s->message), 0, 100, '…'),
                         'preferredDate' => $s->preferred_date?->format('Y-m-d'),
+                        'createdAt' => $s->created_at?->toIso8601String(),
                         'updatedAt' => $s->updated_at?->toIso8601String(),
                         'memberLabel' => $s->memberDisplayName(),
-                        'memberPhotoUrl' => $memberPhotoUrl,
+                        'memberPhotoUrl' => $isInformal
+                            ? ($informalContact?->photo_url)
+                            : $s->user?->photo_url,
+                        'memberEmail' => $isInformal
+                            ? ($informalContact?->email)
+                            : $s->user?->email,
+                        'memberPhone' => $isInformal
+                            ? ($informalContact?->phone)
+                            : $s->user?->phone,
                     ];
                 })
                 ->values()
@@ -239,7 +253,7 @@ class SolicitationAdminController extends Controller
             || ($kindStr === '' && is_string($type) && $type !== '');
         if (! $omitPastoralMerge && $this->canViewPastoral($user)) {
             $pQuery = PastoralAppointment::query()
-                ->with(['requesterUser:id,name,photo_url', 'preferredPastor:id,name', 'supportTicket:id,public_token'])
+                ->with(['requesterUser:id,name,email,phone,photo_url', 'preferredPastor:id,name', 'supportTicket:id,public_token'])
                 ->orderByDesc('updated_at')
                 ->limit(100);
 
@@ -274,9 +288,12 @@ class SolicitationAdminController extends Controller
                     },
                     'messageExcerpt' => mb_strimwidth(strip_tags((string) ($a->subject ?? $a->notes ?? '')), 0, 100, '…'),
                     'preferredDate' => $a->preferred_start?->format('Y-m-d'),
+                    'createdAt' => $a->created_at?->toIso8601String(),
                     'updatedAt' => ($a->updated_at ?? $a->created_at)?->toIso8601String(),
                     'memberLabel' => $a->requester_name ?: ($a->requesterUser?->name ?? 'Membro'),
                     'memberPhotoUrl' => $a->requesterUser?->photo_url,
+                    'memberEmail' => $a->requesterUser?->email,
+                    'memberPhone' => $a->requesterUser?->phone,
                 ])
                 ->values()
                 ->all();
@@ -309,7 +326,7 @@ class SolicitationAdminController extends Controller
                 }
             }
             if (($modalKind === null || $modalKind === '' || $modalKind === 'solicitation') && $this->canView($user)) {
-                $modalQuery = ChurchSolicitation::query();
+                $modalQuery = ChurchSolicitation::query()->with(['user:id,name,email,phone,photo_url']);
                 if ($churchId !== null) {
                     $modalQuery->where('church_id', $churchId);
                 }
@@ -326,7 +343,7 @@ class SolicitationAdminController extends Controller
         if ($modalDetail === null) {
             $legacyModal = $request->query('modal');
             if (is_string($legacyModal) && $legacyModal !== '' && ctype_digit($legacyModal) && $this->canView($user)) {
-                $modalQuery = ChurchSolicitation::query();
+                $modalQuery = ChurchSolicitation::query()->with(['user:id,name,email,phone,photo_url']);
                 if ($churchId !== null) {
                     $modalQuery->where('church_id', $churchId);
                 }
@@ -547,6 +564,7 @@ class SolicitationAdminController extends Controller
                 'statusLabel' => BaptismSolicitationStatus::label((string) $s->status),
                 'messageExcerpt' => mb_strimwidth(strip_tags($s->message), 0, 100, '…'),
                 'preferredDate' => $s->preferred_date?->format('Y-m-d'),
+                'createdAt' => $s->created_at?->toIso8601String(),
                 'updatedAt' => $s->updated_at?->toIso8601String(),
                 'memberLabel' => $s->user?->name ?? 'Usuário',
                 'memberEmail' => $s->user?->email,
@@ -574,6 +592,8 @@ class SolicitationAdminController extends Controller
             'baptismStoreUrl' => route('mobile.solicitations.store'),
             'modalDetail' => $modalDetail,
             'canManage' => $this->canManage($user),
+            'contactEmail' => is_string($user->email) ? (string) $user->email : '',
+            'contactPhone' => is_string($user->phone) ? (string) $user->phone : '',
             'filters' => [
                 'aba' => $aba,
                 'q' => is_string($q) ? (string) $q : '',

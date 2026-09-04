@@ -1,8 +1,9 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import { notificationLinkHref } from '@/utils/notificationLinkHref';
-import { BellAlertIcon, ExclamationTriangleIcon, PaperAirplaneIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { BellAlertIcon, ExclamationTriangleIcon, PaperAirplaneIcon, TrashIcon } from '@heroicons/react/24/outline';
 import FlashMessages from '@/Components/FlashMessages';
+import AddButton from '@/Components/AddButton';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
@@ -239,15 +240,13 @@ export default function VariosNotifications({
                     </div>
 
                     {canCreate && (
-                        <button
-                            type="button"
+                        <AddButton
+                            variant="label"
                             onClick={() => setCreateOpen(true)}
-                            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm ring-1 ring-inset ring-white/10 transition hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
-                            aria-label="Enviar notificação"
                             title="Enviar notificação"
                         >
-                            <PlusIcon className="h-6 w-6" strokeWidth={2.2} aria-hidden />
-                        </button>
+                            Nova notificação
+                        </AddButton>
                     )}
                 </div>
 
@@ -295,10 +294,10 @@ export default function VariosNotifications({
                                     ? liveNotifications.length > 0
                                         ? 'Você já leu os avisos pessoais. Abra Todas para ver o histórico e os avisos da igreja.'
                                         : canManage
-                                          ? 'Envie a primeira notificação usando o botão +.'
+                                          ? 'Envie a primeira notificação com Nova notificação.'
                                           : 'As notificações aparecerão aqui.'
                                     : canManage
-                                      ? 'Envie a primeira notificação usando o botão +.'
+                                      ? 'Envie a primeira notificação com Nova notificação.'
                                       : 'As notificações aparecerão aqui.'}
                             </p>
                         </div>

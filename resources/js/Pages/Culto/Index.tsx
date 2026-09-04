@@ -180,7 +180,7 @@ export default function CultoIndex({ cultos: cultosProp }: Props) {
             <Head title="Culto" />
             <PageHeader
                 title="Culto (vídeos)"
-                actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo culto">Novo culto</AddButton>}
+                actions={<AddButton variant="label" onClick={openCreateModal} title="Novo culto">Novo culto</AddButton>}
             />
 
             <div className="w-full space-y-5">
@@ -191,7 +191,7 @@ export default function CultoIndex({ cultos: cultosProp }: Props) {
                         </div>
                         <p className="text-zinc-600 dark:text-zinc-400 font-medium">Nenhum culto cadastrado</p>
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os vídeos aparecerão aqui.</p>
-                        <AddButton variant="icon" onClick={openCreateModal} className="mt-4" title="Novo culto">
+                        <AddButton variant="label" onClick={openCreateModal} className="mt-4" title="Novo culto">
                             Novo culto
                         </AddButton>
                     </div>

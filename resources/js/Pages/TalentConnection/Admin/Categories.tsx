@@ -51,7 +51,7 @@ export default function TalentConnectionAdminCategories({ categories }: Props) {
                 title="Categorias"
                 subtitle="Organize talentos e serviços da comunidade"
                 actions={
-                    <AddButton variant="icon" onClick={() => setOpen(true)} title="Nova categoria">
+                    <AddButton variant="label" onClick={() => setOpen(true)} title="Nova categoria">
                         Nova categoria
                     </AddButton>
                 }

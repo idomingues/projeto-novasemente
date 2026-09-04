@@ -227,7 +227,7 @@ export default function AppNoveltiesIndex({ novelties, modules, schemaReady = tr
                 subtitle="Publique um aviso curto na Home, com destino a um módulo. O membro escolhe ver agora ou agora não."
                 actions={
                     schemaReady ? (
-                        <AddButton variant="icon" onClick={openCreateModal} title="Nova novidade">
+                        <AddButton variant="label" onClick={openCreateModal} title="Nova novidade">
                             Nova novidade
                         </AddButton>
                     ) : undefined
@@ -249,7 +249,7 @@ export default function AppNoveltiesIndex({ novelties, modules, schemaReady = tr
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
                         Publique a primeira para avisar os membros na Home.
                     </p>
-                    <AddButton variant="icon" onClick={openCreateModal} className="mt-4" title="Nova novidade">
+                    <AddButton variant="label" onClick={openCreateModal} className="mt-4" title="Nova novidade">
                         Nova novidade
                     </AddButton>
                 </div>

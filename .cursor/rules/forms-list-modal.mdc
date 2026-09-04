@@ -10,7 +10,7 @@ alwaysApply: true
 Ao adicionar **novas telas de gestão** onde o usuário cria registros (pedidos, itens, configurações simples, etc.):
 
 1. **Preferir** a página principal como **lista** do que já existe (ou estado vazio com mensagem clara).
-2. Colocar um botão **+** (`AddButton` com `variant="icon"` ao lado do título, alinhado ao padrão de Acervo / Culto) que abre um **modal** com o formulário de criação.
+2. Colocar um botão de criação com rótulo (`AddButton` com `variant="label"`, ex.: «Novo pedido») ao lado do título. Usar `variant="icon"` (só +) apenas quando o header já estiver apertado (filtro + ordenação + outros botões) e o texto ficar feio.
 3. **Evitar** uma rota/página dedicada só ao formulário de criação em tela cheia, salvo razão forte (fluxo muito longo, vários passos, ou requisito explícito de produto).
 
 Após sucesso do `POST`, **manter o modal aberto** (`inertiaListModalSave`), repor o formulário com `reset()` e atualizar a lista pelos props da resposta. Fechar só no cancelar ou quando o registro deixa de existir na vista (excluir/arquivar).

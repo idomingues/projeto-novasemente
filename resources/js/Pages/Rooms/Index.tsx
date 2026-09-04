@@ -224,7 +224,7 @@ export default function Index({ rooms, byFloor, floors, canManage = false }: Pro
                 subtitle="Gerencie as salas por andar. Use cada seção para organizar e visualizar as salas do Térreo ao Terceiro andar."
                 actions={
                     canManage ? (
-                        <AddButton variant="icon" onClick={() => openCreateModal()} title="Nova sala">
+                        <AddButton variant="label" onClick={() => openCreateModal()} title="Nova sala">
                             Nova Sala
                         </AddButton>
                     ) : undefined
@@ -336,7 +336,7 @@ export default function Index({ rooms, byFloor, floors, canManage = false }: Pro
             {rooms.length === 0 && (
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-12 text-center text-zinc-500 dark:text-zinc-400">
                     {canManage
-                        ? 'Nenhuma sala cadastrada. Clique em "Nova Sala" ou no botão + de um andar para começar.'
+                        ? 'Nenhuma sala cadastrada. Toque em Nova Sala ou em Nova sala dentro de um andar para começar.'
                         : 'Nenhuma sala cadastrada.'}
                 </div>
             )}

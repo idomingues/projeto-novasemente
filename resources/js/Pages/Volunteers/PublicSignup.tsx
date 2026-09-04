@@ -1942,7 +1942,7 @@ export default function PublicSignup({
                                     fieldKey="phone"
                                     number={qn('phone')}
                                     label={focusMissingOnly ? 'Telefone cadastrado' : 'Telefone (WhatsApp)'}
-                                    required={false}
+                                    required
                                     error={err('phone')}
                                 >
                                     {focusMissingOnly ? (

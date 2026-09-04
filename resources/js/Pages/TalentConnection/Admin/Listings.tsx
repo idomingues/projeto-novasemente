@@ -1,7 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import PageHeader from '@/Components/PageHeader';
 import FlashMessages from '@/Components/FlashMessages';
-import { titleBarAddIconClass } from '@/Components/AddButton';
+import { titleBarAddLabelClass } from '@/Components/AddButton';
 import TalentConnectionAdminListingsPanel, {
     type TalentConnectionAdminListing,
 } from '@/Components/Talents/TalentConnectionAdminListingsPanel';
@@ -40,11 +40,12 @@ export default function TalentConnectionAdminListings({
                 actions={
                     <Link
                         href={route('talents.admin.listings', { status: statusFilter, modal: 'create' })}
-                        className={titleBarAddIconClass}
+                        className={titleBarAddLabelClass}
                         title="Cadastrar publicação"
                         aria-label="Cadastrar publicação"
                     >
-                        <PlusIcon className="h-6 w-6" strokeWidth={2.25} />
+                        <PlusIcon className="h-5 w-5" strokeWidth={2.25} />
+                        Nova publicação
                     </Link>
                 }
             />

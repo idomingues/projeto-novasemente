@@ -533,7 +533,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                 subtitle="Mobilize a igreja com causas que tocam o coração e transformam vidas."
                 actions={
                     canManage ? (
-                        <AddButton variant="icon" onClick={openCreateModal} title="Nova campanha">
+                        <AddButton variant="label" onClick={openCreateModal} title="Nova campanha">
                             Nova campanha
                         </AddButton>
                     ) : undefined
@@ -546,7 +546,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                         <BanknotesIcon className="mx-auto mb-4 h-10 w-10 text-zinc-400" />
                         <p className="font-medium text-zinc-600 dark:text-zinc-400">Nenhuma campanha cadastrada</p>
                         {canManage && (
-                            <AddButton variant="icon" onClick={openCreateModal} className="mt-4" title="Nova campanha">
+                            <AddButton variant="label" onClick={openCreateModal} className="mt-4" title="Nova campanha">
                                 Nova campanha
                             </AddButton>
                         )}

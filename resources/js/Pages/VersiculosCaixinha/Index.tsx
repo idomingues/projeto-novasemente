@@ -464,7 +464,7 @@ export default function VersiculosCaixinhaIndex({
                             <SecondaryButton type="button" onClick={() => setIsImportOpen(true)}>
                                 Importar
                             </SecondaryButton>
-                            <AddButton variant="icon" onClick={openCreateModal} title="Nova promessa">
+                            <AddButton variant="label" onClick={openCreateModal} title="Nova promessa">
                                 Nova promessa
                             </AddButton>
                         </div>

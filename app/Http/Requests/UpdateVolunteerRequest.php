@@ -24,7 +24,7 @@ class UpdateVolunteerRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
+            'phone' => ['required', 'string', 'max:50'],
             'ministry_ids' => ['nullable', 'array'],
             'ministry_ids.*' => ['exists:ministries,id'],
             'role' => ['nullable', 'string', 'max:100'],
@@ -58,6 +58,17 @@ class UpdateVolunteerRequest extends FormRequest
         ]);
 
         VolunteerAppAccessRules::prepareForValidation($this);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'phone.required' => 'Informe um telefone de contato.',
+            'email.required' => 'Informe um e-mail de contato.',
+        ];
     }
 
     public function withValidator($validator): void

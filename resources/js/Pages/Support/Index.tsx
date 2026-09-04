@@ -239,7 +239,7 @@ export default function SupportIndex({
                         <div className="flex flex-wrap items-center gap-2">
                             <ListViewModeToggle value={viewMode} onChange={setViewMode} />
                             {canCreateDevItem ? (
-                                <AddButton variant="icon" onClick={openCreateModal} title="Nova demanda">
+                                <AddButton variant="label" onClick={openCreateModal} title="Nova demanda">
                                     Nova demanda
                                 </AddButton>
                             ) : null}

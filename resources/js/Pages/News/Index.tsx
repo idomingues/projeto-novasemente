@@ -625,7 +625,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
             <Head title={entityTitle} />
             <PageHeader
                 title={entityTitle}
-                actions={canManage ? <AddButton variant="icon" onClick={openCreateModal} title={`Nova ${entityLabel}`}>Nova {entityLabel}</AddButton> : undefined}
+                actions={canManage ? <AddButton variant="label" onClick={openCreateModal} title={`Nova ${entityLabel}`}>Nova {entityLabel}</AddButton> : undefined}
             >
                 <div className="w-full max-w-md">
                     <TextInput

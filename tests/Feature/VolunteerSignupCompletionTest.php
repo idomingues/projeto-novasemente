@@ -59,6 +59,7 @@ class VolunteerSignupCompletionTest extends TestCase
 
         $volunteer->forceFill([
             'birth_date' => '1985-03-10',
+            'phone' => '11999990000',
             'has_whatsapp' => true,
             'has_social_networks' => true,
             'social_network_profiles' => '',
@@ -98,10 +99,13 @@ class VolunteerSignupCompletionTest extends TestCase
         $this->assertNotNull($volunteer);
 
         CompleteVolunteerSignup::apply($user, $volunteer);
+        $user->forceFill(['phone' => null])->save();
         $volunteer->forceFill(['phone' => null, 'has_whatsapp' => null])->save();
 
         $completion = VolunteerSignupCompletion::forUser($user->fresh());
 
+        $this->assertFalse($completion['is_complete']);
+        $this->assertContains('phone', $completion['missing_fields']);
         $this->assertNotContains('has_whatsapp', $completion['missing_fields']);
     }
 

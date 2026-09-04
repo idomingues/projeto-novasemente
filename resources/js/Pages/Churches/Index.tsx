@@ -156,7 +156,7 @@ export default function Index({ churches }: Props) {
             <Head title="Igrejas" />
             <PageHeader
                 title="Igrejas"
-                actions={<AddButton variant="icon" onClick={openCreateModal} title="Nova igreja">Nova Igreja</AddButton>}
+                actions={<AddButton variant="label" onClick={openCreateModal} title="Nova igreja">Nova Igreja</AddButton>}
             />
 
             {churches.length === 0 ? (

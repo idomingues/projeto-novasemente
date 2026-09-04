@@ -113,7 +113,7 @@ export default function ChurchServicesIndex({ church, services }: Props) {
                         Voltar
                     </Link>
                 }
-                actions={<AddButton variant="icon" onClick={openCreate} title="Adicionar horário">Adicionar horário</AddButton>}
+                actions={<AddButton variant="label" onClick={openCreate} title="Adicionar horário">Adicionar horário</AddButton>}
             />
 
             <Card className="!p-0 overflow-hidden">

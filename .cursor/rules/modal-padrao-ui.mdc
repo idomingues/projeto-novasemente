@@ -10,7 +10,7 @@ No projeto Nova Semente, **detalhe, edição e criação** de registos devem abr
 ## O que fazer
 
 1. **Lista ou hub** como página principal (`Index`, `Support`, `Pipeline`, etc.).
-2. **Abrir modal** ao clicar num item ou no botão **+** (`Modal` + `AddButton` `variant="icon"`).
+2. **Abrir modal** ao clicar num item ou no botão de criação (`Modal` + `AddButton` `variant="label"`, ex.: «Novo pedido»; `variant="icon"` só se o header estiver apertado).
 3. **Query `modal`** (ou estado local) para carregar o payload do detalhe na mesma rota da lista, quando fizer sentido com Inertia.
 4. **Fechar** o modal só quando o usuário cancelar, clicar fora ou concluir uma ação que remove o registro da vista (excluir, arquivar).
 5. **Componente reutilizável** do conteúdo (`*DetailPanel`, `*Panel`) com `variant="modal"` — evitar duplicar UI entre página e modal.

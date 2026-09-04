@@ -146,7 +146,7 @@ export default function MissionWallAdmin({ items, canManage, hasDriveApiKey }: P
                     }
                     actions={
                         canManage ? (
-                            <AddButton variant="icon" onClick={openCreateModal} title="Novo álbum no mural">
+                            <AddButton variant="label" onClick={openCreateModal} title="Novo álbum no mural">
                                 Novo álbum
                             </AddButton>
                         ) : undefined
@@ -166,7 +166,7 @@ export default function MissionWallAdmin({ items, canManage, hasDriveApiKey }: P
                             </p>
                             {canManage ? (
                                 <div className="mt-4 flex justify-center">
-                                    <AddButton variant="icon" onClick={openCreateModal} title="Novo álbum no mural">
+                                    <AddButton variant="label" onClick={openCreateModal} title="Novo álbum no mural">
                                         Novo álbum
                                     </AddButton>
                                 </div>

@@ -96,7 +96,7 @@ class MemberSolicitationsHubTest extends TestCase
     {
         $this->seed(ChurchSeeder::class);
         $church = Church::query()->firstOrFail();
-        $user = User::factory()->create(['church_id' => $church->id]);
+        $user = User::factory()->create(['church_id' => $church->id, 'phone' => '11999990000']);
 
         $this->actingAs($user)
             ->withSession(['working_church_id' => $church->id])
@@ -104,7 +104,61 @@ class MemberSolicitationsHubTest extends TestCase
             ->post(route('mobile.solicitations.store'), [
                 'type' => 'pastor_visit',
                 'message' => 'Quero uma visita',
+                'email' => $user->email,
+                'phone' => '11999990000',
             ])
             ->assertSessionHasErrors('type');
+    }
+
+    public function test_store_requires_email_and_phone(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create(['church_id' => $church->id, 'phone' => null]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->from(route('mobile.solicitations.hub'))
+            ->post(route('mobile.solicitations.store'), [
+                'type' => 'baby_presentation',
+                'message' => 'Gostaria de apresentar meu bebê',
+            ])
+            ->assertSessionHasErrors(['email', 'phone']);
+
+        $this->assertDatabaseMissing('church_solicitations', [
+            'user_id' => $user->id,
+            'type' => 'baby_presentation',
+        ]);
+    }
+
+    public function test_store_saves_contact_on_user_profile(): void
+    {
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create([
+            'church_id' => $church->id,
+            'email' => 'laricy.antiga@example.com',
+            'phone' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('mobile.solicitations.store'), [
+                'type' => 'baby_presentation',
+                'message' => 'Gostaria de apresentar meu bebê',
+                'email' => 'laricy.contato@example.com',
+                'phone' => '(11) 98888-7777',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('church_solicitations', [
+            'user_id' => $user->id,
+            'type' => 'baby_presentation',
+            'message' => 'Gostaria de apresentar meu bebê',
+        ]);
+
+        $user->refresh();
+        $this->assertSame('laricy.contato@example.com', $user->email);
+        $this->assertSame('(11) 98888-7777', $user->phone);
     }
 }

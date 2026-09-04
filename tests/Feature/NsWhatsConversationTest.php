@@ -273,6 +273,44 @@ class NsWhatsConversationTest extends TestCase
         ]);
     }
 
+    public function test_department_leader_opens_queue_conversation_from_notification_deep_link(): void
+    {
+        [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();
+
+        $this->actingAs($member)->post(route('mobile.ns-whats.store'), [
+            'ministry_id' => $ministry->id,
+            'message' => 'Fila do departamento — abrir pelo sino.',
+        ])->assertRedirect();
+
+        $conversation = ChurchConversation::query()->firstOrFail();
+        $this->assertNull($conversation->assignee_user_id);
+        $this->assertNull($conversation->preferred_leader_user_id);
+
+        $inbox = \App\Models\UserInboxNotification::query()
+            ->where('user_id', $leader->id)
+            ->where('title', 'Nova conversa no NS Conecta')
+            ->firstOrFail();
+        $this->assertNotEmpty($inbox->action_url);
+        $actionPath = (string) (parse_url((string) $inbox->action_url, PHP_URL_PATH) ?: '');
+        $this->assertSame('/mobile/ns-whats-lider/'.$conversation->id, $actionPath);
+
+        // Deep link legado (?conversa=) e rota do líder devem abrir a conversa.
+        $this->actingAs($leader)
+            ->get(route('mobile.ns-whats.index', ['conversa' => $conversation->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/Index')
+                ->where('selected.id', $conversation->id)
+                ->where('selected.viewerRole', 'staff'));
+
+        $this->actingAs($leader)
+            ->get(route('mobile.ns-whats.leader.show', $conversation))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Mobile/NsWhats/LeaderShow')
+                ->where('conversation.id', $conversation->id));
+    }
+
     public function test_leader_can_claim_and_second_claim_fails(): void
     {
         [$churchId, $member, $ministry, $leader] = $this->seedNsWhats();

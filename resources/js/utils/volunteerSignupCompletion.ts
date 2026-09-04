@@ -27,7 +27,7 @@ export function formatVolunteerSignupProgressLabel(completion: Pick<VolunteerSig
 const MIN_VOLUNTEER_AGE = 10;
 
 /** Campos que não entram no alerta de cadastro incompleto (espelha backend). */
-export const VOLUNTEER_SIGNUP_OPTIONAL_FIELD_KEYS = ['phone', 'password', 'password_confirmation'] as const;
+export const VOLUNTEER_SIGNUP_OPTIONAL_FIELD_KEYS = ['password', 'password_confirmation'] as const;
 
 /** Ordem estável para rolar/destacar o primeiro erro (todas as etapas). */
 export const VOLUNTEER_SIGNUP_FIELD_ORDER = [
@@ -58,6 +58,7 @@ const MISSING_FIELD_MESSAGES: Record<string, string> = {
     photo_file: 'Tire ou envie uma foto antes de concluir.',
     full_name: 'Informe o nome completo (nome e sobrenome).',
     birth_date: 'Informe uma data de nascimento válida (mínimo 10 anos).',
+    phone: 'Informe um telefone de contato.',
     has_whatsapp: 'Informe se este número tem WhatsApp.',
     email: 'Informe um e-mail válido.',
     has_social_networks: 'Informe se você usa redes sociais.',
@@ -200,6 +201,7 @@ export function computeVolunteerSignupCompletion(initial: VolunteerSignupInitial
     track('birth_date', true, isBirthDateAtLeastMinAge(initial.birth_date, MIN_VOLUNTEER_AGE));
 
     const phoneFilled = initial.phone.trim() !== '';
+    track('phone', true, phoneFilled);
     track('has_whatsapp', phoneFilled, phoneFilled ? isBoolSet(initial.has_whatsapp) : true);
 
     track('email', true, initial.email.trim() !== '' && isValidEmail(initial.email));
@@ -261,6 +263,9 @@ export function isVolunteerSignupFieldVisible(
     }
 
     if (fieldKey === 'phone') {
+        if (missingFields.includes('phone')) {
+            return true;
+        }
         return missingFields.includes('has_whatsapp') && data.phone.trim() !== '';
     }
 

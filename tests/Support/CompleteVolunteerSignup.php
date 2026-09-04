@@ -13,6 +13,7 @@ final class CompleteVolunteerSignup
     {
         $volunteer->forceFill([
             'birth_date' => '1988-05-20',
+            'phone' => '11999998888',
             'has_whatsapp' => true,
             'has_social_networks' => true,
             'social_network_profiles' => '@voluntario.ns',
@@ -30,6 +31,7 @@ final class CompleteVolunteerSignup
 
         $user->forceFill([
             'name' => $user->name !== '' ? $user->name : 'João Silva',
+            'phone' => $user->phone ?: '11999998888',
             'photo_url' => $user->photo_url ?: 'https://example.com/photos/voluntario.jpg',
             'is_volunteer' => true,
         ])->save();

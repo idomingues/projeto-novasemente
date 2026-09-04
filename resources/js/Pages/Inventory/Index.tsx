@@ -301,7 +301,7 @@ export default function Index({ items, filters }: Props) {
             <PageHeader
                 title="Inventário"
                 subtitle="Gerencie os objetos da igreja com código de barras. Use a busca para encontrar por código ou nome e visualize o histórico de cada item."
-                actions={<AddButton variant="icon" onClick={openCreateModal} title="Novo item">Novo Item</AddButton>}
+                actions={<AddButton variant="label" onClick={openCreateModal} title="Novo item">Novo Item</AddButton>}
             />
 
             <div className="mb-6">

@@ -135,6 +135,14 @@ function formatTime(iso: string): string {
     return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
+function formatPedidoWhen(iso: string): string {
+    try {
+        return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    } catch {
+        return iso;
+    }
+}
+
 function formatPreferredDate(ymd: string): string {
     const parts = ymd.split('-').map((x) => parseInt(x, 10));
     const [y, m, d] = parts;
@@ -407,13 +415,19 @@ export default function SolicitationDetailPanel({
                             </>
                         ) : null}
                     </div>
+                    {solicitation.createdAt ? (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                            Enviado em{' '}
+                            <time dateTime={solicitation.createdAt}>{formatPedidoWhen(solicitation.createdAt)}</time>
+                        </p>
+                    ) : null}
                     {isLeaderChat && (
                         <div className="text-sm text-zinc-800 dark:text-zinc-200">
                             <span className="font-semibold text-zinc-600 dark:text-zinc-400">Assunto: </span>
                             {solicitation.subject?.trim() ? solicitation.subject : '—'}
                         </div>
                     )}
-                    {composerRole === 'staff' && solicitation.type === 'baptism' ? (
+                    {composerRole === 'staff' ? (
                         <dl className="grid gap-2 text-sm sm:grid-cols-2">
                             <div>
                                 <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">

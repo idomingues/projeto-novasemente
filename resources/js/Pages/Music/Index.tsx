@@ -155,7 +155,7 @@ export default function MusicIndex({ musicas, canManage }: Props) {
                 title="Música (vídeos)"
                 actions={
                     canManage ? (
-                        <AddButton variant="icon" onClick={openCreateModal} title="Nova música">
+                        <AddButton variant="label" onClick={openCreateModal} title="Nova música">
                             Nova música
                         </AddButton>
                     ) : undefined
@@ -172,7 +172,7 @@ export default function MusicIndex({ musicas, canManage }: Props) {
                         <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-1">Os vídeos do YouTube aparecerão aqui.</p>
                         {canManage && (
                             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                                <AddButton variant="icon" onClick={openCreateModal} title="Nova música">
+                                <AddButton variant="label" onClick={openCreateModal} title="Nova música">
                                     Nova música
                                 </AddButton>
                             </div>

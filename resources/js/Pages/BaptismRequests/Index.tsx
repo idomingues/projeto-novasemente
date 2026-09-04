@@ -27,11 +27,21 @@ type DemandRow = {
     statusLabel: string;
     messageExcerpt: string;
     preferredDate: string | null;
+    createdAt?: string | null;
     updatedAt: string;
     memberLabel: string;
     memberEmail: string | null;
     memberPhone: string | null;
 };
+
+function formatPedidoWhen(iso: string | null | undefined): string {
+    if (!iso) return '';
+    try {
+        return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    } catch {
+        return '';
+    }
+}
 
 type TabKey = 'pendente' | 'aguardando' | 'batizados' | 'arquivados';
 
@@ -49,6 +59,8 @@ interface Props {
     baptismStoreUrl: string;
     modalDetail: ModalDetail;
     canManage: boolean;
+    contactEmail?: string;
+    contactPhone?: string;
     filters: { aba: TabKey; q: string; date: string };
     tabCounts: Record<TabKey, number>;
     tabs: { key: TabKey; label: string }[];
@@ -117,6 +129,8 @@ export default function BaptismRequestsIndex({
     baptismStoreUrl,
     modalDetail,
     canManage,
+    contactEmail = '',
+    contactPhone = '',
     filters: filtersProp,
     tabCounts,
     tabs,
@@ -129,6 +143,8 @@ export default function BaptismRequestsIndex({
         type: 'baptism',
         message: '',
         preferred_date: '',
+        email: contactEmail,
+        phone: contactPhone,
         return_to: 'baptism_admin' as const,
     });
 
@@ -173,6 +189,8 @@ export default function BaptismRequestsIndex({
             type: 'baptism',
             message: '',
             preferred_date: '',
+            email: contactEmail,
+            phone: contactPhone,
             return_to: 'baptism_admin',
         });
         setCreateOpen(true);
@@ -223,8 +241,8 @@ export default function BaptismRequestsIndex({
                     subtitle="Lista e acompanhamento dos pedidos formais de batismo."
                     actions={
                         canManage ? (
-                            <AddButton variant="icon" onClick={openCreate} title="Novo pedido de batismo">
-                                Novo pedido de batismo
+                            <AddButton variant="label" onClick={openCreate} title="Novo pedido de batismo">
+                                Novo pedido
                             </AddButton>
                         ) : null
                     }
@@ -339,12 +357,8 @@ export default function BaptismRequestsIndex({
                                         </div>
                                         <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                             {s.typeLabel}
-                                            {s.preferredDate ? (
-                                                <>
-                                                    {' '}
-                                                    · Data: {s.preferredDate}
-                                                </>
-                                            ) : null}
+                                            {s.createdAt ? <> · Enviado em {formatPedidoWhen(s.createdAt)}</> : null}
+                                            {s.preferredDate ? <> · Data pretendida: {s.preferredDate}</> : null}
                                         </div>
                                         <dl className="mt-2 space-y-0.5 text-xs text-zinc-600 dark:text-zinc-300">
                                             <div className="flex flex-wrap gap-x-1">
@@ -392,6 +406,35 @@ export default function BaptismRequestsIndex({
                             />
                             <InputError message={createForm.errors.message} className="mt-1" />
                         </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <InputLabel htmlFor="bap_create_email" value="E-mail de contato" />
+                                <TextInput
+                                    id="bap_create_email"
+                                    type="email"
+                                    value={createForm.data.email}
+                                    onChange={(e) => createForm.setData('email', e.target.value)}
+                                    className="mt-1 block w-full"
+                                    autoComplete="email"
+                                    required
+                                />
+                                <InputError message={createForm.errors.email} className="mt-1" />
+                            </div>
+                            <div>
+                                <InputLabel htmlFor="bap_create_phone" value="Telefone de contato" />
+                                <TextInput
+                                    id="bap_create_phone"
+                                    type="tel"
+                                    value={createForm.data.phone}
+                                    onChange={(e) => createForm.setData('phone', e.target.value)}
+                                    className="mt-1 block w-full"
+                                    autoComplete="tel"
+                                    placeholder="(11) 99999-9999"
+                                    required
+                                />
+                                <InputError message={createForm.errors.phone} className="mt-1" />
+                            </div>
+                        </div>
                         <div>
                             <InputLabel htmlFor="bap_create_pref_date" value="Data pretendida (opcional)" />
                             <input
@@ -408,7 +451,15 @@ export default function BaptismRequestsIndex({
                         <SecondaryButton type="button" onClick={closeCreate}>
                             Cancelar
                         </SecondaryButton>
-                        <PrimaryButton type="submit" disabled={createForm.processing || !createForm.data.message.trim()}>
+                        <PrimaryButton
+                            type="submit"
+                            disabled={
+                                createForm.processing ||
+                                !createForm.data.message.trim() ||
+                                !createForm.data.email.trim() ||
+                                !createForm.data.phone.trim()
+                            }
+                        >
                             Registrar pedido
                         </PrimaryButton>
                     </div>

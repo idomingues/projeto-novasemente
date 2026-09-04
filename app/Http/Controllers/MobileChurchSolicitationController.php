@@ -7,6 +7,7 @@ use App\Models\ChurchSolicitation;
 use App\Models\ChurchSolicitationMessage;
 use App\Models\Pastor;
 use App\Models\PastoralAvailability;
+use App\Models\User;
 use App\Services\SolicitationChatNotifier;
 use App\Support\BaptismSolicitationStatus;
 use App\Support\MemberPastoralAppointmentHubPayload;
@@ -44,6 +45,17 @@ class MobileChurchSolicitationController extends Controller
         self::TYPE_COMMUNICATION_REQUEST,
         'leader_chat',
     ];
+
+    /**
+     * @return array{contactEmail: string, contactPhone: string}
+     */
+    private static function contactFormDefaults(?User $user): array
+    {
+        return [
+            'contactEmail' => is_string($user?->email) ? (string) $user->email : '',
+            'contactPhone' => is_string($user?->phone) ? (string) $user->phone : '',
+        ];
+    }
 
     private function currentChurchId(Request $request): ?int
     {
@@ -248,6 +260,7 @@ class MobileChurchSolicitationController extends Controller
             'appointments' => $appointments,
             'pastoralBooking' => $pastoralBooking,
             'pastoralAgendaUrl' => self::pastoralHubDeepLink(),
+            ...self::contactFormDefaults($user),
         ]);
     }
 
@@ -316,6 +329,7 @@ class MobileChurchSolicitationController extends Controller
             'pageSubtitle' => 'Envie seu pedido e acompanhe a conversa com a igreja.',
             'singleBaptismType' => true,
             'hideConversationReturnTo' => 'baptism_hub',
+            ...self::contactFormDefaults($user),
         ]);
     }
 
@@ -324,6 +338,7 @@ class MobileChurchSolicitationController extends Controller
         abort_unless(in_array($type, self::HUB_TYPES, true), 404);
 
         $churchId = $this->currentChurchId($request);
+        $user = $request->user();
 
         return Inertia::render('Mobile/Solicitations/Create', [
             'type' => $type,
@@ -332,6 +347,7 @@ class MobileChurchSolicitationController extends Controller
             'pastorOptions' => SolicitationAssignees::pastorOptions($churchId),
             'volunteerOptions' => [],
             'pastoralAgendaUrl' => self::pastoralHubDeepLink(),
+            ...self::contactFormDefaults($user),
         ]);
     }
 
@@ -352,14 +368,33 @@ class MobileChurchSolicitationController extends Controller
             ]);
         }
 
+        $request->merge([
+            'email' => strtolower(trim((string) $request->input('email', ''))),
+            'phone' => trim((string) $request->input('phone', '')),
+        ]);
+
         $rules = array_merge([
             'type' => ['required', 'in:'.implode(',', self::HUB_TYPES)],
             'message' => ['required', 'string', 'max:5000'],
+            'email' => [
+                'required',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->id),
+            ],
+            'phone' => ['required', 'string', 'max:50'],
             'meta' => ['nullable', 'array'],
             'return_to' => ['nullable', 'string', Rule::in(['baptism_admin'])],
         ], SolicitationAssignees::assignmentRules($churchId));
 
-        $valid = $request->validate($rules);
+        $valid = $request->validate($rules, [
+            'email.required' => 'Informe um e-mail de contato.',
+            'email.email' => 'Informe um endereço de e-mail válido.',
+            'email.unique' => 'Este e-mail já está cadastrado em outra conta.',
+            'phone.required' => 'Informe um telefone de contato.',
+        ]);
 
         SolicitationAssignees::assertSingleAssignee($valid);
 
@@ -378,11 +413,30 @@ class MobileChurchSolicitationController extends Controller
         $pastorId = $valid['assigned_pastor_id'] ?? null;
         $volunteerId = $valid['assigned_volunteer_id'] ?? null;
         $message = trim((string) ($valid['message'] ?? ''));
+        $email = strtolower(trim((string) ($valid['email'] ?? '')));
+        $phone = trim((string) ($valid['phone'] ?? ''));
 
         if ($message === '') {
             throw ValidationException::withMessages([
                 'message' => 'Escreva uma mensagem.',
             ]);
+        }
+
+        if ($email === '' || $phone === '') {
+            throw ValidationException::withMessages(array_filter([
+                'email' => $email === '' ? 'Informe um e-mail de contato.' : null,
+                'phone' => $phone === '' ? 'Informe um telefone de contato.' : null,
+            ]));
+        }
+
+        $user->email = $email;
+        $user->phone = $phone;
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+        if ($user->isDirty('email') || $user->isDirty('phone')) {
+            $user->save();
+            $user->ensureVolunteerProfile();
         }
 
         $solicitation = ChurchSolicitation::create([

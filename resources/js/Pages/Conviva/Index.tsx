@@ -278,7 +278,7 @@ export default function Index({ tab, classes, canManage = false, presence }: Pro
                 subtitle="Turmas de estudo bíblico no culto — cadastre sala e professor juntos e acompanhe a presença semanal."
                 actions={
                     canManage && tab === 'turmas' ? (
-                        <AddButton variant="icon" onClick={openCreateModal} title="Nova turma">
+                        <AddButton variant="label" onClick={openCreateModal} title="Nova turma">
                             Nova turma
                         </AddButton>
                     ) : undefined
@@ -307,7 +307,7 @@ export default function Index({ tab, classes, canManage = false, presence }: Pro
                     {classes.length === 0 ? (
                         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-12 text-center text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-400">
                             {canManage
-                                ? 'Nenhuma turma cadastrada. Clique em + para criar a primeira.'
+                                ? 'Nenhuma turma cadastrada. Toque em Nova turma para criar a primeira.'
                                 : 'Nenhuma turma cadastrada.'}
                         </div>
                     ) : (

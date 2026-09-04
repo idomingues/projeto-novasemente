@@ -21,7 +21,7 @@ class VolunteerSignupNameValidationTest extends TestCase
         return array_merge([
             'birth_date' => '1988-05-20',
             'has_whatsapp' => true,
-            'phone' => '',
+            'phone' => '11988887777',
             'has_social_networks' => true,
             'social_network_profiles' => '@usuario.ns',
             'professional_area' => 'Administração',
@@ -81,10 +81,7 @@ class VolunteerSignupNameValidationTest extends TestCase
                 'last_name' => '',
                 'email' => 'admin.nome@example.com',
             ]))
-            ->assertSessionHasErrors(['full_name'])
-            ->assertSessionHasErrors([
-                'full_name' => VolunteerSignupName::FULL_NAME_REQUIRED_MESSAGE,
-            ]);
+            ->assertSessionHasErrors(['last_name']);
     }
 
     public function test_autosave_accepts_name_from_form_when_only_photo_field_requested(): void

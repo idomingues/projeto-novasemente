@@ -270,7 +270,7 @@ export default function Index({ items, dayOptions, timeModes, canManage = false 
                 subtitle="Itens fixos da agenda semanal (cultos, classes e pôr do sol). Aparecem em Horários e nos cards da home."
                 actions={
                     canManage ? (
-                        <AddButton variant="icon" onClick={openCreateModal} title="Novo item">
+                        <AddButton variant="label" onClick={openCreateModal} title="Novo item">
                             Novo item
                         </AddButton>
                     ) : undefined
@@ -333,7 +333,7 @@ export default function Index({ items, dayOptions, timeModes, canManage = false 
                 {items.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-12 text-center text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-400">
                         {canManage
-                            ? 'Nenhum item cadastrado. Clique em + para adicionar a programação semanal.'
+                            ? 'Nenhum item cadastrado. Toque em Novo item para adicionar a programação semanal.'
                             : 'Nenhum item de programação cadastrado.'}
                     </div>
                 ) : null}

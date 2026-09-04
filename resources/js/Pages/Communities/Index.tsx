@@ -253,7 +253,7 @@ export default function CommunitiesIndex({
                 subtitle="Cadastre grupos de interesse da igreja com nome, descrição, arte e link do WhatsApp."
                 actions={
                     canManage && schemaReady ? (
-                        <AddButton variant="icon" onClick={openCreateModal} title="Nova comunidade">
+                        <AddButton variant="label" onClick={openCreateModal} title="Nova comunidade">
                             Nova comunidade
                         </AddButton>
                     ) : undefined
@@ -278,7 +278,7 @@ export default function CommunitiesIndex({
                             Cadastre o primeiro grupo para exibir no app.
                         </p>
                         {canManage ? (
-                            <AddButton variant="icon" onClick={openCreateModal} className="mt-4" title="Nova comunidade">
+                            <AddButton variant="label" onClick={openCreateModal} className="mt-4" title="Nova comunidade">
                                 Nova comunidade
                             </AddButton>
                         ) : null}

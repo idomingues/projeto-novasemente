@@ -105,16 +105,42 @@ class ChurchSolicitation extends Model
 
     public function memberPhotoUrl(): ?string
     {
+        return $this->memberContactUser()?->photo_url;
+    }
+
+    public function memberEmail(): ?string
+    {
+        $email = $this->memberContactUser()?->email;
+
+        return is_string($email) && trim($email) !== '' ? trim($email) : null;
+    }
+
+    public function memberPhone(): ?string
+    {
+        $phone = $this->memberContactUser()?->phone;
+
+        return is_string($phone) && trim($phone) !== '' ? trim($phone) : null;
+    }
+
+    /**
+     * Usuário cujos dados de contato representam quem pediu (membro vinculado no registro informal).
+     */
+    public function memberContactUser(): ?User
+    {
         if ($this->type === \App\Http\Controllers\MobileChurchSolicitationController::TYPE_PASTORAL_INFORMAL) {
             $uid = $this->informalPastoralLinkedMemberUserId();
             if ($uid === null) {
                 return null;
             }
 
-            return User::query()->whereKey($uid)->value('photo_url');
+            if ($this->relationLoaded('user') && $this->user && (int) $this->user->id === $uid) {
+                return $this->user;
+            }
+
+            return User::query()->whereKey($uid)->first(['id', 'name', 'email', 'phone', 'photo_url']);
         }
 
-        return $this->user?->photo_url;
+        return $this->user;
     }
 
     public function informalPastoralLinkedMemberUserId(): ?int

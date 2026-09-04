@@ -660,7 +660,7 @@ export default function VolunteerRequestsStaffSection({
                     </p>
                 ) : null}
                 <AddButton
-                    variant="icon"
+                    variant="label"
                     onClick={openModal}
                     disabled={!canAdd}
                     title={
@@ -738,8 +738,9 @@ export default function VolunteerRequestsStaffSection({
                             <p>Nenhum pedido de voluntário arquivado.</p>
                         ) : canAdd ? (
                             <p>
-                                Ainda não há pedidos registrados. Toque em <strong className="text-zinc-900 dark:text-white">+</strong>{' '}
-                                para enviar o primeiro.
+                                Ainda não há pedidos registrados. Toque em{' '}
+                                <strong className="text-zinc-900 dark:text-white">Novo pedido</strong> para enviar o
+                                primeiro.
                             </p>
                         ) : (
                             <p>Quando existirem departamentos e funções, poderá criar pedidos aqui.</p>
