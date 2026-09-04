@@ -1,6 +1,4 @@
 import MobileLayout from '@/Layouts/MobileLayout';
-import VolunteerSignupIncompleteBanner from '@/Components/Volunteers/VolunteerSignupIncompleteBanner';
-import type { VolunteerSignupCompletion } from '@/utils/volunteerSignupCompletion';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -47,7 +45,6 @@ type MenuIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 
 interface Props {
     showPostRegistrationBanner?: boolean;
-    volunteerSignupCompletion?: VolunteerSignupCompletion | null;
     sabbathBanner?: SabbathHomeBannerData | null;
     meditationBanner?: MeditationHomeBannerData | null;
     weeklyProgramCards?: WeeklyProgramHomeCardData[];
@@ -284,7 +281,6 @@ const homeQuickActions: QuickAction[] = [
 
 export default function MobileHome({
     showPostRegistrationBanner = false,
-    volunteerSignupCompletion = null,
     sabbathBanner = null,
     meditationBanner = null,
     weeklyProgramCards = [],
@@ -443,10 +439,6 @@ export default function MobileHome({
                             Você já está conectado(a). Explore o restante do aplicativo.
                         </p>
                     </div>
-                ) : null}
-
-                {user && volunteerSignupCompletion ? (
-                    <VolunteerSignupIncompleteBanner completion={volunteerSignupCompletion} />
                 ) : null}
 
                 <header className="flex items-center justify-between gap-4">

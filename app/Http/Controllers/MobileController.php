@@ -250,9 +250,6 @@ class MobileController extends Controller
             });
 
         $user = $request->user();
-        $volunteerSignupCompletion = $user !== null
-            ? VolunteerSignupCompletion::profileAlertForUser($user)
-            : null;
 
         $sabbathBanner = app(SabbathSunsetService::class)->homeBannerPayload();
         $meditationBanner = app(MeditationHomeBannerService::class)->homeBannerPayload($church);
@@ -278,7 +275,6 @@ class MobileController extends Controller
             'latestNews' => $latestNews,
             'upcomingEvents' => $upcomingEvents,
             'showPostRegistrationBanner' => $request->boolean('reg_ok') && $request->user() !== null,
-            'volunteerSignupCompletion' => $volunteerSignupCompletion,
             'sabbathBanner' => $weeklyProgramCards === [] ? $sabbathBanner : null,
             'meditationBanner' => $meditationBanner,
             'weeklyProgramCards' => $weeklyProgramCards,

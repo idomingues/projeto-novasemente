@@ -163,7 +163,7 @@ class VolunteerSignupCompletionTest extends TestCase
         $this->assertSame(100, $completion['percent']);
     }
 
-    public function test_mobile_home_shows_incomplete_volunteer_signup_alert(): void
+    public function test_mobile_home_does_not_show_volunteer_signup_alert(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
 
@@ -181,9 +181,7 @@ class VolunteerSignupCompletionTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Mobile/Home')
-                ->has('volunteerSignupCompletion')
-                ->where('volunteerSignupCompletion.is_complete', false)
-                ->where('volunteerSignupCompletion.missing_count', fn ($count) => $count > 0));
+                ->missing('volunteerSignupCompletion'));
     }
 
     public function test_mobile_profile_edit_hides_volunteer_card_when_signup_is_complete(): void
@@ -250,30 +248,4 @@ class VolunteerSignupCompletionTest extends TestCase
         $this->assertStringContainsString('LGPD', $text);
     }
 
-    public function test_mobile_home_hides_alert_when_volunteer_signup_is_complete(): void
-    {
-        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class]);
-
-        $churchId = (int) Church::query()->orderBy('id')->value('id');
-
-        $user = User::factory()->create([
-            'church_id' => $churchId,
-            'is_volunteer' => true,
-            'name' => 'João Silva',
-            'email' => 'joao.home@example.com',
-            'photo_url' => 'https://example.com/photos/joao.jpg',
-        ]);
-
-        $volunteer = $user->fresh()->volunteerProfile;
-        $this->assertNotNull($volunteer);
-
-        CompleteVolunteerSignup::apply($user, $volunteer);
-
-        $this->actingAs($user)
-            ->get(route('mobile.home'))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('Mobile/Home')
-                ->where('volunteerSignupCompletion', null));
-    }
 }

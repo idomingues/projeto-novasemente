@@ -459,8 +459,12 @@ export default function CommunicationRequestsIndex({
                         {canManage && !filters.arquivados ? (
                             <ListViewModeToggle value={viewMode as ListKanbanViewMode} onChange={setViewMode} />
                         ) : null}
-                        <AddButton variant="icon" onClick={openRequestModal}>
-                            Solicitar a Comunicação
+                        <AddButton
+                            variant="label"
+                            onClick={openRequestModal}
+                            title="Solicitar a Comunicação"
+                        >
+                            Novo
                         </AddButton>
                     </div>
                 }
@@ -518,7 +522,7 @@ export default function CommunicationRequestsIndex({
                                 ? 'Nenhuma solicitação encontrada com estes filtros.'
                                 : canManage
                                   ? 'Ainda não há solicitações de comunicação.'
-                                  : 'Você ainda não solicitou a Comunicação. Toque em + para fazer um pedido.'}
+                                  : 'Você ainda não solicitou a Comunicação. Toque em Novo para fazer um pedido.'}
                         </Card>
                     ) : (
                         rows.map((row) => (

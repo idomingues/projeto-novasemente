@@ -381,11 +381,11 @@ export default function SolicitationsIndex({
                         </button>
                         {canRegisterInformal ? (
                             <AddButton
-                                variant="icon"
+                                variant="label"
                                 onClick={openCreateInformal}
                                 title="Registrar atendimento acionado informalmente"
                             >
-                                Registrar atendimento
+                                Novo
                             </AddButton>
                         ) : null}
                     </div>

@@ -3,7 +3,7 @@ import FlashMessages from '@/Components/FlashMessages';
 import Modal from '@/Components/Modal';
 import Card from '@/Components/Card';
 import PageHeader from '@/Components/PageHeader';
-import { titleBarAddIconClass } from '@/Components/AddButton';
+import { titleBarAddLabelClass } from '@/Components/AddButton';
 import BrDateInput from '@/Components/BrDateInput';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
@@ -993,11 +993,12 @@ export default function Pipeline({
                         {secao === 'quadro' && canVolunteerManage ? (
                             <Link
                                 href={`${volunteersAdminUrl}?modal=create`}
-                                className={titleBarAddIconClass}
+                                className={titleBarAddLabelClass}
                                 title="Novo voluntário"
                                 aria-label="Novo voluntário"
                             >
-                                <PlusIcon className="h-6 w-6" strokeWidth={2.25} />
+                                <PlusIcon className="h-5 w-5" strokeWidth={2.25} />
+                                Novo
                             </Link>
                         ) : null}
                     </div>

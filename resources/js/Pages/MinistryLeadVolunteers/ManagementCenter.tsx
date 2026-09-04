@@ -9,7 +9,7 @@ import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
 import VolunteerCenterRosterPanel from '@/Components/Volunteers/VolunteerCenterRosterPanel';
 import VolunteerCenterScopePanel from '@/Components/Volunteers/VolunteerCenterScopePanel';
-import { titleBarAddIconClass } from '@/Components/AddButton';
+import { titleBarAddLabelClass } from '@/Components/AddButton';
 import { getMinistryIcon, getMinistryIconByKey } from '@/lib/ministryIcons';
 import RecordDetailHeader from '@/Components/RecordDetail/RecordDetailHeader';
 import RecordDetailSections from '@/Components/RecordDetail/RecordDetailSections';
@@ -773,11 +773,12 @@ export default function ManagementCenter({
                         {canVolunteerManage ? (
                             <Link
                                 href={`${volunteersAdminUrl}?modal=create`}
-                                className={titleBarAddIconClass}
+                                className={titleBarAddLabelClass}
                                 title="Novo voluntário"
                                 aria-label="Novo voluntário"
                             >
-                                <PlusIcon className="h-6 w-6" strokeWidth={2.25} />
+                                <PlusIcon className="h-5 w-5" strokeWidth={2.25} />
+                                Novo
                             </Link>
                         ) : null}
                     </div>
