@@ -1,7 +1,11 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ClockIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, DocumentTextIcon, ListBulletIcon } from '@heroicons/react/24/outline';
 import PdfOriginalViewer from '@/Components/Mobile/PdfOriginalViewer';
+import SaturdayProgramScheduleView, {
+    type SaturdaySchedule,
+} from '@/Components/Mobile/SaturdayProgramScheduleView';
+import { useState } from 'react';
 
 type ProgramPayload =
     | {
@@ -10,6 +14,9 @@ type ProgramPayload =
           title: string;
           saturday_date: string | null;
           pdf_url: string;
+          parse_status?: string;
+          has_schedule?: boolean;
+          schedule?: SaturdaySchedule | null;
       }
     | {
           status: 'waiting';
@@ -21,6 +28,7 @@ interface Props {
 }
 
 type PageProps = { appUrl?: string };
+type ViewMode = 'schedule' | 'pdf';
 
 function imageSrc(url: string, appUrl: string): string {
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -40,9 +48,15 @@ function formatSaturday(iso: string | null): string {
     });
 }
 
+const segmentBtn =
+    'inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition';
+
 export default function ProgramacaoSabado({ program }: Props) {
     const appUrl = (usePage().props as PageProps).appUrl ?? '';
     const backHref = route('mobile.conheca');
+    const hasSchedule =
+        program.status === 'available' && Boolean(program.has_schedule && program.schedule?.items?.length);
+    const [mode, setMode] = useState<ViewMode>(hasSchedule ? 'schedule' : 'pdf');
 
     if (program.status === 'available' && program.pdf_url) {
         const pdf = imageSrc(program.pdf_url, appUrl);
@@ -69,13 +83,57 @@ export default function ProgramacaoSabado({ program }: Props) {
                         ) : null}
                     </div>
 
-                    <PdfOriginalViewer
-                        title={program.title}
-                        pdfUrl={pdf}
-                        downloadUrl={pdf}
-                        loadingTitle="Abrindo a programação…"
-                        loadingSubtitle="Carregando as páginas do PDF no app."
-                    />
+                    {hasSchedule ? (
+                        <div
+                            role="tablist"
+                            aria-label="Modo de visualização"
+                            className="flex gap-1 rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-800/80"
+                        >
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={mode === 'schedule'}
+                                className={`${segmentBtn} ${
+                                    mode === 'schedule'
+                                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white'
+                                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }`}
+                                onClick={() => setMode('schedule')}
+                            >
+                                <ListBulletIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                Programação
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={mode === 'pdf'}
+                                className={`${segmentBtn} ${
+                                    mode === 'pdf'
+                                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white'
+                                        : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                                }`}
+                                onClick={() => setMode('pdf')}
+                            >
+                                <DocumentTextIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                PDF
+                            </button>
+                        </div>
+                    ) : null}
+
+                    {mode === 'schedule' && hasSchedule && program.schedule ? (
+                        <SaturdayProgramScheduleView
+                            schedule={program.schedule}
+                            fallbackDateLabel={subtitle || null}
+                        />
+                    ) : (
+                        <PdfOriginalViewer
+                            title={program.title}
+                            pdfUrl={pdf}
+                            downloadUrl={pdf}
+                            loadingTitle="Abrindo a programação…"
+                            loadingSubtitle="Carregando as páginas do PDF no app."
+                        />
+                    )}
                 </div>
             </MobileLayout>
         );

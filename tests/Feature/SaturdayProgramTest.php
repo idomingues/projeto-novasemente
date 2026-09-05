@@ -112,6 +112,48 @@ class SaturdayProgramTest extends TestCase
         $this->assertSame('Programação 5/9', $row->title);
         $this->assertTrue($row->is_active);
         Storage::disk('public')->assertExists($row->pdf_path);
+        // PDF fake não é parseável — publicação segue e marca falha.
+        $this->assertSame(SaturdayProgram::PARSE_FAILED, $row->parse_status);
+    }
+
+    public function test_publish_real_pdf_captures_schedule_for_mobile(): void
+    {
+        Storage::fake('public');
+        $this->seed(ChurchSeeder::class);
+        $church = Church::query()->firstOrFail();
+        $user = User::factory()->create(['church_id' => $church->id]);
+        $this->grantManage($user);
+
+        $fixture = base_path('tests/fixtures/saturday-program-sample.pdf');
+        $this->assertFileExists($fixture);
+        $file = new UploadedFile($fixture, 'saturday-program-sample.pdf', 'application/pdf', null, true);
+
+        Carbon::setTestNow(Carbon::parse('2026-09-05 10:00:00', 'America/Sao_Paulo'));
+
+        $this->actingAs($user)
+            ->withSession(['working_church_id' => $church->id])
+            ->post(route('programacao-sabado.store'), [
+                'saturday_date' => '2026-09-05',
+                'title' => 'Culto',
+                'pdf_file' => $file,
+            ])
+            ->assertRedirect();
+
+        $row = SaturdayProgram::query()->firstOrFail();
+        $this->assertSame(SaturdayProgram::PARSE_OK, $row->parse_status);
+        $this->assertIsArray($row->schedule);
+        $this->assertNotEmpty($row->schedule['items'] ?? []);
+
+        $this->withSession(['working_church_id' => $church->id])
+            ->get(route('mobile.programacao-sabado'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Mobile/ProgramacaoSabado')
+                ->where('program.status', 'available')
+                ->where('program.has_schedule', true)
+                ->has('program.schedule.items'));
+
+        Carbon::setTestNow();
     }
 
     public function test_store_rejects_non_saturday_date(): void

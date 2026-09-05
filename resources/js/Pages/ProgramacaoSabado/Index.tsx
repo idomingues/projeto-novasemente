@@ -25,6 +25,10 @@ interface SaturdayProgramRow {
     is_visible: boolean;
     is_expired: boolean;
     expires_at: string | null;
+    parse_status?: string;
+    parse_error?: string | null;
+    schedule_item_count?: number;
+    has_schedule?: boolean;
 }
 
 interface Props {
@@ -48,6 +52,32 @@ function statusLabel(row: SaturdayProgramRow): string {
     if (!row.is_active || row.is_expired) return 'Expirada';
     if (row.is_visible) return 'Visível no app';
     return 'Agendada';
+}
+
+function ParseBadge({ row }: { row: SaturdayProgramRow }) {
+    if (row.has_schedule || row.parse_status === 'ok') {
+        return (
+            <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-800">
+                Dados capturados
+                {row.schedule_item_count ? ` · ${row.schedule_item_count}` : ''}
+            </span>
+        );
+    }
+    if (row.parse_status === 'failed') {
+        return (
+            <span
+                className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/40 dark:text-amber-100 dark:ring-amber-800"
+                title={row.parse_error ?? undefined}
+            >
+                Falha na captura
+            </span>
+        );
+    }
+    return (
+        <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 ring-1 ring-inset ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700">
+            Aguardando captura
+        </span>
+    );
 }
 
 export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
@@ -226,6 +256,9 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
                                             <p className="mt-1 text-xs font-medium text-zinc-600 dark:text-zinc-300">
                                                 {statusLabel(row)}
                                             </p>
+                                            <div className="mt-2">
+                                                <ParseBadge row={row} />
+                                            </div>
                                         </div>
                                     </div>
                                     {canManage && (
@@ -260,6 +293,9 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
                                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
                                             Status
                                         </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                                            Captura
+                                        </th>
                                         {canManage && (
                                             <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">
                                                 Ações
@@ -278,6 +314,9 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
                                             </td>
                                             <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
                                                 {statusLabel(row)}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <ParseBadge row={row} />
                                             </td>
                                             {canManage && (
                                                 <td className="px-4 py-3 text-right">
@@ -311,7 +350,8 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
                         {isEditing ? 'Editar programação' : 'Publicar programação'}
                     </h2>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                        Visível no app desde a publicação até sábado às 15:00.
+                        Visível no app desde a publicação até sábado às 15:00. Os itens da programação
+                        são capturados automaticamente do PDF.
                     </p>
 
                     <div>

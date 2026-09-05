@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\SaturdayProgram;
+use App\Services\SaturdayProgramPdfParser;
 use App\Services\SaturdayProgramService;
 use App\Support\StorageUrl;
 use Carbon\Carbon;
@@ -17,6 +18,7 @@ class SaturdayProgramController extends Controller
 {
     public function __construct(
         private readonly SaturdayProgramService $saturdayPrograms,
+        private readonly SaturdayProgramPdfParser $pdfParser,
     ) {}
 
     private function currentChurchId(): ?int
@@ -62,31 +64,31 @@ class SaturdayProgramController extends Controller
             ->first();
 
         $pdfPath = $request->file('pdf_file')->store('saturday-programs/pdfs', 'public');
+        $parseFields = $this->parsePdfFields($pdfPath);
+
+        $payload = array_merge([
+            'title' => $data['title'],
+            'pdf_path' => $pdfPath,
+            'published_at' => $data['published_at'],
+            'is_active' => true,
+        ], $parseFields);
+
         if ($existing !== null) {
             $this->deletePublicFile($existing->pdf_path);
-            $existing->update([
-                'title' => $data['title'],
-                'pdf_path' => $pdfPath,
-                'published_at' => $data['published_at'],
-                'is_active' => true,
-            ]);
+            $existing->update($payload);
             $item = $existing;
         } else {
-            $item = SaturdayProgram::query()->create([
+            $item = SaturdayProgram::query()->create(array_merge($payload, [
                 'church_id' => $churchId,
                 'saturday_date' => $data['saturday_date'],
-                'title' => $data['title'],
-                'pdf_path' => $pdfPath,
-                'published_at' => $data['published_at'],
-                'is_active' => true,
-            ]);
+            ]));
         }
 
-        return ListModalRedirect::toIndexEdit(
-            'programacao-sabado.index',
-            $item,
-            'Programação do sábado publicada com sucesso!',
-        );
+        $message = $parseFields['parse_status'] === SaturdayProgram::PARSE_OK
+            ? 'Programação do sábado publicada e dados capturados com sucesso!'
+            : 'Programação publicada, mas a captura dos dados falhou. O PDF continua disponível.';
+
+        return ListModalRedirect::toIndexEdit('programacao-sabado.index', $item, $message);
     }
 
     public function update(Request $request, SaturdayProgram $saturdayProgram)
@@ -97,9 +99,11 @@ class SaturdayProgramController extends Controller
         $this->saturdayPrograms->assertSaturdayDate($data['saturday_date']);
 
         $pdfPath = $saturdayProgram->pdf_path;
+        $parseFields = [];
         if ($request->hasFile('pdf_file')) {
             $this->deletePublicFile($pdfPath);
             $pdfPath = $request->file('pdf_file')->store('saturday-programs/pdfs', 'public');
+            $parseFields = $this->parsePdfFields($pdfPath);
         }
 
         if ($pdfPath === null || $pdfPath === '') {
@@ -108,7 +112,6 @@ class SaturdayProgramController extends Controller
                 ->withInput($request->except(['pdf_file']));
         }
 
-        // Se mudou a data do sábado e já existe outro registro nessa data, falha na unique.
         $existsOther = SaturdayProgram::query()
             ->where('church_id', $saturdayProgram->church_id)
             ->where('saturday_date', $data['saturday_date'])
@@ -121,19 +124,22 @@ class SaturdayProgramController extends Controller
                 ->withInput($request->except(['pdf_file']));
         }
 
-        $saturdayProgram->update([
+        $saturdayProgram->update(array_merge([
             'saturday_date' => $data['saturday_date'],
             'title' => $data['title'],
             'pdf_path' => $pdfPath,
             'published_at' => $data['published_at'],
             'is_active' => (bool) ($data['is_active'] ?? true),
-        ]);
+        ], $parseFields));
 
-        return ListModalRedirect::toIndexEdit(
-            'programacao-sabado.index',
-            $saturdayProgram,
-            'Programação do sábado atualizada com sucesso!',
-        );
+        $message = 'Programação do sábado atualizada com sucesso!';
+        if ($parseFields !== [] && ($parseFields['parse_status'] ?? null) === SaturdayProgram::PARSE_FAILED) {
+            $message = 'Programação atualizada, mas a captura dos dados falhou. O PDF continua disponível.';
+        } elseif ($parseFields !== [] && ($parseFields['parse_status'] ?? null) === SaturdayProgram::PARSE_OK) {
+            $message = 'Programação atualizada e dados capturados com sucesso!';
+        }
+
+        return ListModalRedirect::toIndexEdit('programacao-sabado.index', $saturdayProgram, $message);
     }
 
     public function destroy(SaturdayProgram $saturdayProgram)
@@ -150,6 +156,34 @@ class SaturdayProgramController extends Controller
     {
         $churchId = $this->currentChurchId();
         abort_unless($churchId !== null && (int) $item->church_id === $churchId, 404);
+    }
+
+    /**
+     * @return array{schedule: ?array, parse_status: string, parsed_at: Carbon, parse_error: ?string}
+     */
+    private function parsePdfFields(string $pdfPathOnPublicDisk): array
+    {
+        $absolute = Storage::disk('public')->path($pdfPathOnPublicDisk);
+
+        try {
+            $schedule = $this->pdfParser->parseFile($absolute);
+
+            return [
+                'schedule' => $schedule,
+                'parse_status' => SaturdayProgram::PARSE_OK,
+                'parsed_at' => now($this->saturdayPrograms->timezone()),
+                'parse_error' => null,
+            ];
+        } catch (\Throwable $e) {
+            report($e);
+
+            return [
+                'schedule' => null,
+                'parse_status' => SaturdayProgram::PARSE_FAILED,
+                'parsed_at' => now($this->saturdayPrograms->timezone()),
+                'parse_error' => mb_substr($e->getMessage(), 0, 500),
+            ];
+        }
     }
 
     /**
@@ -197,6 +231,8 @@ class SaturdayProgramController extends Controller
         $within = $this->saturdayPrograms->isWithinWindow($item, $now);
         $expired = $this->saturdayPrograms->hasPassedExpiry($item, $now);
         $pdfPath = is_string($item->pdf_path) ? trim($item->pdf_path) : '';
+        $schedule = is_array($item->schedule) ? $item->schedule : null;
+        $itemCount = is_array($schedule['items'] ?? null) ? count($schedule['items']) : 0;
 
         return [
             'id' => $item->id,
@@ -210,6 +246,10 @@ class SaturdayProgramController extends Controller
             'expires_at' => $this->saturdayPrograms
                 ->expiresAt($item->saturday_date)
                 ->toIso8601String(),
+            'parse_status' => $item->parse_status ?? SaturdayProgram::PARSE_PENDING,
+            'parse_error' => $item->parse_error,
+            'schedule_item_count' => $itemCount,
+            'has_schedule' => $itemCount > 0 && ($item->parse_status === SaturdayProgram::PARSE_OK),
         ];
     }
 

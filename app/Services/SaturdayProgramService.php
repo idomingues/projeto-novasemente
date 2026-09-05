@@ -73,7 +73,17 @@ class SaturdayProgramService
     }
 
     /**
-     * @return array{status: string, message?: string, id?: int, title?: string, saturday_date?: string, pdf_url?: string|null}
+     * @return array{
+     *     status: string,
+     *     message?: string,
+     *     id?: int,
+     *     title?: string,
+     *     saturday_date?: string,
+     *     pdf_url?: string|null,
+     *     parse_status?: string,
+     *     has_schedule?: bool,
+     *     schedule?: array<string, mixed>|null
+     * }
      */
     public function mobilePayload(?int $churchId): array
     {
@@ -91,12 +101,21 @@ class SaturdayProgramService
             $title = 'Programação do Sábado';
         }
 
+        $schedule = is_array($program->schedule) ? $program->schedule : null;
+        $hasSchedule = $program->parse_status === SaturdayProgram::PARSE_OK
+            && is_array($schedule)
+            && is_array($schedule['items'] ?? null)
+            && $schedule['items'] !== [];
+
         return [
             'status' => 'available',
             'id' => $program->id,
             'title' => $title,
             'saturday_date' => $program->saturday_date?->toDateString(),
             'pdf_url' => StorageUrl::publicMediaUrl($program->pdf_path),
+            'parse_status' => $program->parse_status ?? SaturdayProgram::PARSE_PENDING,
+            'has_schedule' => $hasSchedule,
+            'schedule' => $hasSchedule ? $schedule : null,
         ];
     }
 
@@ -129,6 +148,10 @@ class SaturdayProgramService
             $program->update([
                 'is_active' => false,
                 'pdf_path' => '',
+                'schedule' => null,
+                'parse_status' => SaturdayProgram::PARSE_PENDING,
+                'parsed_at' => null,
+                'parse_error' => null,
             ]);
             $expired++;
         }
