@@ -54,6 +54,7 @@ export default function SaturdayProgramPhonePreview({ show, row, onClose }: Prop
                     <SaturdayProgramScheduleView
                         schedule={row.schedule}
                         fallbackDateLabel={subtitle || null}
+                        contentKey={`preview:${row.saturday_date ?? 'x'}:${title}`}
                     />
                 ) : (
                     <div className="rounded-2xl bg-white px-4 py-8 text-center shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-700">

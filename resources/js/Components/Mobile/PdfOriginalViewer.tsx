@@ -19,10 +19,22 @@ type Props = {
     loadingSubtitle?: string;
 };
 
-const ZOOM_STEPS = [1, 1.25, 1.5, 2, 2.5, 3] as const;
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 3.5;
+const ZOOM_STEP = 0.25;
 
 const toolbarBtnClass =
     'inline-flex h-9 min-w-9 cursor-pointer touch-manipulation items-center justify-center rounded-xl border border-zinc-200 bg-white px-2.5 text-sm font-semibold text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
+
+function clampZoom(value: number): number {
+    return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
+}
+
+function touchDistance(a: Touch, b: Touch): number {
+    const dx = a.clientX - b.clientX;
+    const dy = a.clientY - b.clientY;
+    return Math.hypot(dx, dy);
+}
 
 export default function PdfOriginalViewer({
     pdfUrl,
@@ -37,9 +49,17 @@ export default function PdfOriginalViewer({
     const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
     const [pageCount, setPageCount] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
-    const [zoomIndex, setZoomIndex] = useState(0);
+    const [zoom, setZoom] = useState(1);
+    const [pinchScale, setPinchScale] = useState(1);
     const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
-    const zoom = ZOOM_STEPS[zoomIndex] ?? 1;
+    const pinchRef = useRef<{ active: boolean; startDist: number; startZoom: number; liveScale: number }>({
+        active: false,
+        startDist: 0,
+        startZoom: 1,
+        liveScale: 1,
+    });
+    const viewportRef = useRef<HTMLDivElement | null>(null);
+    const displayZoom = clampZoom(zoom * pinchScale);
 
     const loadPdf = useCallback(async () => {
         setStatus('loading');
@@ -47,7 +67,9 @@ export default function PdfOriginalViewer({
         setPdf(null);
         setPageCount(0);
         setCurrentPage(1);
-        setZoomIndex(0);
+        setZoom(1);
+        setPinchScale(1);
+        pinchRef.current.liveScale = 1;
 
         try {
             const { bytes } = await fetchPdfBytes(pdfUrl);
@@ -77,9 +99,61 @@ export default function PdfOriginalViewer({
     }, []);
 
     const handleDownload = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
-        // Evita o Inertia interceptar a rota e “quebrar” a tela.
         event.stopPropagation();
     }, []);
+
+    const bumpZoom = useCallback((delta: number) => {
+        setPinchScale(1);
+        setZoom((z) => clampZoom(Math.round((z + delta) * 100) / 100));
+    }, []);
+
+    useEffect(() => {
+        const el = viewportRef.current;
+        if (!el || status !== 'ok') return;
+
+        const onTouchStart = (event: TouchEvent) => {
+            if (event.touches.length !== 2) return;
+            const dist = touchDistance(event.touches[0], event.touches[1]);
+            if (dist < 8) return;
+            pinchRef.current = {
+                active: true,
+                startDist: dist,
+                startZoom: zoom,
+                liveScale: 1,
+            };
+        };
+
+        const onTouchMove = (event: TouchEvent) => {
+            if (!pinchRef.current.active || event.touches.length !== 2) return;
+            event.preventDefault();
+            const dist = touchDistance(event.touches[0], event.touches[1]);
+            if (pinchRef.current.startDist < 8) return;
+            const ratio = dist / pinchRef.current.startDist;
+            pinchRef.current.liveScale = ratio;
+            setPinchScale(ratio);
+        };
+
+        const endPinch = () => {
+            if (!pinchRef.current.active) return;
+            const { startZoom, liveScale } = pinchRef.current;
+            pinchRef.current.active = false;
+            pinchRef.current.liveScale = 1;
+            setZoom(clampZoom(startZoom * liveScale));
+            setPinchScale(1);
+        };
+
+        el.addEventListener('touchstart', onTouchStart, { passive: true });
+        el.addEventListener('touchmove', onTouchMove, { passive: false });
+        el.addEventListener('touchend', endPinch);
+        el.addEventListener('touchcancel', endPinch);
+
+        return () => {
+            el.removeEventListener('touchstart', onTouchStart);
+            el.removeEventListener('touchmove', onTouchMove);
+            el.removeEventListener('touchend', endPinch);
+            el.removeEventListener('touchcancel', endPinch);
+        };
+    }, [status, zoom]);
 
     return (
         <div className={`mx-auto w-full min-w-0 max-w-3xl ${className}`}>
@@ -104,28 +178,33 @@ export default function PdfOriginalViewer({
             {status === 'ok' && pdf ? (
                 <>
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                            Página {currentPage} de {pageCount}
-                        </p>
+                        <div className="min-w-0">
+                            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                Página {currentPage} de {pageCount}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+                                Dois dedos para zoom · arraste para mover
+                            </p>
+                        </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <div className="flex items-center gap-1" role="group" aria-label="Zoom">
                                 <button
                                     type="button"
                                     className={toolbarBtnClass}
-                                    disabled={zoomIndex <= 0}
-                                    onClick={() => setZoomIndex((i) => Math.max(0, i - 1))}
+                                    disabled={displayZoom <= ZOOM_MIN + 0.01}
+                                    onClick={() => bumpZoom(-ZOOM_STEP)}
                                     aria-label="Diminuir zoom"
                                 >
                                     <MagnifyingGlassMinusIcon className="h-5 w-5" aria-hidden />
                                 </button>
                                 <span className="min-w-[3.25rem] text-center text-xs font-semibold tabular-nums text-zinc-600 dark:text-zinc-300">
-                                    {Math.round(zoom * 100)}%
+                                    {Math.round(displayZoom * 100)}%
                                 </span>
                                 <button
                                     type="button"
                                     className={toolbarBtnClass}
-                                    disabled={zoomIndex >= ZOOM_STEPS.length - 1}
-                                    onClick={() => setZoomIndex((i) => Math.min(ZOOM_STEPS.length - 1, i + 1))}
+                                    disabled={displayZoom >= ZOOM_MAX - 0.01}
+                                    onClick={() => bumpZoom(ZOOM_STEP)}
                                     aria-label="Aumentar zoom"
                                 >
                                     <MagnifyingGlassPlusIcon className="h-5 w-5" aria-hidden />
@@ -155,21 +234,32 @@ export default function PdfOriginalViewer({
                     </div>
 
                     <div
-                        className="space-y-3 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+                        ref={viewportRef}
+                        className="overflow-x-auto overscroll-x-contain rounded-2xl [-webkit-overflow-scrolling:touch]"
+                        style={{ touchAction: pinchScale !== 1 ? 'none' : 'pan-x pan-y' }}
                         aria-label={`PDF original de ${title}`}
                     >
-                        {Array.from({ length: pageCount }, (_, index) => (
-                            <PdfPageCanvas
-                                key={`${index + 1}-${zoom}`}
-                                pdf={pdf}
-                                pageNumber={index + 1}
-                                zoom={zoom}
-                                onVisible={() => setCurrentPage(index + 1)}
-                                containerRef={(element) => {
-                                    pageRefs.current[index] = element;
-                                }}
-                            />
-                        ))}
+                        <div
+                            className="origin-top-left space-y-3 will-change-transform"
+                            style={
+                                pinchScale !== 1
+                                    ? { transform: `scale(${pinchScale})` }
+                                    : undefined
+                            }
+                        >
+                            {Array.from({ length: pageCount }, (_, index) => (
+                                <PdfPageCanvas
+                                    key={`${index + 1}-${zoom}`}
+                                    pdf={pdf}
+                                    pageNumber={index + 1}
+                                    zoom={zoom}
+                                    onVisible={() => setCurrentPage(index + 1)}
+                                    containerRef={(element) => {
+                                        pageRefs.current[index] = element;
+                                    }}
+                                />
+                            ))}
+                        </div>
                     </div>
 
                     {downloadUrl ? (
@@ -237,11 +327,10 @@ function PdfPageCanvas({
                 }
                 pageRef.current = page;
 
-                // Largura base = miolo visível (pai com overflow), não o host esticado pelo zoom.
-                const scroller = host.parentElement;
+                const scroller = host.closest('[aria-label]') as HTMLElement | null;
                 const baseWidth = Math.max(
                     280,
-                    (scroller?.clientWidth || host.clientWidth || 320) - 2,
+                    (scroller?.clientWidth || host.parentElement?.clientWidth || host.clientWidth || 320) - 2,
                 );
                 const unscaled = page.getViewport({ scale: 1 });
                 const cssScale = (baseWidth / unscaled.width) * zoom;
@@ -299,8 +388,6 @@ function PdfPageCanvas({
             { rootMargin: '640px 0px', threshold: 0.05 },
         );
         observer.observe(host);
-
-        // Render imediato se já estiver visível (ex.: após mudar zoom).
         void renderPage();
 
         return () => {

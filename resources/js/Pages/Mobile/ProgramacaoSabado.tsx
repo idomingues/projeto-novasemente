@@ -138,6 +138,7 @@ export default function ProgramacaoSabado({ program }: Props) {
                         <SaturdayProgramScheduleView
                             schedule={program.schedule}
                             fallbackDateLabel={subtitle || null}
+                            contentKey={`programacao-sabado:${program.id}:${program.saturday_date ?? 'x'}`}
                         />
                     ) : hasPdf ? (
                         <PdfOriginalViewer

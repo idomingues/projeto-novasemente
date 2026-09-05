@@ -1,3 +1,2 @@
-• Programação do sábado: a lista formatada volta a aparecer (recaptura automática dos dados do PDF).
-• Zoom no PDF da programação (+ / −) com rolagem lateral quando ampliado.
-• Download do PDF corrigido — não quebra mais a tela do app.
+• Programação do sábado com UX renovada: destaque do item em andamento, horários no formato 09:00 e marcação ✓ do que já passou.
+• Zoom no PDF com dois dedos (pinch), além dos botões +/−.
