@@ -15,6 +15,9 @@ interface Props {
     progress: { done: number; total: number; percent: number };
 }
 
+const primaryCtaClass =
+    'inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-zinc-900 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-950 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100';
+
 export default function MobileAnoBiblicoDay({ day, display, chapters, checked, checkedDetails, completedAt, nextDay, progress }: Props) {
     const checkedSet = new Set(checked);
     const completedAtByKey = new Map<string, string>();
@@ -47,14 +50,14 @@ export default function MobileAnoBiblicoDay({ day, display, chapters, checked, c
 
             <div className="space-y-6">
                 <div>
-                    <Link href={route('mobile.ano-biblico')} className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 hover:underline">
+                    <Link href={route('mobile.ano-biblico')} className="cursor-pointer text-sm font-semibold text-zinc-700 hover:underline dark:text-zinc-200">
                         ← Ano Bíblico
                     </Link>
-                    <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Dia {day}</h1>
+                    <h1 className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">Dia {day}</h1>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{display}</p>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                     <div className="flex items-start justify-between gap-4">
                         <div>
                             <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Progresso do dia</div>
@@ -63,7 +66,7 @@ export default function MobileAnoBiblicoDay({ day, display, chapters, checked, c
                             </div>
                             {completedAt ? (
                                 <div className="mt-2">
-                                    <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                                    <span className="inline-flex items-center rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
                                         Concluído às {new Date(completedAt).toLocaleString('pt-BR')}
                                     </span>
                                 </div>
@@ -76,10 +79,10 @@ export default function MobileAnoBiblicoDay({ day, display, chapters, checked, c
                                 if (!canFinalize) return;
                                 router.post(route('mobile.ano-biblico.complete'), { day }, { preserveScroll: true, preserveState: false });
                             }}
-                            className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-colors ${
+                            className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-colors ${
                                 canFinalize
-                                    ? 'bg-emerald-700 text-white hover:bg-emerald-800 active:bg-emerald-900'
-                                    : 'bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed'
+                                    ? 'bg-zinc-900 text-white hover:bg-zinc-800 active:bg-zinc-950 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100'
+                                    : 'cursor-not-allowed bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500'
                             }`}
                         >
                             <CheckCircleIcon className="h-5 w-5" aria-hidden />
@@ -92,15 +95,15 @@ export default function MobileAnoBiblicoDay({ day, display, chapters, checked, c
                             <span>Você está quase lá</span>
                             <span>{progress.percent}%</span>
                         </div>
-                        <div className="mt-2 h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
-                            <div className="h-full rounded-full bg-emerald-600" style={{ width: `${progress.percent}%` }} />
+                        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+                            <div className="h-full rounded-full bg-zinc-900 dark:bg-zinc-100" style={{ width: `${progress.percent}%` }} />
                         </div>
                         {!allDone ? (
                             <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
                                 Marque cada capítulo conforme finalizar. Se você já leu tudo e só quer concluir rápido, use “Finalizar dia” para marcar o restante de uma vez.
                             </div>
                         ) : (
-                            <div className="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                            <div className="mt-2 text-xs font-semibold text-zinc-700 dark:text-zinc-200">
                                 Tudo marcado. Dia concluído.
                             </div>
                         )}
@@ -108,15 +111,12 @@ export default function MobileAnoBiblicoDay({ day, display, chapters, checked, c
                 </div>
 
                 {nextDay ? (
-                    <Link
-                        href={route('mobile.ano-biblico.day', { day: nextDay })}
-                        className="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-800 active:bg-emerald-900 transition-colors"
-                    >
+                    <Link href={route('mobile.ano-biblico.day', { day: nextDay })} className={primaryCtaClass}>
                         Próximo dia
                     </Link>
                 ) : null}
 
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+                <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
                     {chapters.length === 0 ? (
                         <div className="p-4 text-sm text-zinc-600 dark:text-zinc-400">Nenhum capítulo encontrado para este dia.</div>
                     ) : (
@@ -129,7 +129,7 @@ export default function MobileAnoBiblicoDay({ day, display, chapters, checked, c
                                     <Link
                                         key={`${c.bookKey}:${c.chapter}`}
                                         href={route('mobile.bible', { book: c.bookKey, chapter: c.chapter, from: 'ano-biblico', day })}
-                                        className="flex items-center gap-3 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
+                                        className="flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
                                     >
                                         <button
                                             type="button"
@@ -137,10 +137,10 @@ export default function MobileAnoBiblicoDay({ day, display, chapters, checked, c
                                                 e.preventDefault();
                                                 toggle(c, !isChecked);
                                             }}
-                                            className={`h-7 w-7 flex-shrink-0 rounded-full border flex items-center justify-center transition-colors ${
+                                            className={`flex h-7 w-7 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border transition-colors ${
                                                 isChecked
-                                                    ? 'bg-emerald-700 border-emerald-700 text-white'
-                                                    : 'border-zinc-300 dark:border-zinc-700 text-transparent hover:border-emerald-600'
+                                                    ? 'border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900'
+                                                    : 'border-zinc-300 text-transparent hover:border-zinc-500 dark:border-zinc-700 dark:hover:border-zinc-400'
                                             }`}
                                             aria-label={isChecked ? 'Desmarcar capítulo' : 'Marcar capítulo como lido'}
                                         >
@@ -148,11 +148,11 @@ export default function MobileAnoBiblicoDay({ day, display, chapters, checked, c
                                         </button>
 
                                         <div className="min-w-0 flex-1">
-                                            <div className={`font-semibold truncate ${isChecked ? 'text-zinc-500 dark:text-zinc-400 line-through' : 'text-zinc-900 dark:text-white'}`}>
+                                            <div className={`truncate font-semibold ${isChecked ? 'text-zinc-500 line-through dark:text-zinc-400' : 'text-zinc-900 dark:text-white'}`}>
                                                 {c.bookName} {c.chapter}
                                             </div>
                                             {capCompletedAt ? (
-                                                <div className="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                                                <div className="mt-1 text-xs font-semibold tabular-nums text-zinc-600 dark:text-zinc-300">
                                                     Concluído em {formatCompletedAt(capCompletedAt)}
                                                 </div>
                                             ) : (
@@ -171,4 +171,3 @@ export default function MobileAnoBiblicoDay({ day, display, chapters, checked, c
         </MobileLayout>
     );
 }
-

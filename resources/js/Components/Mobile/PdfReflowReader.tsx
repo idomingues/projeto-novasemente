@@ -7,10 +7,14 @@ import {
     ArrowPathIcon,
     ArrowTopRightOnSquareIcon,
     DocumentTextIcon,
+    InformationCircleIcon,
+    NewspaperIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const FONT_STORAGE_KEY = 'ns:pdf-reflow-font-size';
+const LAYOUT_NOTICE_STORAGE_KEY = 'ns:pdf-reflow-layout-notice-dismissed';
 const FONT_SIZES = [16, 18, 20, 22] as const;
 type FontSize = (typeof FONT_SIZES)[number];
 const DEFAULT_FONT_SIZE: FontSize = 18;
@@ -29,6 +33,8 @@ type Props = {
     contentKey?: string | null;
     /** Em revista, agrupa o texto em matérias (título, imagem e corpo). */
     layout?: 'article' | 'magazine';
+    /** Quando a conversão falha, permite abrir o PDF original no fluxo da revista. */
+    onOpenOriginal?: () => void;
     className?: string;
 };
 
@@ -64,6 +70,40 @@ function leadingForSize(size: FontSize): number {
     return 1.7;
 }
 
+function readLayoutNoticeDismissed(kind: 'article' | 'magazine'): boolean {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    try {
+        const raw = window.localStorage.getItem(LAYOUT_NOTICE_STORAGE_KEY);
+        if (!raw) {
+            return false;
+        }
+        const parsed = JSON.parse(raw) as { article?: boolean; magazine?: boolean };
+        return Boolean(parsed[kind]);
+    } catch {
+        return false;
+    }
+}
+
+function persistLayoutNoticeDismissed(kind: 'article' | 'magazine'): void {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    try {
+        const raw = window.localStorage.getItem(LAYOUT_NOTICE_STORAGE_KEY);
+        const parsed = raw ? (JSON.parse(raw) as { article?: boolean; magazine?: boolean }) : {};
+        window.localStorage.setItem(
+            LAYOUT_NOTICE_STORAGE_KEY,
+            JSON.stringify({ ...parsed, [kind]: true }),
+        );
+    } catch {
+        // ignore
+    }
+}
+
 export default function PdfReflowReader({
     title,
     subtitle = null,
@@ -74,6 +114,7 @@ export default function PdfReflowReader({
     originalPdfUrl = null,
     contentKey = null,
     layout = 'article',
+    onOpenOriginal,
     className = '',
 }: Props) {
     const isMagazine = layout === 'magazine';
@@ -86,6 +127,7 @@ export default function PdfReflowReader({
     const [fromCache, setFromCache] = useState(false);
     const [fontSize, setFontSize] = useState<FontSize>(DEFAULT_FONT_SIZE);
     const [markedParagraphIndex, setMarkedParagraphIndex] = useState<number | null>(null);
+    const [showLayoutNotice, setShowLayoutNotice] = useState(false);
     const paragraphRefs = useRef<(HTMLParagraphElement | null)[]>([]);
     const abortRef = useRef<AbortController | null>(null);
 
@@ -99,7 +141,13 @@ export default function PdfReflowReader({
 
     useEffect(() => {
         setFontSize(readStoredFontSize());
-    }, []);
+        setShowLayoutNotice(!readLayoutNoticeDismissed(layout));
+    }, [layout]);
+
+    const dismissLayoutNotice = useCallback(() => {
+        setShowLayoutNotice(false);
+        persistLayoutNoticeDismissed(layout);
+    }, [layout]);
 
     const persistFontSize = useCallback((next: FontSize) => {
         setFontSize(next);
@@ -163,7 +211,13 @@ export default function PdfReflowReader({
                     }
 
                     setArticles(extracted);
-                    setParagraphs(flattenMagazineParagraphs(extracted));
+                    const magazineParagraphs = flattenMagazineParagraphs(extracted);
+                    setParagraphs(magazineParagraphs);
+                    if (extracted.length === 0 || magazineParagraphs.length === 0) {
+                        setStatus('error');
+                        setErrorMessage(conversionFailedMessage(true));
+                        return;
+                    }
                     setStatus('ok');
                     return;
                 } catch (magazineError) {
@@ -201,6 +255,11 @@ export default function PdfReflowReader({
             if (isMagazine) {
                 setArticles(paragraphsAsMagazine(extracted));
             }
+            if (extracted.length === 0) {
+                setStatus('error');
+                setErrorMessage(conversionFailedMessage(isMagazine));
+                return;
+            }
             setStatus('ok');
         } catch (error) {
             if (controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) {
@@ -208,11 +267,7 @@ export default function PdfReflowReader({
             }
 
             setStatus('error');
-            setErrorMessage(
-                error instanceof Error
-                    ? error.message
-                    : 'Não foi possível preparar a leitura deste documento.',
-            );
+            setErrorMessage(conversionFailedMessage(isMagazine));
         }
     }, [pdfUrl, isMagazine]);
 
@@ -382,6 +437,40 @@ export default function PdfReflowReader({
                 </div>
             </div>
 
+            {showArticle && showLayoutNotice ? (
+                <div
+                    role="status"
+                    className="mx-4 mb-4 flex gap-3 rounded-2xl border border-zinc-200/90 bg-zinc-50 px-3.5 py-3 text-sm leading-relaxed text-zinc-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-300 sm:mx-5"
+                >
+                    <InformationCircleIcon
+                        className="mt-0.5 h-5 w-5 shrink-0 text-teal-700 dark:text-teal-300"
+                        aria-hidden
+                    />
+                    <div className="min-w-0 flex-1 space-y-2">
+                        <p>
+                            {isMagazine
+                                ? 'Reorganizamos o texto das matérias para caber bem na tela. Colunas, caixas e o alinhamento do PDF original podem ficar diferentes — use o PDF original se precisar da diagramação fiel.'
+                                : 'Reorganizamos o texto do livro para leitura confortável no celular. O layout pode não ficar idêntico ao PDF — use o original se precisar da diagramação fiel.'}
+                        </p>
+                        <button
+                            type="button"
+                            onClick={dismissLayoutNotice}
+                            className="cursor-pointer text-sm font-semibold text-teal-800 underline-offset-2 hover:underline dark:text-teal-200"
+                        >
+                            Entendi
+                        </button>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={dismissLayoutNotice}
+                        className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-200/80 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                        aria-label="Fechar aviso"
+                    >
+                        <XMarkIcon className="h-4 w-4" aria-hidden />
+                    </button>
+                </div>
+            ) : null}
+
             {status === 'loading' && paragraphs.length === 0 ? (
                 <div
                     className="mx-4 rounded-2xl border border-zinc-200 bg-white px-5 py-12 text-center shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:mx-5"
@@ -405,20 +494,42 @@ export default function PdfReflowReader({
             {status === 'error' ? (
                 <div className="mx-4 space-y-4 sm:mx-5">
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-6 text-center dark:border-amber-900/60 dark:bg-amber-950/40">
-                        <p className="text-base font-medium text-amber-950 dark:text-amber-100">
-                            Não foi possível exibir o texto aqui.
+                        <p className="text-base font-semibold text-amber-950 dark:text-amber-100">
+                            Infelizmente não conseguimos converter
                         </p>
                         <p className="mt-2 text-sm leading-relaxed text-amber-900/90 dark:text-amber-200/90">
-                            {errorMessage}
+                            {errorMessage || conversionFailedMessage(isMagazine)}
                         </p>
-                        <button
-                            type="button"
-                            onClick={() => void loadText()}
-                            className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-amber-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-800 dark:bg-amber-100 dark:text-amber-950 dark:hover:bg-white"
-                        >
-                            <ArrowPathIcon className="h-4 w-4 shrink-0" aria-hidden />
-                            Tentar novamente
-                        </button>
+                        <div className="mt-4 flex flex-col items-center gap-2.5 sm:flex-row sm:justify-center">
+                            {onOpenOriginal ? (
+                                <button
+                                    type="button"
+                                    onClick={onOpenOriginal}
+                                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-amber-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-800 dark:bg-amber-100 dark:text-amber-950 dark:hover:bg-white"
+                                >
+                                    <NewspaperIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                    Ler no modo original
+                                </button>
+                            ) : (
+                                <a
+                                    href={resolvedOriginalUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-amber-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-800 dark:bg-amber-100 dark:text-amber-950 dark:hover:bg-white"
+                                >
+                                    <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                    Abrir PDF original
+                                </a>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => void loadText()}
+                                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-amber-300/80 bg-white/70 px-4 py-2.5 text-sm font-semibold text-amber-950 transition hover:bg-white dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100 dark:hover:bg-amber-950/60"
+                            >
+                                <ArrowPathIcon className="h-4 w-4 shrink-0" aria-hidden />
+                                Tentar novamente
+                            </button>
+                        </div>
                     </div>
 
                     <PdfReaderActions originalUrl={resolvedOriginalUrl} downloadUrl={resolvedDownloadUrl} />
@@ -451,8 +562,8 @@ export default function PdfReflowReader({
                             />
                             <p className="text-center text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
                                 {isMagazine
-                                    ? 'Cada bloco é uma matéria extraída do PDF. Se o recorte não ficar perfeito, use «Ver PDF original».'
-                                    : 'Leitura gerada a partir do PDF. Se algo estiver faltando, use «Ver PDF original».'}
+                                    ? 'Texto interpretado do PDF para leitura confortável — o layout pode diferir do original. Se precisar da diagramação fiel, use «Ver PDF original».'
+                                    : 'Texto interpretado do PDF para leitura confortável — o layout pode diferir do original. Se algo faltar, use «Ver PDF original».'}
                             </p>
                         </footer>
                     </>
@@ -466,8 +577,8 @@ export default function PdfReflowReader({
                             />
                             <p className="text-center text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
                                 {isMagazine
-                                    ? 'Cada bloco é uma matéria extraída do PDF. Se o recorte não ficar perfeito, use «Ver PDF original».'
-                                    : 'Leitura gerada a partir do PDF. Se algo estiver faltando, use «Ver PDF original».'}
+                                    ? 'Texto interpretado do PDF para leitura confortável — o layout pode diferir do original. Se precisar da diagramação fiel, use «Ver PDF original».'
+                                    : 'Texto interpretado do PDF para leitura confortável — o layout pode diferir do original. Se algo faltar, use «Ver PDF original».'}
                             </p>
                         </footer>
                     </>
@@ -475,6 +586,12 @@ export default function PdfReflowReader({
             ) : null}
         </div>
     );
+}
+
+function conversionFailedMessage(isMagazine: boolean): string {
+    return isMagazine
+        ? 'Não foi possível transformar esta revista em texto legível. Prefira ler no modo original, com as páginas como foram publicadas.'
+        : 'Não foi possível transformar este livro em texto legível. Prefira abrir o PDF original para continuar a leitura.';
 }
 
 function flattenMagazineParagraphs(articles: MagazineArticle[]): string[] {

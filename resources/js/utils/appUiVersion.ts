@@ -1,7 +1,7 @@
 import { clearStuckUiOverlays } from '@/utils/clearStuckUiOverlays';
 
 /** Incrementar após correções de overlay/modal para forçar 1 reload em sessões com JS antigo. */
-export const APP_UI_VERSION = '385';
+export const APP_UI_VERSION = '386';
 
 const STORAGE_KEY = 'ns-app-ui-version';
 

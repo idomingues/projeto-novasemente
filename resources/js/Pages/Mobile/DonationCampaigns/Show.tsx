@@ -1,5 +1,8 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import CaixaFixoIgrejaStory from '@/Components/Donations/CaixaFixoIgrejaStory';
+import CampaignSevenMeContribute, {
+    type CampaignSevenMeTone,
+} from '@/Components/Donations/CampaignSevenMeContribute';
 import ConstrucaoIgrejaStory from '@/Components/Donations/ConstrucaoIgrejaStory';
 import DonationProgressBar from '@/Components/Donations/DonationProgressBar';
 import type { DonationTransparencyInfo } from '@/Components/Donations/DonationTransparencyNotice';
@@ -175,6 +178,13 @@ export default function MobileDonationCampaignShow({
             : 'Esta campanha não está aceitando doações no momento.'
         : null;
 
+    const sevenMeTone: CampaignSevenMeTone = campaign.show_construcao_story
+        ? 'emerald'
+        : campaign.show_caixa_fixo_story
+          ? 'brand'
+          : 'neutral';
+    const showSevenMeCta = Boolean(campaign.accepting_donations && donationUrl);
+
     const copyPix = () => {
         if (!pixKey) return;
         navigator.clipboard.writeText(pixKey).then(() => {
@@ -282,6 +292,10 @@ export default function MobileDonationCampaignShow({
                     </div>
                 )}
 
+                {showSevenMeCta && donationUrl ? (
+                    <CampaignSevenMeContribute href={donationUrl} tone={sevenMeTone} />
+                ) : null}
+
                 {campaign.cover_image_url && !campaign.show_caixa_fixo_story && !campaign.show_construcao_story ? (
                     <img src={campaign.cover_image_url} alt="" className="h-96 w-full rounded-2xl object-cover" />
                 ) : null}
@@ -386,14 +400,7 @@ export default function MobileDonationCampaignShow({
 
                 {campaign.accepting_donations &&
                     (donationUrl ? (
-                        <a
-                            href={donationUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex h-12 w-full cursor-pointer items-center justify-center rounded-full bg-zinc-900 px-8 text-sm font-semibold uppercase tracking-widest text-white shadow-sm transition duration-150 ease-in-out hover:bg-zinc-700 hover:shadow-md focus:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 focus:ring-offset-white active:bg-zinc-900 dark:bg-white dark:text-black dark:hover:bg-zinc-100 dark:focus:bg-zinc-200 dark:focus:ring-white dark:focus:ring-offset-zinc-900 dark:active:bg-zinc-300"
-                        >
-                            Contribuir agora via 7me
-                        </a>
+                        <CampaignSevenMeContribute href={donationUrl} tone={sevenMeTone} />
                     ) : (
                         <PrimaryButton type="button" onClick={openDonateModal} className="w-full">
                             Contribuir agora

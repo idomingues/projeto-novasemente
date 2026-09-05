@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\AppSupportMessage;
 use App\Models\AppSupportTicket;
 use App\Models\User;
+use App\Models\UserInboxNotification;
 use App\Services\SupportTicketChatNotifier;
 use App\Support\AppSupportTicketOptions;
+use App\Support\SpatiePermissionCheck;
 use App\Support\SupportTicketAdminPresenter;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -24,12 +26,14 @@ class SupportAdminController extends Controller
 
     private function canViewSupport(User $user): bool
     {
-        return $this->isSuperAdmin($user) || $user->hasAnyPermission(['support.view', 'support.manage']);
+        return $this->isSuperAdmin($user)
+            || SpatiePermissionCheck::userHas($user, 'support.view')
+            || SpatiePermissionCheck::userHas($user, 'support.manage');
     }
 
     private function canManageSupport(User $user): bool
     {
-        return $this->isSuperAdmin($user) || $user->hasPermissionTo('support.manage');
+        return $this->isSuperAdmin($user) || SpatiePermissionCheck::userHas($user, 'support.manage');
     }
 
     public function store(Request $request): RedirectResponse
@@ -107,6 +111,15 @@ class SupportAdminController extends Controller
             if ($modalTicket) {
                 $modalDetail = SupportTicketAdminPresenter::adminPayload($modalTicket, $user);
             }
+        }
+
+        $inboxId = $request->query('inbox');
+        if ($user && is_numeric($inboxId)) {
+            UserInboxNotification::query()
+                ->where('user_id', $user->id)
+                ->where('id', (int) $inboxId)
+                ->whereNull('read_at')
+                ->update(['read_at' => now()]);
         }
 
         return Inertia::render('Support/Index', [

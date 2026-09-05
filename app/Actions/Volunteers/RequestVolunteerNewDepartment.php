@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Pedido de novo departamento por voluntário já cadastrado:
- * convite pendente + anotação na ficha + status Interessado.
+ * anotação na ficha + status Interessado (sem convite — a distribuição é do líder).
  */
 final class RequestVolunteerNewDepartment
 {
@@ -81,14 +81,7 @@ final class RequestVolunteerNewDepartment
             ."Departamento(s): {$names}\n"
             ."Motivo: {$reason}";
 
-        DB::transaction(function () use ($volunteer, $churchId, $normalized, $actor, $noteBody) {
-            app(ApplyVolunteerSignupMinistryIntent::class)(
-                $volunteer,
-                $normalized,
-                $churchId,
-                $actor,
-            );
-
+        DB::transaction(function () use ($volunteer, $churchId, $actor, $noteBody) {
             VolunteerLeaderNote::query()->create([
                 'volunteer_id' => (int) $volunteer->id,
                 'church_id' => $churchId,

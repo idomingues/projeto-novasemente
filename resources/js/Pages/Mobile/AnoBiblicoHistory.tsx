@@ -22,7 +22,7 @@ export default function MobileAnoBiblicoHistory({ items }: Props) {
 
             <div className="space-y-6">
                 <div>
-                    <Link href={route('mobile.ano-biblico')} className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 hover:underline">
+                    <Link href={route('mobile.ano-biblico')} className="cursor-pointer text-sm font-semibold text-zinc-700 hover:underline dark:text-zinc-200">
                         ← Ano Bíblico
                     </Link>
                     <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Histórico</h1>
@@ -48,7 +48,7 @@ export default function MobileAnoBiblicoHistory({ items }: Props) {
                                         </div>
                                         <Link
                                             href={route('mobile.bible', { book: it.bookKey, chapter: it.chapter, from: 'ano-biblico', day: it.day })}
-                                            className="inline-flex items-center justify-center rounded-full border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-sm font-bold text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
+                                            className="inline-flex cursor-pointer items-center justify-center rounded-full border border-zinc-200 px-3 py-2 text-sm font-bold text-zinc-900 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:text-white dark:hover:bg-zinc-800/40"
                                         >
                                             <BookOpenIcon className="h-5 w-5" aria-hidden />
                                         </Link>

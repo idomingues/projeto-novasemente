@@ -12,6 +12,14 @@ import {
 } from '@heroicons/react/24/outline';
 import { useEffect, useMemo, useState } from 'react';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { confirmAction } from '@/utils/confirmDialog';
+
+const primaryCtaClass =
+    'inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-zinc-900 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-950 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100';
+const outlineCtaClass =
+    'inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-zinc-900 px-4 py-3 text-sm font-bold text-zinc-900 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-300 dark:text-zinc-100 dark:hover:bg-zinc-800';
+const primaryCtaSmClass =
+    'inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-zinc-800 active:bg-zinc-950 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100';
 
 type Props =
     | {
@@ -144,7 +152,7 @@ export default function MobileAnoBiblico(props: Props) {
     const planChipClass =
         props.needsLogin === false && props.installed === false
             ? 'inline-flex max-w-[55%] items-center gap-2 rounded-full bg-amber-100/90 dark:bg-amber-950/50 px-3 py-1 text-sm font-semibold text-amber-900 dark:text-amber-200'
-            : 'inline-flex max-w-[55%] items-center gap-2 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300';
+            : 'inline-flex max-w-[55%] items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-sm font-semibold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200';
 
     return (
         <MobileLayout>
@@ -223,10 +231,7 @@ export default function MobileAnoBiblico(props: Props) {
                             Para acompanhar leituras, histórico e progresso diário, faça login na sua conta.
                         </p>
                         <div className="mt-4">
-                            <Link
-                                href={loginRedirectHref}
-                                className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900"
-                            >
+                            <Link href={loginRedirectHref} className={primaryCtaClass}>
                                 Fazer login
                             </Link>
                         </div>
@@ -347,14 +352,15 @@ export default function MobileAnoBiblico(props: Props) {
                                         <button
                                             type="button"
                                             disabled={recalculatingChallenge}
-                                            onClick={() => {
-                                                if (
-                                                    !confirm(
-                                                        'Recalcular o desafio atual? As leituras pendentes serão reorganizadas a partir de hoje até a data final, sem apagar o que você já leu.',
-                                                    )
-                                                ) {
-                                                    return;
-                                                }
+                                            onClick={async () => {
+                                                const ok = await confirmAction({
+                                                    title: 'Recalcular o desafio atual?',
+                                                    text: 'As leituras pendentes serão reorganizadas a partir de hoje até a data final, sem apagar o que você já leu.',
+                                                    confirmButtonText: 'Recalcular',
+                                                    cancelButtonText: 'Cancelar',
+                                                    icon: 'question',
+                                                });
+                                                if (!ok) return;
                                                 postRecalculateChallenge(route('mobile.ano-biblico.challenges.recalculate'), {
                                                     ...inertiaListModalSave,
                                                 });
@@ -379,14 +385,14 @@ export default function MobileAnoBiblico(props: Props) {
                                                     key={c.id}
                                                     className={`rounded-2xl border p-4 ${
                                                         isCurrent
-                                                            ? 'border-emerald-200/90 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/20'
+                                                            ? 'border-zinc-400 bg-zinc-50 dark:border-zinc-500 dark:bg-zinc-800/50'
                                                             : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
                                                     } ${c.type === 'data_personalizada' ? 'md:col-span-2' : ''}`}
                                                 >
                                                     <div className="flex items-start justify-between gap-2">
                                                         <div className="font-bold text-zinc-900 dark:text-white">{c.name}</div>
                                                         {isCurrent ? (
-                                                            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200">
+                                                            <span className="shrink-0 rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100">
                                                                 Atual
                                                             </span>
                                                         ) : null}
@@ -408,7 +414,7 @@ export default function MobileAnoBiblico(props: Props) {
                                                                 type="button"
                                                                 disabled={!customEnd}
                                                                 onClick={() => startChallenge(c.id, { dataFim: customEnd })}
-                                                                className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                className={primaryCtaSmClass}
                                                             >
                                                                 Iniciar desafio
                                                             </button>
@@ -418,7 +424,7 @@ export default function MobileAnoBiblico(props: Props) {
                                                             <button
                                                                 type="button"
                                                                 onClick={() => startChallenge(c.id)}
-                                                                className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900"
+                                                                className={primaryCtaSmClass}
                                                             >
                                                                 Iniciar desafio
                                                             </button>
@@ -455,7 +461,7 @@ export default function MobileAnoBiblico(props: Props) {
                                 <div className="mt-4 grid grid-cols-1 gap-2">
                                     <Link
                                         href={canStartReading && typeof props.day === 'number' ? route('mobile.ano-biblico.day', { day: props.day }) : route('mobile.ano-biblico')}
-                                        className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900"
+                                        className={primaryCtaClass}
                                     >
                                         Continuar de onde parei
                                     </Link>
@@ -469,9 +475,17 @@ export default function MobileAnoBiblico(props: Props) {
                                     <button
                                         type="button"
                                         disabled={restartingZero}
-                                        onClick={() => {
-                                            if (!confirm('Recomeçar do zero vai zerar seu progresso. Deseja continuar?')) return;
-                                            postRestartZero(route('mobile.ano-biblico.restart-zero'), { preserveScroll: true });
+                                        onClick={async () => {
+                                            const ok = await confirmAction({
+                                                title: 'Recomeçar do zero?',
+                                                text: 'Isso vai zerar seu progresso e abrir a leitura inicial.',
+                                                confirmButtonText: 'Recomeçar',
+                                                cancelButtonText: 'Cancelar',
+                                                icon: 'warning',
+                                                danger: true,
+                                            });
+                                            if (!ok) return;
+                                            postRestartZero(route('mobile.ano-biblico.restart-zero'));
                                         }}
                                         className="inline-flex w-full cursor-pointer items-center justify-center rounded-full border border-zinc-300 bg-white px-4 py-3 text-sm font-bold text-zinc-900 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800/40"
                                     >
@@ -510,7 +524,7 @@ export default function MobileAnoBiblico(props: Props) {
                                           ? route('mobile.ano-biblico.day', { day: props.day })
                                           : route('mobile.bible')
                                 }
-                                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900"
+                                className={primaryCtaClass}
                             >
                                 <BookOpenIcon className="h-5 w-5" aria-hidden />
                                 {props.finished ? 'Abrir Bíblia' : 'Iniciar leitura'}
@@ -523,7 +537,7 @@ export default function MobileAnoBiblico(props: Props) {
                                     if (!canComplete || typeof props.day !== 'number') return;
                                     post(route('mobile.ano-biblico.complete'), { preserveScroll: true });
                                 }}
-                                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-emerald-700 px-4 py-3 text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-emerald-950/30"
+                                className={outlineCtaClass}
                             >
                                 <CheckCircleIcon className="h-5 w-5" aria-hidden />
                                 Já li / Marcar como concluído
@@ -545,7 +559,7 @@ export default function MobileAnoBiblico(props: Props) {
                                         type="button"
                                         disabled={starting}
                                         onClick={() => postStart(route('mobile.ano-biblico.start'), { preserveScroll: true })}
-                                        className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className={primaryCtaClass}
                                     >
                                         Iniciar plano
                                     </button>
@@ -558,8 +572,11 @@ export default function MobileAnoBiblico(props: Props) {
                                 <span>Progresso</span>
                                 <span>{props.progress.percent}%</span>
                             </div>
-                            <div className="mt-2 h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
-                                <div className="h-full rounded-full bg-emerald-600" style={{ width: `${props.progress.percent}%` }} />
+                            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+                                <div
+                                    className="h-full rounded-full bg-zinc-900 dark:bg-zinc-100"
+                                    style={{ width: `${props.progress.percent}%` }}
+                                />
                             </div>
                             <div className="mt-3 grid grid-cols-2 gap-2">
                                 <div className="rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 p-3">
@@ -587,7 +604,7 @@ export default function MobileAnoBiblico(props: Props) {
                             </div>
                             {props.progress.lastCompletedAt ? (
                                 <div className="mt-3">
-                                    <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                                    <span className="inline-flex items-center rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
                                         Última conclusão às {new Date(props.progress.lastCompletedAt).toLocaleString('pt-BR')}
                                     </span>
                                 </div>
@@ -686,12 +703,12 @@ export default function MobileAnoBiblico(props: Props) {
                                         ? { mode: 'new_end', data_fim: newEndDate }
                                         : { mode: reprogramMode },
                                     {
-                                        ...inertiaListModalSave,
+                                        onSuccess: () => setReprogramOpen(false),
                                         onFinish: () => setReprogramming(false),
                                     },
                                 );
                             }}
-                            className="inline-flex w-full cursor-pointer items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-emerald-800 active:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
+                            className={primaryCtaClass}
                         >
                             Salvar reprogramação
                         </button>

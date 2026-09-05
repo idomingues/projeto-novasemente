@@ -49,7 +49,7 @@ class LibraryBookController extends Controller
                 'formOld' => [],
                 'categories' => [
                     ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
-                    ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
+                    ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revista Adventista'],
                     // Meditação e Lição agora usam links globais em Configurações.
                 ],
                 'librarySetupMessage' => 'A biblioteca ainda não está disponível neste ambiente. Peça ao responsável técnico para concluir a atualização da base de dados.',
@@ -105,7 +105,7 @@ class LibraryBookController extends Controller
             'formOld' => ! empty($oldInput) ? Arr::only($oldInput, ['title', 'subtitle', 'description', 'category', 'external_url', 'published_at']) : [],
             'categories' => [
                 ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
-                ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
+                ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revista Adventista'],
                 ['value' => LibraryBook::CATEGORY_EGW, 'label' => 'Ellen G. White'],
             ],
             'librarySetupMessage' => null,

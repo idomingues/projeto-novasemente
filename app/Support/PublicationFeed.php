@@ -746,7 +746,7 @@ class PublicationFeed
     {
         return match ($category) {
             LibraryBook::CATEGORY_BOOKS => 'Livro',
-            LibraryBook::CATEGORY_MAGAZINES => 'Revista',
+            LibraryBook::CATEGORY_MAGAZINES => 'Revista Adventista',
             LibraryBook::CATEGORY_MEDITATION => 'Meditação',
             LibraryBook::CATEGORY_LESSON => 'Lição',
             LibraryBook::CATEGORY_EGW => 'Ellen G. White',

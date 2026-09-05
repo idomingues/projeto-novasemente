@@ -240,6 +240,42 @@ class VolunteerPublicSignupTest extends TestCase
         $this->assertTrue($admin->hasRole('admin'));
     }
 
+    public function test_logged_in_super_admin_who_is_volunteer_sees_existing_not_privileged(): void
+    {
+        $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
+
+        $churchId = (int) Church::query()->orderBy('id')->value('id');
+        $token = VolunteerSelfSignupToken::query()->create([
+            'church_id' => $churchId,
+            'token' => (string) Str::uuid(),
+        ])->token;
+
+        $admin = User::factory()->create([
+            'church_id' => $churchId,
+            'email' => 'admin.voluntario@example.com',
+            'is_volunteer' => true,
+        ]);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'super_admin']));
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin']));
+        $admin->ensureVolunteerProfile();
+        $this->assertNotNull($admin->fresh()->volunteerProfile);
+
+        $this->actingAs($admin)
+            ->get(route('volunteers.self-signup.existing', ['token' => $token]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Volunteers/SignupExistingOptions')
+                ->where('status', 'existing')
+                ->where('hasAppAccount', true)
+                ->where('isAuthenticated', true)
+                ->where('situationTitle', 'Você já é voluntário')
+                ->where('primaryActionLabel', 'Atualizar cadastro'));
+
+        $this->actingAs($admin)
+            ->get(route('volunteers.self-signup.edit'))
+            ->assertOk();
+    }
+
     public function test_logged_in_volunteer_opens_existing_options_from_public_signup(): void
     {
         $this->seed([RolePermissionSeeder::class, ChurchSeeder::class, MinistrySeeder::class]);
@@ -406,6 +442,16 @@ class VolunteerPublicSignupTest extends TestCase
         $this->assertNotNull($note);
         $this->assertStringContainsString('Pedido de novo departamento', $note->body);
         $this->assertStringContainsString('Quero servir na recepção', $note->body);
+        $this->assertStringContainsString((string) $requestedMinistry->name, $note->body);
+
+        // Distribuição é do líder: não gera convite pendente automaticamente.
+        $this->assertDatabaseMissing('volunteer_ministry_invitations', [
+            'volunteer_id' => $volunteer->id,
+            'ministry_id' => $requestedMinistry->id,
+        ]);
+        $this->assertFalse(
+            $volunteer->ministries()->where('ministries.id', $requestedMinistry->id)->exists()
+        );
 
         $interessadoId = VolunteerPipelineStage::query()
             ->where('church_id', $churchId)

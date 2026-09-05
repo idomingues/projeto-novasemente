@@ -77,6 +77,8 @@ export default function SupportIndex({
     const [viewMode, setViewMode] = usePersistedViewMode('support-admin-view-mode', 'list');
     const [modalTab, setModalTab] = useState<'detalhes' | 'chat'>('detalhes');
     const [createOpen, setCreateOpen] = useState(false);
+    /** Evita abrir o Modal no mesmo tick do `success` do Inertia (overlay/portal). */
+    const [modalMountReady, setModalMountReady] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         message: '',
@@ -85,19 +87,25 @@ export default function SupportIndex({
         forecast_at: '',
     });
 
-    const showModal = createOpen || modalDetail !== null;
+    const ticketDetail = modalDetail?.ticket ?? null;
+    const showModal = modalMountReady && (createOpen || ticketDetail !== null);
 
     useEffect(() => {
-        if (modalDetail) {
+        const id = window.requestAnimationFrame(() => setModalMountReady(true));
+        return () => window.cancelAnimationFrame(id);
+    }, []);
+
+    useEffect(() => {
+        if (ticketDetail) {
             setCreateOpen(false);
         }
-    }, [modalDetail]);
+    }, [ticketDetail]);
 
     useEffect(() => {
-        if (modalDetail?.ticket.publicToken) {
+        if (ticketDetail?.publicToken) {
             setModalTab('detalhes');
         }
-    }, [modalDetail?.ticket.publicToken]);
+    }, [ticketDetail?.publicToken]);
 
     const openCreateModal = () => {
         const startCreate = () => {
@@ -105,7 +113,7 @@ export default function SupportIndex({
             setModalTab('detalhes');
             setCreateOpen(true);
         };
-        if (modalDetail) {
+        if (ticketDetail) {
             router.get(supportIndexUrl, {}, {
                 preserveScroll: true,
                 onFinish: startCreate,
@@ -127,8 +135,8 @@ export default function SupportIndex({
 
     const applyStatusFilter = (nextStatus: string) => {
         const payload: Record<string, string> = { status: nextStatus };
-        if (modalDetail?.ticket.publicToken) {
-            payload.modal = modalDetail.ticket.publicToken;
+        if (ticketDetail?.publicToken) {
+            payload.modal = ticketDetail.publicToken;
         }
         router.get(supportIndexUrl, payload, { preserveScroll: true, replace: true });
     };
@@ -370,22 +378,22 @@ export default function SupportIndex({
                 ) : null}
             </div>
 
-            <Modal show={showModal} onClose={closeSupportModal} maxWidth="2xl">
+            <Modal show={showModal} onClose={closeSupportModal} disableBodyScroll maxWidth="2xl">
                 <div className="flex min-h-0 max-h-[min(88dvh,760px)] w-full flex-col overflow-hidden">
                     <div className="shrink-0 border-b border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-950 sm:px-6">
                         <div className="flex items-center gap-2">
                             <WrenchScrewdriverIcon className="h-6 w-6 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
                             <h2 className="min-w-0 truncate text-lg font-semibold text-zinc-900 dark:text-white">
-                                {modalDetail ? modalDetail.ticket.typeLabel : 'Nova demanda'}
+                                {ticketDetail ? ticketDetail.typeLabel : 'Nova demanda'}
                             </h2>
                         </div>
-                        {modalDetail ? (
+                        {ticketDetail ? (
                             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                {modalDetail.ticket.ownerLabel} · {modalDetail.ticket.statusLabel ?? modalDetail.ticket.status}
+                                {ticketDetail.ownerLabel} · {ticketDetail.statusLabel ?? ticketDetail.status}
                             </p>
                         ) : (
                             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                Registe com clareza o contexto para facilitar triagem da equipe.
+                                Registre com clareza o contexto para facilitar triagem da equipe.
                             </p>
                         )}
                     </div>
@@ -409,10 +417,10 @@ export default function SupportIndex({
                                     modalTab === 'chat'
                                         ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
                                         : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
-                                } ${!modalDetail ? 'cursor-not-allowed opacity-50' : ''}`}
-                                disabled={!modalDetail}
+                                } ${!ticketDetail ? 'cursor-not-allowed opacity-50' : ''}`}
+                                disabled={!ticketDetail}
                                 onClick={() => setModalTab('chat')}
-                                title={!modalDetail ? 'Guarde o item na aba Detalhes para usar o chat' : undefined}
+                                title={!ticketDetail ? 'Salve o item na aba Detalhes para usar o chat' : undefined}
                             >
                                 Chat
                             </button>
@@ -420,7 +428,7 @@ export default function SupportIndex({
                     </div>
 
                     <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-50 px-5 py-4 dark:bg-zinc-950 sm:px-6 sm:py-5">
-                        {modalTab === 'detalhes' && createOpen && !modalDetail && (
+                        {modalTab === 'detalhes' && createOpen && !ticketDetail && (
                             <form onSubmit={submitDevItem} className="space-y-4">
                                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
                                     Toda demanda nasce como <strong>Pendente</strong>. Descreva o contexto e, se quiser, informe uma
@@ -494,17 +502,17 @@ export default function SupportIndex({
                             </form>
                         )}
 
-                        {modalTab === 'detalhes' && modalDetail && (
+                        {modalTab === 'detalhes' && modalDetail && ticketDetail && (
                             <SupportTicketDetailPanel {...modalDetail} variant="modal" section="details" />
                         )}
 
-                        {modalTab === 'chat' && modalDetail && (
+                        {modalTab === 'chat' && modalDetail && ticketDetail && (
                             <SupportTicketDetailPanel {...modalDetail} variant="modal" section="chat" />
                         )}
 
-                        {modalTab === 'chat' && !modalDetail && (
+                        {modalTab === 'chat' && !ticketDetail && (
                             <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 py-8">
-                                Crie o item na aba Detalhes para aceder ao chat deste chamado.
+                                Crie o item na aba Detalhes para acessar o chat deste chamado.
                             </p>
                         )}
                     </div>

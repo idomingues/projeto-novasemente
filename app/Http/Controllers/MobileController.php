@@ -887,12 +887,9 @@ class MobileController extends Controller
     {
         $categories = [
             ['value' => LibraryBook::CATEGORY_BOOKS, 'label' => 'Livros'],
-            ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revistas'],
+            // Revistas da biblioteca + acervo histórico (quando ativo) no mesmo item.
+            ['value' => LibraryBook::CATEGORY_MAGAZINES, 'label' => 'Revista Adventista'],
         ];
-
-        if ($this->revistaAdventistaAcervoAvailable($church)) {
-            $categories[] = ['value' => 'revista_adventista_acervo', 'label' => 'Acervo Revista Adventista'];
-        }
 
         $categories[] = ['value' => LibraryBook::CATEGORY_EGW, 'label' => 'Ellen G. White'];
         $categories[] = ['value' => LibraryBook::CATEGORY_MEDITATION, 'label' => 'Meditação'];

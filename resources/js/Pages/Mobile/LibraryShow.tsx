@@ -121,16 +121,6 @@ export default function MobileLibraryShow({ book }: Props) {
                 <Head title={book.title} />
 
                 <div className="-mx-4 min-w-0 overflow-x-hidden sm:mx-0">
-                    <div className="mb-3 px-4 sm:px-0">
-                        <Link
-                            href={route('mobile.biblioteca')}
-                            className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
-                        >
-                            <ArrowLeftIcon className="h-4 w-4" aria-hidden />
-                            Voltar à biblioteca
-                        </Link>
-                    </div>
-
                     {book.category === 'magazines' ? (
                         <MagazineReader
                             title={book.title}
@@ -139,18 +129,31 @@ export default function MobileLibraryShow({ book }: Props) {
                             pdfUrl={pdf}
                             downloadUrl={route('mobile.biblioteca.pdf-download', book.id)}
                             contentKey={`library:book:${book.id}`}
+                            backHref={route('mobile.biblioteca', { tab: 'magazines' })}
+                            backLabel="Voltar à biblioteca"
                             className="sm:px-0"
                         />
                     ) : (
-                        <PdfReflowReader
-                            title={book.title}
-                            subtitle={book.subtitle}
-                            coverUrl={cover || null}
-                            pdfUrl={pdf}
-                            downloadUrl={route('mobile.biblioteca.pdf-download', book.id)}
-                            contentKey={`library:book:${book.id}`}
-                            className="sm:px-0"
-                        />
+                        <>
+                            <div className="mb-3 px-4 sm:px-0">
+                                <Link
+                                    href={route('mobile.biblioteca')}
+                                    className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
+                                >
+                                    <ArrowLeftIcon className="h-4 w-4" aria-hidden />
+                                    Voltar à biblioteca
+                                </Link>
+                            </div>
+                            <PdfReflowReader
+                                title={book.title}
+                                subtitle={book.subtitle}
+                                coverUrl={cover || null}
+                                pdfUrl={pdf}
+                                downloadUrl={route('mobile.biblioteca.pdf-download', book.id)}
+                                contentKey={`library:book:${book.id}`}
+                                className="sm:px-0"
+                            />
+                        </>
                     )}
 
                     {description ? (

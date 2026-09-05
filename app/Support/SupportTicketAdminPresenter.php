@@ -113,8 +113,10 @@ class SupportTicketAdminPresenter
 
         $publicToken = $ticket->public_token;
 
-        $canManage = $viewer->hasRole('super_admin') || $viewer->hasPermissionTo('support.manage');
+        $canManage = $viewer->hasRole('super_admin')
+            || SpatiePermissionCheck::userHas($viewer, 'support.manage');
 
+        // Paths relativos: APP_URL (localhost) ≠ host do browser (127.0.0.1) quebrava visitas Inertia.
         return [
             'ticket' => [
                 'publicToken' => $publicToken,
@@ -144,10 +146,10 @@ class SupportTicketAdminPresenter
                 'ownerPhotoUrl' => $ticket->user?->photo_url,
             ],
             'messages' => $messages,
-            'supportUpdateUrl' => route('support.update', ['token' => $publicToken]),
-            'supportDestroyUrl' => route('support.destroy', ['token' => $publicToken]),
-            'supportCloseUrl' => route('support.close', ['token' => $publicToken]),
-            'supportMessageStoreUrl' => route('support.messages.store', ['token' => $publicToken]),
+            'supportUpdateUrl' => route('support.update', ['token' => $publicToken], absolute: false),
+            'supportDestroyUrl' => route('support.destroy', ['token' => $publicToken], absolute: false),
+            'supportCloseUrl' => route('support.close', ['token' => $publicToken], absolute: false),
+            'supportMessageStoreUrl' => route('support.messages.store', ['token' => $publicToken], absolute: false),
             'canManageTickets' => $canManage,
             'statusOptions' => self::statusOptions(),
             'demandCategoryOptions' => self::demandCategoryOptions(),

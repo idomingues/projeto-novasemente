@@ -13,7 +13,10 @@ use Illuminate\Support\Facades\Schema;
 class NotificationFeed
 {
     /**
-     * Converte URL absoluta da mesma origem do pedido para path + query (melhor para visitas Inertia).
+     * Converte URL absoluta gravada (APP_URL / produção / localhost vs 127.0.0.1)
+     * para path + query na origem atual — necessário para visitas Inertia sem tela branca.
+     *
+     * Links de inbox/app são sempre rotas internas; o host no banco pode divergir do host do browser.
      */
     public static function inertiaHrefFromStoredUrl(Request $request, string $absoluteOrRelative): string
     {
@@ -21,14 +24,30 @@ class NotificationFeed
             return $absoluteOrRelative;
         }
 
-        $prefix = $request->getSchemeAndHttpHost();
-        if (str_starts_with($absoluteOrRelative, $prefix)) {
-            $path = substr($absoluteOrRelative, strlen($prefix));
-
-            return $path === '' || $path === false ? '/' : $path;
+        $parts = parse_url($absoluteOrRelative);
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+            return $absoluteOrRelative;
         }
 
-        return $absoluteOrRelative;
+        $scheme = strtolower((string) $parts['scheme']);
+        if ($scheme !== 'http' && $scheme !== 'https') {
+            return $absoluteOrRelative;
+        }
+
+        $path = (string) ($parts['path'] ?? '/');
+        if ($path === '') {
+            $path = '/';
+        }
+
+        $href = $path;
+        if (isset($parts['query']) && $parts['query'] !== '') {
+            $href .= '?'.$parts['query'];
+        }
+        if (isset($parts['fragment']) && $parts['fragment'] !== '') {
+            $href .= '#'.$parts['fragment'];
+        }
+
+        return $href;
     }
 
     /**

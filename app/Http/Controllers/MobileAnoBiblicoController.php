@@ -149,6 +149,74 @@ class MobileAnoBiblicoController extends Controller
         return Schema::hasTable('ano_biblico_usuario') && Schema::hasTable('ano_biblico_usuario_itens');
     }
 
+    /**
+     * Próximo dia de leitura pendente (desafio ativo ou plano clássico).
+     */
+    private function nextPendingDayForUser(int $userId): ?int
+    {
+        $active = $this->activeChallengeForUser($userId);
+        if ($active) {
+            $dia = DB::table('ano_biblico_desafio_itens')
+                ->where('usuario_desafio_id', (int) $active->id)
+                ->where('concluido', 0)
+                ->orderBy('data_leitura')
+                ->orderBy('dia')
+                ->value('dia');
+
+            return $dia !== null ? (int) $dia : null;
+        }
+
+        if (! $this->hasUserPlanTables()) {
+            return null;
+        }
+
+        $dia = DB::table('ano_biblico_usuario_itens')
+            ->where('usuario_id', $userId)
+            ->where('concluido', 0)
+            ->orderBy('data_leitura')
+            ->orderBy('dia')
+            ->value('dia');
+
+        return $dia !== null ? (int) $dia : null;
+    }
+
+    /**
+     * Após reprogramar/recomeçar: abre a leitura do dia (não a tela principal).
+     */
+    private function redirectToNextReading(int $userId, string $message)
+    {
+        $day = $this->nextPendingDayForUser($userId);
+        if ($day !== null) {
+            return redirect()
+                ->route('mobile.ano-biblico.day', ['day' => $day])
+                ->with('success', $message);
+        }
+
+        return redirect()->route('mobile.ano-biblico')->with('success', $message);
+    }
+
+    /**
+     * Capítulos do escopo de um desafio, em ordem canônica.
+     *
+     * @return list<array{book_id:int,chapter:int}>
+     */
+    private function chaptersForChallengeScope(string $scope): array
+    {
+        $books = DB::table('bible_books')
+            ->when($scope === 'new', fn ($q) => $q->where('testament', 'new'))
+            ->orderBy('position')
+            ->get(['id', 'chapters_count']);
+
+        $chapters = [];
+        foreach ($books as $b) {
+            for ($c = 1; $c <= (int) $b->chapters_count; $c++) {
+                $chapters[] = ['book_id' => (int) $b->id, 'chapter' => $c];
+            }
+        }
+
+        return $chapters;
+    }
+
     private function ensureUserPlan(int $userId): void
     {
         if (! $this->hasUserPlanTables()) return;
@@ -733,7 +801,7 @@ TXT;
         abort_unless($userId, 403);
 
         abort_unless(Schema::hasTable('plano_leitura') && Schema::hasTable('leitura_usuario'), 409);
-        abort_unless($day >= 1 && $day <= 365, 404);
+        abort_unless($day >= 1 && $day <= 2000, 404);
 
         // Se houver desafio ativo, o "dia" e os checkboxes vêm do desafio.
         $activeChallenge = $this->activeChallengeForUser((int) $userId);
@@ -1007,11 +1075,78 @@ TXT;
     {
         $userId = $request->user()?->id;
         abort_unless($userId, 403);
+
+        $activeChallenge = $this->activeChallengeForUser((int) $userId);
+
+        if ($activeChallenge) {
+            $today = Carbon::now()->startOfDay();
+            $tipo = (string) $activeChallenge->tipo;
+            $end = $today->copy()->addDays(364);
+            if ($tipo === 'fim_do_ano') {
+                $end = Carbon::create($today->year, 12, 31)->startOfDay();
+            } elseif ($tipo === 'um_ano') {
+                $end = $today->copy()->addDays(365);
+            } elseif ($tipo === 'noventa_dias') {
+                $end = $today->copy()->addDays(90);
+            } elseif ($tipo === 'novo_testamento_30') {
+                $end = $today->copy()->addDays(30);
+            } elseif (! empty($activeChallenge->data_fim)) {
+                $prevEnd = Carbon::parse((string) $activeChallenge->data_fim)->startOfDay();
+                $prevStart = Carbon::parse((string) $activeChallenge->data_inicio)->startOfDay();
+                $span = max(1, $prevStart->diffInDays($prevEnd));
+                $end = $today->copy()->addDays($span);
+            }
+
+            DB::transaction(function () use ($userId, $activeChallenge, $today, $end) {
+                if (Schema::hasTable('leitura_usuario_capitulo')) {
+                    DB::table('leitura_usuario_capitulo')->where('usuario_id', $userId)->delete();
+                }
+                if (Schema::hasTable('leitura_usuario')) {
+                    DB::table('leitura_usuario')->where('usuario_id', $userId)->delete();
+                }
+
+                $ucId = (int) $activeChallenge->id;
+                DB::table('ano_biblico_desafio_itens')->where('usuario_desafio_id', $ucId)->delete();
+
+                DB::table('ano_biblico_desafio_usuario')->where('id', $ucId)->update([
+                    'data_inicio' => $today->toDateString(),
+                    'data_fim' => $end->toDateString(),
+                    'status' => 'active',
+                    'atualizado_em' => now(),
+                ]);
+
+                $chapters = $this->chaptersForChallengeScope((string) $activeChallenge->escopo);
+                $scheduled = $this->scheduleChaptersByVerseBudget($today, $end, $chapters, [], 1);
+                $rows = [];
+                foreach ($scheduled as $r) {
+                    $rows[] = [
+                        'usuario_desafio_id' => $ucId,
+                        'usuario_id' => (int) $userId,
+                        'dia' => $r['dia'],
+                        'data_leitura' => $r['data_leitura'],
+                        'livro_id' => $r['livro_id'],
+                        'capitulo' => $r['capitulo'],
+                        'concluido' => 0,
+                        'data_conclusao' => null,
+                    ];
+                }
+                foreach (array_chunk($rows, 500) as $chunk) {
+                    DB::table('ano_biblico_desafio_itens')->insert($chunk);
+                }
+            });
+
+            return $this->redirectToNextReading((int) $userId, 'Você recomeçou do zero.');
+        }
+
         abort_unless($this->hasUserPlanTables(), 409);
 
         DB::transaction(function () use ($userId) {
-            if (Schema::hasTable('leitura_usuario_capitulo')) DB::table('leitura_usuario_capitulo')->where('usuario_id', $userId)->delete();
-            if (Schema::hasTable('leitura_usuario')) DB::table('leitura_usuario')->where('usuario_id', $userId)->delete();
+            if (Schema::hasTable('leitura_usuario_capitulo')) {
+                DB::table('leitura_usuario_capitulo')->where('usuario_id', $userId)->delete();
+            }
+            if (Schema::hasTable('leitura_usuario')) {
+                DB::table('leitura_usuario')->where('usuario_id', $userId)->delete();
+            }
             DB::table('ano_biblico_usuario_itens')->where('usuario_id', $userId)->delete();
             DB::table('ano_biblico_usuario')->updateOrInsert(
                 ['usuario_id' => $userId],
@@ -1026,21 +1161,89 @@ TXT;
         });
 
         $this->ensureUserPlan((int) $userId);
-        return redirect()->route('mobile.ano-biblico')->with('success', 'Você recomeçou do zero.');
+
+        return $this->redirectToNextReading((int) $userId, 'Você recomeçou do zero.');
     }
 
     public function reprogram(Request $request)
     {
         $userId = $request->user()?->id;
         abort_unless($userId, 403);
-        abort_unless($this->hasUserPlanTables(), 409);
 
         $mode = (string) $request->input('mode', 'keep_end');
         $newEnd = $request->input('data_fim');
 
+        $today = Carbon::now()->startOfDay();
+        $activeChallenge = $this->activeChallengeForUser((int) $userId);
+
+        if ($activeChallenge) {
+            $targetEnd = Carbon::parse((string) $activeChallenge->data_fim)->startOfDay();
+
+            if ($mode === 'new_end') {
+                abort_unless(is_string($newEnd) && $newEnd !== '', 422);
+                $targetEnd = Carbon::parse((string) $newEnd)->startOfDay();
+            } elseif ($mode === 'start_today_keep_end') {
+                // redistribui restante a partir de hoje mantendo data final
+            } elseif ($mode !== 'keep_end') {
+                abort(422);
+            }
+
+            abort_unless($targetEnd->gte($today), 422);
+
+            DB::transaction(function () use ($userId, $activeChallenge, $today, $targetEnd) {
+                $ucId = (int) $activeChallenge->id;
+
+                $pending = DB::table('ano_biblico_desafio_itens as i')
+                    ->join('bible_books as b', 'b.id', '=', 'i.livro_id')
+                    ->where('i.usuario_desafio_id', $ucId)
+                    ->where('i.concluido', 0)
+                    ->orderBy('b.position')
+                    ->orderBy('i.capitulo')
+                    ->get(['i.livro_id', 'i.capitulo']);
+
+                DB::table('ano_biblico_desafio_itens')
+                    ->where('usuario_desafio_id', $ucId)
+                    ->where('concluido', 0)
+                    ->delete();
+
+                $maxDia = (int) (DB::table('ano_biblico_desafio_itens')->where('usuario_desafio_id', $ucId)->max('dia') ?? 0);
+                $startDia = max(1, $maxDia + 1);
+
+                $chaptersOrdered = $pending
+                    ->map(fn ($r) => ['book_id' => (int) $r->livro_id, 'chapter' => (int) $r->capitulo])
+                    ->all();
+
+                $scheduled = $this->scheduleChaptersByVerseBudget($today, $targetEnd, $chaptersOrdered, [], $startDia);
+                $rows = [];
+                foreach ($scheduled as $r) {
+                    $rows[] = [
+                        'usuario_desafio_id' => $ucId,
+                        'usuario_id' => (int) $userId,
+                        'dia' => $r['dia'],
+                        'data_leitura' => $r['data_leitura'],
+                        'livro_id' => $r['livro_id'],
+                        'capitulo' => $r['capitulo'],
+                        'concluido' => 0,
+                        'data_conclusao' => null,
+                    ];
+                }
+                foreach (array_chunk($rows, 500) as $chunk) {
+                    DB::table('ano_biblico_desafio_itens')->insert($chunk);
+                }
+
+                DB::table('ano_biblico_desafio_usuario')->where('id', $ucId)->update([
+                    'data_fim' => $targetEnd->toDateString(),
+                    'atualizado_em' => now(),
+                ]);
+            });
+
+            return $this->redirectToNextReading((int) $userId, 'Plano reprogramado.');
+        }
+
+        abort_unless($this->hasUserPlanTables(), 409);
+
         $this->ensureUserPlan((int) $userId);
 
-        $today = Carbon::now()->startOfDay();
         $currentEnd = $this->endDateForUser((int) $userId);
         $targetEnd = $currentEnd ? Carbon::parse($currentEnd)->startOfDay() : $today->copy()->addDays(364);
 
@@ -1079,7 +1282,9 @@ TXT;
             $remaining = [];
             foreach ($all as $r) {
                 $k = ((int) $r->livro_id).':'.((int) $r->capitulo);
-                if (!isset($done[$k])) $remaining[] = ['livro_id' => (int) $r->livro_id, 'capitulo' => (int) $r->capitulo];
+                if (! isset($done[$k])) {
+                    $remaining[] = ['livro_id' => (int) $r->livro_id, 'capitulo' => (int) $r->capitulo];
+                }
             }
 
             // remove itens não concluídos (mantém concluídos como histórico do próprio plano)
@@ -1123,7 +1328,7 @@ TXT;
             );
         });
 
-        return redirect()->route('mobile.ano-biblico')->with('success', 'Plano reprogramado.');
+        return $this->redirectToNextReading((int) $userId, 'Plano reprogramado.');
     }
 
     public function toggleChapter(Request $request)
@@ -1134,7 +1339,7 @@ TXT;
         abort_unless(Schema::hasTable('plano_leitura') && Schema::hasTable('leitura_usuario_capitulo'), 409);
 
         $valid = $request->validate([
-            'day' => ['required', 'integer', 'min:1', 'max:365'],
+            'day' => ['required', 'integer', 'min:1', 'max:2000'],
             'bookId' => ['required', 'integer', 'min:1'],
             'chapter' => ['required', 'integer', 'min:1'],
             'checked' => ['required', 'boolean'],
@@ -1216,7 +1421,7 @@ TXT;
         abort_unless(Schema::hasTable('leitura_usuario') && Schema::hasTable('plano_leitura'), 409);
 
         $valid = $request->validate([
-            'day' => ['required', 'integer', 'min:1', 'max:365'],
+            'day' => ['required', 'integer', 'min:1', 'max:2000'],
         ]);
 
         $day = (int) $valid['day'];

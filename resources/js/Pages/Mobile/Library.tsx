@@ -12,7 +12,6 @@ import {
     MoonIcon,
     ClipboardDocumentListIcon,
     SunIcon,
-    ArchiveBoxIcon,
 } from '@heroicons/react/24/outline';
 import Modal from '@/Components/Modal';
 import HomeCardBookmarkButton from '@/Components/Mobile/HomeCardBookmarkButton';
@@ -111,7 +110,7 @@ function libraryCategoryPresentation(value: string, label: string): CategoryPres
         case 'books':
             return { icon: BookOpenIcon, line1: 'Livros' };
         case 'magazines':
-            return { icon: NewspaperIcon, line1: 'Revistas' };
+            return { icon: NewspaperIcon, line1: 'Revista', line2: 'Adventista' };
         case 'egw':
             return { icon: SparklesIcon, line1: 'Ellen G.', line2: 'White' };
         case 'meditation':
@@ -120,8 +119,6 @@ function libraryCategoryPresentation(value: string, label: string): CategoryPres
             return { icon: ClipboardDocumentListIcon, line1: 'Lição' };
         case 'sunset_meditation':
             return { icon: SunIcon, line1: 'Meditação', line2: 'Por do Sol' };
-        case 'revista_adventista_acervo':
-            return { icon: ArchiveBoxIcon, line1: 'Acervo', line2: 'Revista Adventista' };
         default:
             return { icon: BookOpenIcon, line1: label };
     }
@@ -226,7 +223,9 @@ export default function MobileLibrary({
         const qs = raw.includes('?') ? raw.slice(raw.indexOf('?') + 1) : '';
         const params = new URLSearchParams(qs);
         const t = params.get('tab')?.trim().toLowerCase() ?? '';
-        return categories.some((c) => c.value === t) ? t : '';
+        // Alias legado: acervo era aba separada; agora vive em «Revista Adventista» (magazines).
+        const normalized = t === 'revista_adventista_acervo' ? 'magazines' : t;
+        return categories.some((c) => c.value === normalized) ? normalized : '';
     }, [page.url, categories]);
     const soloLesson = useMemo(() => {
         const raw = String(page.url ?? '');
@@ -271,7 +270,7 @@ export default function MobileLibrary({
     const meditationUrl = String(meditationUrlProp ?? '').trim();
     const lessonUrl = String(lessonUrlProp ?? '').trim();
     const isSunsetTab = tab === 'sunset_meditation';
-    const isAcervoTab = tab === 'revista_adventista_acervo';
+    const isRevistaTab = tab === 'magazines';
     const isConfiguredExternalTab = tab === 'meditation' || tab === 'lesson' || isSunsetTab;
     const configuredUrl =
         tab === 'meditation' ? meditationUrl : tab === 'lesson' ? lessonUrl : isSunsetTab && sunsetMeditationConfigured ? 'pdf' : '';
@@ -302,7 +301,7 @@ export default function MobileLibrary({
     const selectAcervoYear = (year: number) => {
         router.get(
             route('mobile.biblioteca'),
-            { tab: 'revista_adventista_acervo', ano: year },
+            { tab: 'magazines', ano: year },
             { preserveState: true, preserveScroll: true, replace: true },
         );
     };
@@ -322,12 +321,26 @@ export default function MobileLibrary({
             if (tab === 'egw') {
                 return 'Nenhum livro de Ellen G. White disponível ainda. Peça ao responsável para sincronizar o catálogo.';
             }
+            // Acervo histórico pode preencher a aba mesmo sem revistas cadastradas.
+            if (isRevistaTab && revistaAdventistaAcervo) {
+                return '';
+            }
 
             return 'Nenhuma publicação nesta categoria.';
         }
         if (filtered.length === 0) return 'Nenhum resultado para a pesquisa.';
         return '';
-    }, [books, tab, filtered.length, librarySetupMessage, isConfiguredExternalTab, configuredUrl, isSunsetTab]);
+    }, [
+        books,
+        tab,
+        filtered.length,
+        librarySetupMessage,
+        isConfiguredExternalTab,
+        configuredUrl,
+        isSunsetTab,
+        isRevistaTab,
+        revistaAdventistaAcervo,
+    ]);
 
     const closeDetails = () => setSelectedDetails(null);
 
@@ -449,19 +462,15 @@ export default function MobileLibrary({
                             </p>
                         </div>
                         <div className="relative w-full sm:max-w-xs">
-                            {!isAcervoTab ? (
-                                <>
-                                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                                    <input
-                                        type="search"
-                                        value={search}
-                                        onChange={(e) => setSearch(e.target.value)}
-                                        placeholder="Pesquisar…"
-                                        className="w-full rounded-xl border border-zinc-200/90 bg-white py-2.5 pl-9 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-zinc-300 dark:focus:ring-zinc-300/20"
-                                        aria-label="Pesquisar na biblioteca"
-                                    />
-                                </>
-                            ) : null}
+                            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                            <input
+                                type="search"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Pesquisar…"
+                                className="w-full rounded-xl border border-zinc-200/90 bg-white py-2.5 pl-9 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-zinc-300 dark:focus:ring-zinc-300/20"
+                                aria-label="Pesquisar na biblioteca"
+                            />
                         </div>
                     </header>
                 )}
@@ -498,10 +507,10 @@ export default function MobileLibrary({
                                     setTab(c.value);
                                     router.get(
                                         route('mobile.biblioteca'),
-                                        c.value === 'revista_adventista_acervo'
+                                        c.value === 'magazines' && revistaAdventistaAcervo
                                             ? {
                                                   tab: c.value,
-                                                  ano: revistaAdventistaAcervo?.selectedYear,
+                                                  ano: revistaAdventistaAcervo.selectedYear,
                                               }
                                             : { tab: c.value },
                                         { preserveState: true, replace: true },
@@ -534,7 +543,7 @@ export default function MobileLibrary({
                 </nav>
                 ) : null}
 
-                {isAcervoTab && revistaAdventistaAcervo ? (
+                {isRevistaTab && revistaAdventistaAcervo ? (
                     <RevistaAdventistaAcervoContent
                         editions={revistaAdventistaAcervo.editions}
                         availableYears={revistaAdventistaAcervo.availableYears}
@@ -543,7 +552,9 @@ export default function MobileLibrary({
                         onSelectYear={selectAcervoYear}
                         showHeading={false}
                     />
-                ) : isConfiguredExternalTab ? (
+                ) : null}
+
+                {isConfiguredExternalTab ? (
                     <div className="space-y-3">
                         {tab === 'meditation' ? (
                             <MeditationAudiencePicker
@@ -658,10 +669,12 @@ export default function MobileLibrary({
                     </div>
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="rounded-2xl border border-zinc-200/90 bg-white py-14 text-center dark:border-zinc-800 dark:bg-zinc-900">
-                        <BookOpenIcon className="mx-auto h-9 w-9 text-zinc-400 dark:text-zinc-500" />
-                        <p className="mt-3 text-sm font-medium text-zinc-600 dark:text-zinc-400">{emptyMessage}</p>
-                    </div>
+                    emptyMessage ? (
+                        <div className="rounded-2xl border border-zinc-200/90 bg-white py-14 text-center dark:border-zinc-800 dark:bg-zinc-900">
+                            <BookOpenIcon className="mx-auto h-9 w-9 text-zinc-400 dark:text-zinc-500" />
+                            <p className="mt-3 text-sm font-medium text-zinc-600 dark:text-zinc-400">{emptyMessage}</p>
+                        </div>
+                    ) : null
                 ) : (
                     <ul className="space-y-4">
                         {filtered.map((b) => {

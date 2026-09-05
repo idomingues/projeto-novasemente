@@ -1,7 +1,8 @@
 import PdfOriginalViewer from '@/Components/Mobile/PdfOriginalViewer';
 import PdfReflowReader from '@/Components/Mobile/PdfReflowReader';
-import { DocumentTextIcon, NewspaperIcon } from '@heroicons/react/24/outline';
-import { useState } from 'react';
+import { Link } from '@inertiajs/react';
+import { ArrowLeftIcon, DocumentTextIcon, NewspaperIcon } from '@heroicons/react/24/outline';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type ReadMode = 'choose' | 'original' | 'text';
 
@@ -13,8 +14,13 @@ type Props = {
     downloadUrl?: string | null;
     originalPdfUrl?: string | null;
     contentKey?: string | null;
+    /** Destino do «Voltar» quando ainda está na tela de opções. */
+    backHref: string;
+    backLabel?: string;
     className?: string;
 };
+
+const HISTORY_STATE_KEY = 'nsMagazineReadMode';
 
 const choiceCardClass =
     'flex w-full cursor-pointer touch-manipulation items-start gap-4 rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
@@ -27,15 +33,87 @@ export default function MagazineReader({
     downloadUrl = null,
     originalPdfUrl = null,
     contentKey = null,
+    backHref,
+    backLabel = 'Voltar',
     className = '',
 }: Props) {
     const [mode, setMode] = useState<ReadMode>('choose');
+    const modeRef = useRef<ReadMode>('choose');
     const resolvedCover = (coverUrl ?? '').trim();
+
+    const goToChoose = useCallback(() => {
+        modeRef.current = 'choose';
+        setMode('choose');
+    }, []);
+
+    const returnToChoose = useCallback(() => {
+        if (modeRef.current === 'choose') {
+            return;
+        }
+        const hadReadingState =
+            typeof window !== 'undefined' && Boolean(window.history.state?.[HISTORY_STATE_KEY]);
+        goToChoose();
+        if (hadReadingState) {
+            window.history.back();
+        }
+    }, [goToChoose]);
+
+    const enterMode = useCallback((next: Exclude<ReadMode, 'choose'>) => {
+        const wasChoose = modeRef.current === 'choose';
+        modeRef.current = next;
+        setMode(next);
+        if (typeof window === 'undefined') {
+            return;
+        }
+        try {
+            const state = { [HISTORY_STATE_KEY]: next };
+            if (wasChoose) {
+                window.history.pushState(state, '');
+            } else {
+                window.history.replaceState(state, '');
+            }
+        } catch {
+            // ignore
+        }
+    }, []);
+
+    useEffect(() => {
+        const onPopState = () => {
+            if (modeRef.current === 'choose') {
+                return;
+            }
+            goToChoose();
+        };
+
+        window.addEventListener('popstate', onPopState);
+        return () => window.removeEventListener('popstate', onPopState);
+    }, [goToChoose]);
+
+    const backControl =
+        mode === 'choose' ? (
+            <Link
+                href={backHref}
+                className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
+            >
+                <ArrowLeftIcon className="h-4 w-4" aria-hidden />
+                {backLabel}
+            </Link>
+        ) : (
+            <button
+                type="button"
+                onClick={returnToChoose}
+                className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
+            >
+                <ArrowLeftIcon className="h-4 w-4" aria-hidden />
+                Voltar às opções de leitura
+            </button>
+        );
 
     if (mode === 'original') {
         return (
             <div className={className}>
-                <ModeSwitch current="original" onChange={setMode} />
+                <div className="mb-3 px-4 sm:px-0">{backControl}</div>
+                <ModeSwitch current="original" onChange={enterMode} onBackToChoose={returnToChoose} />
                 <PdfOriginalViewer pdfUrl={pdfUrl} title={title} downloadUrl={downloadUrl} className="mt-3" />
             </div>
         );
@@ -44,7 +122,8 @@ export default function MagazineReader({
     if (mode === 'text') {
         return (
             <div className={className}>
-                <ModeSwitch current="text" onChange={setMode} />
+                <div className="mb-3 px-4 sm:px-0">{backControl}</div>
+                <ModeSwitch current="text" onChange={enterMode} onBackToChoose={returnToChoose} />
                 <PdfReflowReader
                     title={title}
                     subtitle={subtitle}
@@ -54,6 +133,7 @@ export default function MagazineReader({
                     originalPdfUrl={originalPdfUrl}
                     contentKey={contentKey}
                     layout="magazine"
+                    onOpenOriginal={() => enterMode('original')}
                     className="mt-3"
                 />
             </div>
@@ -62,6 +142,7 @@ export default function MagazineReader({
 
     return (
         <div className={`mx-auto w-full min-w-0 max-w-lg ${className}`}>
+            <div className="mb-3 px-4 sm:px-0">{backControl}</div>
             <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                 {resolvedCover ? (
                     <img src={resolvedCover} alt="" className="max-h-72 w-full object-cover sm:max-h-80" />
@@ -85,7 +166,7 @@ export default function MagazineReader({
                     </p>
 
                     <div className="space-y-3">
-                        <button type="button" className={choiceCardClass} onClick={() => setMode('original')}>
+                        <button type="button" className={choiceCardClass} onClick={() => enterMode('original')}>
                             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200">
                                 <NewspaperIcon className="h-6 w-6" aria-hidden />
                             </span>
@@ -99,7 +180,7 @@ export default function MagazineReader({
                             </span>
                         </button>
 
-                        <button type="button" className={choiceCardClass} onClick={() => setMode('text')}>
+                        <button type="button" className={choiceCardClass} onClick={() => enterMode('text')}>
                             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
                                 <DocumentTextIcon className="h-6 w-6" aria-hidden />
                             </span>
@@ -108,7 +189,7 @@ export default function MagazineReader({
                                     Ler somente texto
                                 </span>
                                 <span className="mt-0.5 block text-sm text-zinc-500 dark:text-zinc-400">
-                                    Matérias em blocos, com título, imagem quando houver e texto.
+                                    Matérias em blocos para ler com conforto. O layout pode diferir do PDF.
                                 </span>
                             </span>
                         </button>
@@ -122,9 +203,11 @@ export default function MagazineReader({
 function ModeSwitch({
     current,
     onChange,
+    onBackToChoose,
 }: {
     current: Exclude<ReadMode, 'choose'>;
-    onChange: (mode: ReadMode) => void;
+    onChange: (mode: Exclude<ReadMode, 'choose'>) => void;
+    onBackToChoose: () => void;
 }) {
     const other: Exclude<ReadMode, 'choose'> = current === 'original' ? 'text' : 'original';
     const label = other === 'original' ? 'Ler revista original' : 'Ler somente texto';
@@ -133,7 +216,7 @@ function ModeSwitch({
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-0">
             <button
                 type="button"
-                onClick={() => onChange('choose')}
+                onClick={onBackToChoose}
                 className="cursor-pointer text-sm font-medium text-zinc-500 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200"
             >
                 Trocar modo de leitura

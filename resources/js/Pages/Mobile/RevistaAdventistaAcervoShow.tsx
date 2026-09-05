@@ -1,7 +1,6 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import MagazineReader from '@/Components/Mobile/MagazineReader';
-import { Head, Link } from '@inertiajs/react';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { Head } from '@inertiajs/react';
 
 interface Edition {
     id: number;
@@ -27,16 +26,6 @@ export default function MobileRevistaAdventistaAcervoShow({ edition }: Props) {
             <Head title={edition.title} />
 
             <div className="-mx-4 min-w-0 overflow-x-hidden sm:mx-0">
-                <div className="mb-3 px-4 sm:px-0">
-                    <Link
-                        href={route('mobile.biblioteca', { tab: 'revista_adventista_acervo', ano: edition.year })}
-                        className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
-                    >
-                        <ArrowLeftIcon className="h-4 w-4" aria-hidden />
-                        Voltar à biblioteca ({edition.year})
-                    </Link>
-                </div>
-
                 <MagazineReader
                     title={edition.title}
                     subtitle={subtitle}
@@ -45,6 +34,8 @@ export default function MobileRevistaAdventistaAcervoShow({ edition }: Props) {
                     downloadUrl={route('mobile.acervo-revista-adventista.pdf-download', edition.id)}
                     originalPdfUrl={edition.source_pdf_url}
                     contentKey={`revista-adventista:edition:${edition.id}`}
+                    backHref={route('mobile.biblioteca', { tab: 'magazines', ano: edition.year })}
+                    backLabel={`Voltar à biblioteca (${edition.year})`}
                     className="sm:px-0"
                 />
 
