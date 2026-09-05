@@ -5,7 +5,7 @@ import PdfOriginalViewer from '@/Components/Mobile/PdfOriginalViewer';
 import SaturdayProgramScheduleView, {
     type SaturdaySchedule,
 } from '@/Components/Mobile/SaturdayProgramScheduleView';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type ProgramPayload =
     | {
@@ -13,7 +13,7 @@ type ProgramPayload =
           id: number;
           title: string;
           saturday_date: string | null;
-          pdf_url: string;
+          pdf_url?: string | null;
           parse_status?: string;
           has_schedule?: boolean;
           schedule?: SaturdaySchedule | null;
@@ -56,11 +56,24 @@ export default function ProgramacaoSabado({ program }: Props) {
     const backHref = route('mobile.conheca');
     const hasSchedule =
         program.status === 'available' && Boolean(program.has_schedule && program.schedule?.items?.length);
+    const pdfRaw =
+        program.status === 'available' && typeof program.pdf_url === 'string' ? program.pdf_url.trim() : '';
+    const hasPdf = pdfRaw !== '';
     const [mode, setMode] = useState<ViewMode>(hasSchedule ? 'schedule' : 'pdf');
 
-    if (program.status === 'available' && program.pdf_url) {
-        const pdf = imageSrc(program.pdf_url, appUrl);
+    useEffect(() => {
+        if (hasSchedule) {
+            setMode('schedule');
+        } else if (hasPdf) {
+            setMode('pdf');
+        }
+    }, [hasSchedule, hasPdf, program.status === 'available' ? program.id : null]);
+
+    if (program.status === 'available' && (hasSchedule || hasPdf)) {
+        const pdf = hasPdf ? imageSrc(pdfRaw, appUrl) : '';
         const subtitle = formatSaturday(program.saturday_date);
+        const showTabs = hasSchedule && hasPdf;
+        const showSchedule = mode === 'schedule' && hasSchedule && program.schedule;
 
         return (
             <MobileLayout>
@@ -83,7 +96,7 @@ export default function ProgramacaoSabado({ program }: Props) {
                         ) : null}
                     </div>
 
-                    {hasSchedule ? (
+                    {showTabs ? (
                         <div
                             role="tablist"
                             aria-label="Modo de visualização"
@@ -120,12 +133,12 @@ export default function ProgramacaoSabado({ program }: Props) {
                         </div>
                     ) : null}
 
-                    {mode === 'schedule' && hasSchedule && program.schedule ? (
+                    {showSchedule && program.schedule ? (
                         <SaturdayProgramScheduleView
                             schedule={program.schedule}
                             fallbackDateLabel={subtitle || null}
                         />
-                    ) : (
+                    ) : hasPdf ? (
                         <PdfOriginalViewer
                             title={program.title}
                             pdfUrl={pdf}
@@ -133,6 +146,10 @@ export default function ProgramacaoSabado({ program }: Props) {
                             loadingTitle="Abrindo a programação…"
                             loadingSubtitle="Carregando as páginas do PDF no app."
                         />
+                    ) : (
+                        <p className="rounded-2xl bg-white px-4 py-8 text-center text-sm text-zinc-600 shadow-sm ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-700">
+                            Conteúdo indisponível no momento.
+                        </p>
                     )}
                 </div>
             </MobileLayout>

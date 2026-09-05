@@ -76,4 +76,45 @@ TXT;
         $this->assertSame('12:03:30', $items[2]['start']);
         $this->assertSame('6:00', $items[2]['duration']);
     }
+
+    #[Test]
+    public function it_collapses_sidebar_phase_blocks_and_skips_totals(): void
+    {
+        $path = base_path('tests/fixtures/saturday-program-sample.pdf');
+        $schedule = (new SaturdayProgramPdfParser)->parseFile($path);
+        $items = $schedule['items'];
+
+        $sectionTitles = array_column(
+            array_values(array_filter($items, static fn (array $row) => ($row['kind'] ?? '') === 'section')),
+            'title',
+        );
+
+        $this->assertNotContains('PRÉ ABERTURA - 1º CULTO', $sectionTitles);
+        $this->assertNotContains('BOAS VINDAS - 1º CULTO', $sectionTitles);
+        $this->assertNotContains('LOUVOR - 1º CULTO', $sectionTitles);
+        $this->assertContains('CONVIVA', $sectionTitles);
+        $this->assertTrue(
+            collect($sectionTitles)->contains(
+                fn (string $t) => str_contains(mb_strtoupper($t), 'INTERVALO') || $t === '2º CULTO',
+            ),
+        );
+
+        $maxRun = 0;
+        $run = 0;
+        foreach ($items as $row) {
+            if (($row['kind'] ?? '') === 'section') {
+                $run++;
+                $maxRun = max($maxRun, $run);
+            } else {
+                $run = 0;
+            }
+        }
+        $this->assertLessThanOrEqual(3, $maxRun);
+
+        $starts = array_column(
+            array_filter($items, static fn (array $r) => ($r['kind'] ?? '') === 'item'),
+            'start',
+        );
+        $this->assertNotContains('13:39:30', $starts);
+    }
 }

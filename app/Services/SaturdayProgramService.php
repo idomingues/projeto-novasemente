@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\SaturdayProgram;
-use App\Support\StorageUrl;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 
@@ -89,7 +88,7 @@ class SaturdayProgramService
     {
         $program = $this->currentForChurch($churchId);
 
-        if ($program === null || $program->pdf_path === '' || $program->pdf_path === null) {
+        if ($program === null) {
             return [
                 'status' => 'waiting',
                 'message' => self::WAITING_MESSAGE,
@@ -107,12 +106,26 @@ class SaturdayProgramService
             && is_array($schedule['items'] ?? null)
             && $schedule['items'] !== [];
 
+        $pdfPath = is_string($program->pdf_path) ? trim($program->pdf_path) : '';
+        $pdfUrl = null;
+        if ($pdfPath !== '') {
+            // Relativo ao host atual (evita 404 quando APP_URL ≠ origem do app/Capacitor).
+            $pdfUrl = route('media.public', ['path' => $pdfPath], absolute: false);
+        }
+
+        if (! $hasSchedule && $pdfUrl === null) {
+            return [
+                'status' => 'waiting',
+                'message' => self::WAITING_MESSAGE,
+            ];
+        }
+
         return [
             'status' => 'available',
             'id' => $program->id,
             'title' => $title,
             'saturday_date' => $program->saturday_date?->toDateString(),
-            'pdf_url' => StorageUrl::publicMediaUrl($program->pdf_path),
+            'pdf_url' => $pdfUrl,
             'parse_status' => $program->parse_status ?? SaturdayProgram::PARSE_PENDING,
             'has_schedule' => $hasSchedule,
             'schedule' => $hasSchedule ? $schedule : null,

@@ -138,8 +138,8 @@ class SaturdayProgramPdfParser
 
                 $title = trim($title);
                 $duration = $timed['duration'];
-                // Linha só com total (ex.: 13:39:30 249:30) sem título útil.
-                if ($title === '' && preg_match('/^\d+:\d+$/', $duration) && (int) explode(':', $duration)[0] >= 60) {
+                // Linha de total do rundown (ex.: 13:39:30 249:30) — sem título útil.
+                if ($this->isRundownTotalLine($title, $duration)) {
                     continue;
                 }
 
@@ -177,7 +177,7 @@ class SaturdayProgramPdfParser
             'heading' => $heading,
             'date_label' => $dateLabel,
             'crew' => $this->dedupeCrew($crew),
-            'items' => $items,
+            'items' => $this->normalizeTimelineItems($items),
         ];
     }
 
@@ -343,10 +343,132 @@ class SaturdayProgramPdfParser
             return false;
         }
 
+        // Notas longas que só mencionam conviva/culto não são divisores.
+        if (mb_strlen($line) > 48) {
+            return false;
+        }
+
+        // Coluna lateral do Planning Center / divisores curtos.
         return (bool) preg_match(
-            '/CULTO|CONVIVA|TRANSIÇÃO|INTERVALO|PR[ÉE][-\s]?ABERTURA|BOAS VINDAS|FIDELIDADE|MENSAGEM PASTORAL|ORIENTAÇÕES DE SAÍDA|^ANÚNCIO$|^LOUVOR -/iu',
+            '/^(PR[ÉE][-\s]?ABERTURA|BOAS VINDAS|ORAÇÃO|FIDELIDADE|ANÚNCIO|LOUVOR|MENSAGEM PASTORAL|TRANSIÇÃO|ORIENTAÇÕES DE SAÍDA|CONVIVA|INTERVALO)(\b.*)?$/iu',
             $line,
-        );
+        ) || (bool) preg_match('/\b\d+[ºª]\s*CULTO\b/iu', $line);
+    }
+
+    private function isRundownTotalLine(string $title, string $duration): bool
+    {
+        if (! preg_match('/^\d{1,3}:\d{2}$/', $duration)) {
+            return false;
+        }
+        $minutes = (int) explode(':', $duration)[0];
+        if ($minutes < 60) {
+            return false;
+        }
+
+        return $title === '' || strcasecmp($title, 'Momento') === 0;
+    }
+
+    /**
+     * A coluna de fases do PDF chega em bloco após os horários da página.
+     * Mantém só divisores úteis (Conviva / intervalo / troca de culto).
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function normalizeTimelineItems(array $items): array
+    {
+        $out = [];
+        $n = count($items);
+        $i = 0;
+        $emittedCulto = [];
+
+        while ($i < $n) {
+            $row = $items[$i];
+            if (($row['kind'] ?? '') !== 'section') {
+                if (($row['kind'] ?? '') === 'item'
+                    && $this->isRundownTotalLine((string) ($row['title'] ?? ''), (string) ($row['duration'] ?? ''))
+                ) {
+                    $i++;
+                    continue;
+                }
+                $out[] = $row;
+                $i++;
+                continue;
+            }
+
+            $run = [];
+            while ($i < $n && ($items[$i]['kind'] ?? '') === 'section') {
+                $run[] = (string) ($items[$i]['title'] ?? '');
+                $i++;
+            }
+
+            foreach ($this->collapseSectionRun($run, $emittedCulto) as $title) {
+                $out[] = ['kind' => 'section', 'title' => $title];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<string>  $run
+     * @param  array<string, true>  $emittedCulto
+     * @return list<string>
+     */
+    private function collapseSectionRun(array $run, array &$emittedCulto): array
+    {
+        $kept = [];
+        $seen = [];
+
+        foreach ($run as $title) {
+            $title = trim($title);
+            if ($title === '') {
+                continue;
+            }
+
+            if (preg_match('/^CONVIVA\b/iu', $title)) {
+                $key = 'CONVIVA';
+                if (! isset($seen[$key])) {
+                    $seen[$key] = true;
+                    $kept[] = 'CONVIVA';
+                }
+                continue;
+            }
+
+            if (preg_match('/INTERVALO/iu', $title)) {
+                $key = 'INTERVALO';
+                if (! isset($seen[$key])) {
+                    $seen[$key] = true;
+                    $kept[] = $title;
+                }
+                continue;
+            }
+
+            if (preg_match('/(\d+)[ºª]\s*CULTO/iu', $title, $m)) {
+                $cultoNum = (int) $m[1];
+                $cultoKey = $cultoNum.'º CULTO';
+                if (isset($emittedCulto[$cultoKey]) || isset($seen[$cultoKey])) {
+                    continue;
+                }
+                // A coluna lateral do 1º culto cai no meio do rundown — não vira divisor.
+                // Só marca troca real (2º culto / pré-abertura do próximo bloco).
+                if ($cultoNum >= 2 && $this->isCultoBoundaryLabel($title)) {
+                    $seen[$cultoKey] = true;
+                    $emittedCulto[$cultoKey] = true;
+                    $kept[] = $cultoKey;
+                }
+                continue;
+            }
+
+            // Fases soltas da coluna lateral (ANÚNCIO, LOUVOR - …) — ignorar.
+        }
+
+        return $kept;
+    }
+
+    private function isCultoBoundaryLabel(string $title): bool
+    {
+        return (bool) preg_match('/PR[ÉE][-\s]?ABERTURA|TRANSIÇÃO|INTERVALO|ORGANIZA/iu', $title);
     }
 
     /**

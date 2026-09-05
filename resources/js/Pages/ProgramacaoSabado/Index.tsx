@@ -1,6 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { DocumentTextIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { DevicePhoneMobileIcon, DocumentTextIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -11,9 +11,10 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
+import SaturdayProgramPhonePreview from '@/Components/ProgramacaoSabado/SaturdayProgramPhonePreview';
+import type { SaturdaySchedule } from '@/Components/Mobile/SaturdayProgramScheduleView';
 import { FormEventHandler, useEffect, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
-import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 
 interface SaturdayProgramRow {
     id: number;
@@ -29,6 +30,7 @@ interface SaturdayProgramRow {
     parse_error?: string | null;
     schedule_item_count?: number;
     has_schedule?: boolean;
+    schedule?: SaturdaySchedule | null;
 }
 
 interface Props {
@@ -85,6 +87,7 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [previewRow, setPreviewRow] = useState<SaturdayProgramRow | null>(null);
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm<{
         saturday_date: string;
@@ -173,19 +176,17 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+        const closeAfterSave = {
+            preserveScroll: true,
+            forceFormData: true as const,
+            onSuccess: () => {
+                closeModal();
+            },
+        };
         if (isEditing && editingId) {
-            put(route('programacao-sabado.update', editingId), {
-                ...inertiaListModalSave,
-                forceFormData: true,
-            });
+            put(route('programacao-sabado.update', editingId), closeAfterSave);
         } else {
-            post(route('programacao-sabado.store'), {
-                ...inertiaListModalSave,
-                forceFormData: true,
-                onSuccess: () => {
-                    // Modal permanece aberto via redirect ?modal=edit&id=
-                },
-            });
+            post(route('programacao-sabado.store'), closeAfterSave);
         }
     };
 
@@ -261,21 +262,30 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
                                             </div>
                                         </div>
                                     </div>
-                                    {canManage && (
-                                        <ListCardActionRow className="mt-3">
+                                    <div className="mt-3">
+                                        <ListCardActionRow>
                                             <ListCardIconActionButton
-                                                label="Editar"
-                                                icon={<PencilIcon className="h-4 w-4" aria-hidden />}
-                                                onClick={() => openEditModal(row)}
+                                                label="Pré-visualizar no celular"
+                                                icon={<DevicePhoneMobileIcon className="h-4 w-4" aria-hidden />}
+                                                onClick={() => setPreviewRow(row)}
                                             />
-                                            <ListCardIconActionButton
-                                                label="Excluir"
-                                                icon={<TrashIcon className="h-4 w-4" aria-hidden />}
-                                                tone="danger"
-                                                onClick={() => void handleDelete(row)}
-                                            />
+                                            {canManage ? (
+                                                <>
+                                                    <ListCardIconActionButton
+                                                        label="Editar"
+                                                        icon={<PencilIcon className="h-4 w-4" aria-hidden />}
+                                                        onClick={() => openEditModal(row)}
+                                                    />
+                                                    <ListCardIconActionButton
+                                                        label="Excluir"
+                                                        icon={<TrashIcon className="h-4 w-4" aria-hidden />}
+                                                        tone="danger"
+                                                        onClick={() => void handleDelete(row)}
+                                                    />
+                                                </>
+                                            ) : null}
                                         </ListCardActionRow>
-                                    )}
+                                    </div>
                                 </article>
                             ))}
                         </div>
@@ -296,11 +306,9 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
                                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
                                             Captura
                                         </th>
-                                        {canManage && (
-                                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                                                Ações
-                                            </th>
-                                        )}
+                                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                                            Ações
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -318,23 +326,32 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
                                             <td className="px-4 py-3">
                                                 <ParseBadge row={row} />
                                             </td>
-                                            {canManage && (
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="inline-flex items-center gap-1">
-                                                        <ListCardIconActionButton
-                                                            label="Editar"
-                                                            icon={<PencilIcon className="h-4 w-4" aria-hidden />}
-                                                            onClick={() => openEditModal(row)}
-                                                        />
-                                                        <ListCardIconActionButton
-                                                            label="Excluir"
-                                                            icon={<TrashIcon className="h-4 w-4" aria-hidden />}
-                                                            tone="danger"
-                                                            onClick={() => void handleDelete(row)}
-                                                        />
-                                                    </div>
-                                                </td>
-                                            )}
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="inline-flex items-center gap-1">
+                                                    <ListCardIconActionButton
+                                                        label="Pré-visualizar no celular"
+                                                        icon={
+                                                            <DevicePhoneMobileIcon className="h-4 w-4" aria-hidden />
+                                                        }
+                                                        onClick={() => setPreviewRow(row)}
+                                                    />
+                                                    {canManage ? (
+                                                        <>
+                                                            <ListCardIconActionButton
+                                                                label="Editar"
+                                                                icon={<PencilIcon className="h-4 w-4" aria-hidden />}
+                                                                onClick={() => openEditModal(row)}
+                                                            />
+                                                            <ListCardIconActionButton
+                                                                label="Excluir"
+                                                                icon={<TrashIcon className="h-4 w-4" aria-hidden />}
+                                                                tone="danger"
+                                                                onClick={() => void handleDelete(row)}
+                                                            />
+                                                        </>
+                                                    ) : null}
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -343,6 +360,12 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
                     </>
                 )}
             </div>
+
+            <SaturdayProgramPhonePreview
+                show={previewRow != null}
+                row={previewRow}
+                onClose={() => setPreviewRow(null)}
+            />
 
             <Modal show={isModalOpen} onClose={closeModal} maxWidth="md">
                 <form onSubmit={submit} className="space-y-4 p-5 sm:p-6">

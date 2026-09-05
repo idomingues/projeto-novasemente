@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Support\ListModalRedirect;
 use App\Models\Church;
 use App\Models\SaturdayProgram;
 use App\Services\SaturdayProgramPdfParser;
@@ -88,7 +87,7 @@ class SaturdayProgramController extends Controller
             ? 'Programação do sábado publicada e dados capturados com sucesso!'
             : 'Programação publicada, mas a captura dos dados falhou. O PDF continua disponível.';
 
-        return ListModalRedirect::toIndexEdit('programacao-sabado.index', $item, $message);
+        return redirect()->route('programacao-sabado.index')->with('success', $message);
     }
 
     public function update(Request $request, SaturdayProgram $saturdayProgram)
@@ -139,7 +138,7 @@ class SaturdayProgramController extends Controller
             $message = 'Programação atualizada e dados capturados com sucesso!';
         }
 
-        return ListModalRedirect::toIndexEdit('programacao-sabado.index', $saturdayProgram, $message);
+        return redirect()->route('programacao-sabado.index')->with('success', $message);
     }
 
     public function destroy(SaturdayProgram $saturdayProgram)
@@ -250,6 +249,7 @@ class SaturdayProgramController extends Controller
             'parse_error' => $item->parse_error,
             'schedule_item_count' => $itemCount,
             'has_schedule' => $itemCount > 0 && ($item->parse_status === SaturdayProgram::PARSE_OK),
+            'schedule' => $itemCount > 0 && ($item->parse_status === SaturdayProgram::PARSE_OK) ? $schedule : null,
         ];
     }
 
