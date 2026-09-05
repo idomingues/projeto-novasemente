@@ -5,8 +5,10 @@ import {
     ArrowPathIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
+    MagnifyingGlassMinusIcon,
+    MagnifyingGlassPlusIcon,
 } from '@heroicons/react/24/outline';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 
 type Props = {
     pdfUrl: string;
@@ -16,6 +18,8 @@ type Props = {
     loadingTitle?: string;
     loadingSubtitle?: string;
 };
+
+const ZOOM_STEPS = [1, 1.25, 1.5, 2, 2.5, 3] as const;
 
 const toolbarBtnClass =
     'inline-flex h-9 min-w-9 cursor-pointer touch-manipulation items-center justify-center rounded-xl border border-zinc-200 bg-white px-2.5 text-sm font-semibold text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
@@ -33,7 +37,9 @@ export default function PdfOriginalViewer({
     const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
     const [pageCount, setPageCount] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
+    const [zoomIndex, setZoomIndex] = useState(0);
     const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const zoom = ZOOM_STEPS[zoomIndex] ?? 1;
 
     const loadPdf = useCallback(async () => {
         setStatus('loading');
@@ -41,6 +47,7 @@ export default function PdfOriginalViewer({
         setPdf(null);
         setPageCount(0);
         setCurrentPage(1);
+        setZoomIndex(0);
 
         try {
             const { bytes } = await fetchPdfBytes(pdfUrl);
@@ -69,6 +76,11 @@ export default function PdfOriginalViewer({
         setCurrentPage(pageNumber);
     }, []);
 
+    const handleDownload = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
+        // Evita o Inertia interceptar a rota e “quebrar” a tela.
+        event.stopPropagation();
+    }, []);
+
     return (
         <div className={`mx-auto w-full min-w-0 max-w-3xl ${className}`}>
             {status === 'loading' ? (
@@ -91,38 +103,67 @@ export default function PdfOriginalViewer({
 
             {status === 'ok' && pdf ? (
                 <>
-                    <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                             Página {currentPage} de {pageCount}
                         </p>
-                        <div className="flex items-center gap-2" role="group" aria-label="Navegar páginas">
-                            <button
-                                type="button"
-                                className={toolbarBtnClass}
-                                disabled={currentPage <= 1}
-                                onClick={() => scrollToPage(Math.max(1, currentPage - 1))}
-                                aria-label="Página anterior"
-                            >
-                                <ChevronLeftIcon className="h-5 w-5" aria-hidden />
-                            </button>
-                            <button
-                                type="button"
-                                className={toolbarBtnClass}
-                                disabled={currentPage >= pageCount}
-                                onClick={() => scrollToPage(Math.min(pageCount, currentPage + 1))}
-                                aria-label="Próxima página"
-                            >
-                                <ChevronRightIcon className="h-5 w-5" aria-hidden />
-                            </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1" role="group" aria-label="Zoom">
+                                <button
+                                    type="button"
+                                    className={toolbarBtnClass}
+                                    disabled={zoomIndex <= 0}
+                                    onClick={() => setZoomIndex((i) => Math.max(0, i - 1))}
+                                    aria-label="Diminuir zoom"
+                                >
+                                    <MagnifyingGlassMinusIcon className="h-5 w-5" aria-hidden />
+                                </button>
+                                <span className="min-w-[3.25rem] text-center text-xs font-semibold tabular-nums text-zinc-600 dark:text-zinc-300">
+                                    {Math.round(zoom * 100)}%
+                                </span>
+                                <button
+                                    type="button"
+                                    className={toolbarBtnClass}
+                                    disabled={zoomIndex >= ZOOM_STEPS.length - 1}
+                                    onClick={() => setZoomIndex((i) => Math.min(ZOOM_STEPS.length - 1, i + 1))}
+                                    aria-label="Aumentar zoom"
+                                >
+                                    <MagnifyingGlassPlusIcon className="h-5 w-5" aria-hidden />
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-2" role="group" aria-label="Navegar páginas">
+                                <button
+                                    type="button"
+                                    className={toolbarBtnClass}
+                                    disabled={currentPage <= 1}
+                                    onClick={() => scrollToPage(Math.max(1, currentPage - 1))}
+                                    aria-label="Página anterior"
+                                >
+                                    <ChevronLeftIcon className="h-5 w-5" aria-hidden />
+                                </button>
+                                <button
+                                    type="button"
+                                    className={toolbarBtnClass}
+                                    disabled={currentPage >= pageCount}
+                                    onClick={() => scrollToPage(Math.min(pageCount, currentPage + 1))}
+                                    aria-label="Próxima página"
+                                >
+                                    <ChevronRightIcon className="h-5 w-5" aria-hidden />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="space-y-3" aria-label={`PDF original de ${title}`}>
+                    <div
+                        className="space-y-3 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+                        aria-label={`PDF original de ${title}`}
+                    >
                         {Array.from({ length: pageCount }, (_, index) => (
                             <PdfPageCanvas
-                                key={index + 1}
+                                key={`${index + 1}-${zoom}`}
                                 pdf={pdf}
                                 pageNumber={index + 1}
+                                zoom={zoom}
                                 onVisible={() => setCurrentPage(index + 1)}
                                 containerRef={(element) => {
                                     pageRefs.current[index] = element;
@@ -134,6 +175,10 @@ export default function PdfOriginalViewer({
                     {downloadUrl ? (
                         <a
                             href={downloadUrl}
+                            download
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={handleDownload}
                             className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
                         >
                             <ArrowDownTrayIcon className="h-5 w-5 shrink-0" aria-hidden />
@@ -149,11 +194,13 @@ export default function PdfOriginalViewer({
 function PdfPageCanvas({
     pdf,
     pageNumber,
+    zoom,
     onVisible,
     containerRef,
 }: {
     pdf: PDFDocumentProxy;
     pageNumber: number;
+    zoom: number;
     onVisible: () => void;
     containerRef: (element: HTMLDivElement | null) => void;
 }) {
@@ -173,6 +220,8 @@ function PdfPageCanvas({
 
         let cancelled = false;
         let observer: IntersectionObserver | null = null;
+        renderedRef.current = false;
+        setReady(false);
 
         const renderPage = async () => {
             const canvas = canvasRef.current;
@@ -188,9 +237,14 @@ function PdfPageCanvas({
                 }
                 pageRef.current = page;
 
-                const width = host.clientWidth || 320;
+                // Largura base = miolo visível (pai com overflow), não o host esticado pelo zoom.
+                const scroller = host.parentElement;
+                const baseWidth = Math.max(
+                    280,
+                    (scroller?.clientWidth || host.clientWidth || 320) - 2,
+                );
                 const unscaled = page.getViewport({ scale: 1 });
-                const cssScale = width / unscaled.width;
+                const cssScale = (baseWidth / unscaled.width) * zoom;
                 const outputScale = Math.min(2, window.devicePixelRatio || 1);
                 const viewport = page.getViewport({ scale: cssScale * outputScale });
 
@@ -246,13 +300,16 @@ function PdfPageCanvas({
         );
         observer.observe(host);
 
+        // Render imediato se já estiver visível (ex.: após mudar zoom).
+        void renderPage();
+
         return () => {
             cancelled = true;
             observer?.disconnect();
             pageRef.current?.cleanup();
             pageRef.current = null;
         };
-    }, [pdf, pageNumber]);
+    }, [pdf, pageNumber, zoom]);
 
     return (
         <div
@@ -260,11 +317,11 @@ function PdfPageCanvas({
                 hostRef.current = element;
                 containerRef(element);
             }}
-            className="overflow-hidden rounded-2xl bg-white ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-700"
+            className="inline-block min-w-full overflow-hidden rounded-2xl bg-white ring-1 ring-zinc-200/90 dark:bg-zinc-900 dark:ring-zinc-700"
         >
-            <canvas ref={canvasRef} className="block h-auto w-full" aria-label={`Página ${pageNumber}`} />
+            <canvas ref={canvasRef} className="block h-auto max-w-none" aria-label={`Página ${pageNumber}`} />
             {!ready ? (
-                <div className="flex aspect-[3/4] items-center justify-center text-sm text-zinc-400 dark:text-zinc-500">
+                <div className="flex aspect-[3/4] w-full items-center justify-center text-sm text-zinc-400 dark:text-zinc-500">
                     Página {pageNumber}
                 </div>
             ) : null}

@@ -265,6 +265,8 @@ Route::post('/mobile/ano-biblico/desafios/recalcular-atual', [MobileAnoBiblicoCo
 Route::get('/mobile/sobre-o-app', [MobileController::class, 'sobreOApp'])->name('mobile.sobre-o-app');
 Route::get('/mobile/conheca-a-nova-semente', [MobileController::class, 'conhecaNovaSemente'])->name('mobile.conheca');
 Route::get('/mobile/programacao-sabado', [MobileController::class, 'programacaoSabado'])->name('mobile.programacao-sabado');
+Route::get('/mobile/programacao-sabado/pdf', [MobileController::class, 'programacaoSabadoPdfDownload'])
+    ->name('mobile.programacao-sabado.pdf-download');
 Route::get('/mobile/crencas', [MobileController::class, 'beliefs'])->name('mobile.beliefs');
 Route::get('/mobile/quem-somos', [MobileController::class, 'quemSomos'])->name('mobile.quem-somos');
 Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])->name('mobile.classe-comecos');

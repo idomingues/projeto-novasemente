@@ -14,6 +14,7 @@ type ProgramPayload =
           title: string;
           saturday_date: string | null;
           pdf_url?: string | null;
+          pdf_download_url?: string | null;
           parse_status?: string;
           has_schedule?: boolean;
           schedule?: SaturdaySchedule | null;
@@ -142,7 +143,11 @@ export default function ProgramacaoSabado({ program }: Props) {
                         <PdfOriginalViewer
                             title={program.title}
                             pdfUrl={pdf}
-                            downloadUrl={pdf}
+                            downloadUrl={
+                                program.pdf_download_url?.trim()
+                                    ? imageSrc(program.pdf_download_url.trim(), appUrl)
+                                    : pdf
+                            }
                             loadingTitle="Abrindo a programação…"
                             loadingSubtitle="Carregando as páginas do PDF no app."
                         />

@@ -35,6 +35,7 @@ jobs:
             php artisan migrate --force
             php artisan communities:install-defaults
             php artisan app:seed-talent-demo-listings
+            php artisan app:reparse-saturday-programs --only-missing
             # Registar versão web automaticamente (para aparecer no card "Versão").
             RELEASE_SHA="$(git rev-parse --short HEAD)"
             RELEASE_VER="v2.${{ github.run_number }}"

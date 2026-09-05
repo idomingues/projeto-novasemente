@@ -1,2 +1,3 @@
-• Pré-visualização no celular nas telas de Publicação do painel: veja como notícias, culto, eventos e demais conteúdos aparecem no app antes de publicar.
-• Visualizador em formato de celular reutilizável em todo o sistema de gestão.
+• Programação do sábado: a lista formatada volta a aparecer (recaptura automática dos dados do PDF).
+• Zoom no PDF da programação (+ / −) com rolagem lateral quando ampliado.
+• Download do PDF corrigido — não quebra mais a tela do app.

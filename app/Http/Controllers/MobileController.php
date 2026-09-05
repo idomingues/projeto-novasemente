@@ -1357,6 +1357,26 @@ class MobileController extends Controller
         ]);
     }
 
+    public function programacaoSabadoPdfDownload(SaturdayProgramService $saturdayPrograms)
+    {
+        $churchId = $this->currentChurch()?->id;
+        $program = $saturdayPrograms->currentForChurch($churchId);
+        if ($program === null) {
+            abort(404);
+        }
+
+        $path = is_string($program->pdf_path) ? trim($program->pdf_path) : '';
+        if ($path === '' || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+
+        $filename = 'programacao-sabado-'.($program->saturday_date?->toDateString() ?? $program->id).'.pdf';
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->download($path, $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+
     public function quemSomos(): Response
     {
         return Inertia::render('Mobile/QuemSomos');
