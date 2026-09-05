@@ -1,7 +1,7 @@
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/outline';
-import PdfReflowReader from '@/Components/Mobile/PdfReflowReader';
+import { ClockIcon } from '@heroicons/react/24/outline';
+import PdfOriginalViewer from '@/Components/Mobile/PdfOriginalViewer';
 
 type ProgramPayload =
     | {
@@ -51,23 +51,30 @@ export default function ProgramacaoSabado({ program }: Props) {
         return (
             <MobileLayout>
                 <Head title={program.title} />
-                <div className="-mx-4 min-w-0 overflow-x-hidden sm:mx-0">
-                    <div className="mb-3 px-4 sm:px-0">
+                <div className="mx-auto w-full max-w-lg space-y-4 pb-4 sm:max-w-xl md:max-w-2xl">
+                    <div>
                         <Link
                             href={backHref}
-                            className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
+                            className="cursor-pointer text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
                         >
-                            <ArrowLeftIcon className="h-4 w-4" aria-hidden />
-                            Conheça a Nova Semente
+                            ← Conheça a Nova Semente
                         </Link>
+                        <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                            {program.title}
+                        </h1>
+                        {subtitle ? (
+                            <p className="mt-1 text-sm font-medium capitalize text-zinc-500 dark:text-zinc-400">
+                                {subtitle}
+                            </p>
+                        ) : null}
                     </div>
-                    <PdfReflowReader
+
+                    <PdfOriginalViewer
                         title={program.title}
-                        subtitle={subtitle || null}
                         pdfUrl={pdf}
-                        originalPdfUrl={pdf}
-                        contentKey={`saturday-program:${program.id}`}
-                        className="sm:px-0"
+                        downloadUrl={pdf}
+                        loadingTitle="Abrindo a programação…"
+                        loadingSubtitle="Carregando as páginas do PDF no app."
                     />
                 </div>
             </MobileLayout>

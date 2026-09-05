@@ -13,12 +13,21 @@ type Props = {
     title: string;
     downloadUrl?: string | null;
     className?: string;
+    loadingTitle?: string;
+    loadingSubtitle?: string;
 };
 
 const toolbarBtnClass =
     'inline-flex h-9 min-w-9 cursor-pointer touch-manipulation items-center justify-center rounded-xl border border-zinc-200 bg-white px-2.5 text-sm font-semibold text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
 
-export default function PdfOriginalViewer({ pdfUrl, title, downloadUrl = null, className = '' }: Props) {
+export default function PdfOriginalViewer({
+    pdfUrl,
+    title,
+    downloadUrl = null,
+    className = '',
+    loadingTitle = 'Abrindo o PDF…',
+    loadingSubtitle = 'Carregando as páginas.',
+}: Props) {
     const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading');
     const [errorMessage, setErrorMessage] = useState('');
     const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
@@ -42,7 +51,7 @@ export default function PdfOriginalViewer({ pdfUrl, title, downloadUrl = null, c
         } catch (error) {
             setStatus('error');
             setErrorMessage(
-                error instanceof Error ? error.message : 'Não foi possível abrir o PDF original.',
+                error instanceof Error ? error.message : 'Não foi possível abrir o PDF.',
             );
         }
     }, [pdfUrl]);
@@ -64,8 +73,8 @@ export default function PdfOriginalViewer({ pdfUrl, title, downloadUrl = null, c
         <div className={`mx-auto w-full min-w-0 max-w-3xl ${className}`}>
             {status === 'loading' ? (
                 <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-12 text-center shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-                    <p className="text-base font-medium text-zinc-800 dark:text-zinc-100">Abrindo a revista original…</p>
-                    <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Carregando as páginas do PDF.</p>
+                    <p className="text-base font-medium text-zinc-800 dark:text-zinc-100">{loadingTitle}</p>
+                    <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{loadingSubtitle}</p>
                 </div>
             ) : null}
 

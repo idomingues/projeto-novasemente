@@ -114,7 +114,14 @@ export default function MagazineReader({
             <div className={className}>
                 <div className="mb-3 px-4 sm:px-0">{backControl}</div>
                 <ModeSwitch current="original" onChange={enterMode} onBackToChoose={returnToChoose} />
-                <PdfOriginalViewer pdfUrl={pdfUrl} title={title} downloadUrl={downloadUrl} className="mt-3" />
+                <PdfOriginalViewer
+                    pdfUrl={pdfUrl}
+                    title={title}
+                    downloadUrl={downloadUrl}
+                    className="mt-3"
+                    loadingTitle="Abrindo a revista original…"
+                    loadingSubtitle="Carregando as páginas do PDF."
+                />
             </div>
         );
     }
