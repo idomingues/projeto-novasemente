@@ -33,6 +33,7 @@ use App\Services\LibraryExternalPageExtractService;
 use App\Services\MeditationHomeBannerService;
 use App\Services\RevistaAdventistaEditionPdfService;
 use App\Services\SabbathSunsetService;
+use App\Services\SaturdayProgramService;
 use App\Services\ScheduleAssignmentPresenter;
 use App\Services\SolicitationChatNotifier;
 use App\Services\VolunteerScheduleOverview;
@@ -1345,6 +1346,15 @@ class MobileController extends Controller
     public function conhecaNovaSemente(): Response
     {
         return Inertia::render('Mobile/ConhecaNovaSemente');
+    }
+
+    public function programacaoSabado(SaturdayProgramService $saturdayPrograms): Response
+    {
+        $churchId = $this->currentChurch()?->id;
+
+        return Inertia::render('Mobile/ProgramacaoSabado', [
+            'program' => $saturdayPrograms->mobilePayload($churchId),
+        ]);
     }
 
     public function quemSomos(): Response

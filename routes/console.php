@@ -120,3 +120,8 @@ Schedule::command('app:publish-meditation-daily-feed')
     ->dailyAt('05:00')
     ->timezone((string) config('app.timezone', 'America/Sao_Paulo'))
     ->withoutOverlapping();
+
+Schedule::command('app:expire-saturday-programs')
+    ->hourly()
+    ->timezone((string) config('app.timezone', 'America/Sao_Paulo'))
+    ->withoutOverlapping();

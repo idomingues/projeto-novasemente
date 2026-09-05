@@ -67,6 +67,7 @@ export const adminSidebarRoutePermissions: Record<string, string[]> = {
     'room-bookings.index': ['rooms.view', 'rooms.manage', 'rooms.schedule'],
     'polls.index': ['polls.view', 'polls.manage'],
     'programacao.index': ['programacao.view', 'programacao.manage'],
+    'programacao-sabado.index': ['programacao-sabado.view', 'programacao-sabado.manage'],
     'inventory.index': ['inventory.view', 'inventory.manage'],
     'roles.index': ['roles.manage'],
     'news.index': ['news.view', 'news.manage'],

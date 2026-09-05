@@ -3,6 +3,7 @@ import { Head, Link } from '@inertiajs/react';
 import {
     ChevronRightIcon,
     ClockIcon,
+    DocumentTextIcon,
     HeartIcon,
     MapPinIcon,
     UserCircleIcon,
@@ -49,6 +50,13 @@ const ITEMS: HubItem[] = [
         route: 'mobile.services',
         featureKey: 'services',
         icon: ClockIcon,
+    },
+    {
+        label: 'Programação do Sábado',
+        subtitle: 'PDF da programação do culto de sábado.',
+        route: 'mobile.programacao-sabado',
+        featureKey: 'programacao_sabado',
+        icon: DocumentTextIcon,
     },
     {
         label: 'Em que cremos',

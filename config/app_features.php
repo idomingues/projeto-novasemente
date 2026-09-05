@@ -181,6 +181,11 @@ return [
             'group' => 'menu_mais',
             'routes' => ['mobile.beliefs'],
         ],
+        'programacao_sabado' => [
+            'label' => 'Programação do Sábado',
+            'group' => 'menu_mais',
+            'routes' => ['mobile.programacao-sabado'],
+        ],
         'volunteer_signup' => [
             'label' => 'Voluntário',
             'group' => 'menu_mais',

@@ -113,6 +113,7 @@ final class PageViewRouteLabels
         'mobile.pastors' => 'Pastores',
         'mobile.conheca' => 'Conheça a Nova Semente',
         'mobile.quem-somos' => 'Quem somos',
+        'mobile.programacao-sabado' => 'Programação do Sábado',
         'mobile.beliefs' => 'Em que cremos',
         'mobile.acervo' => 'Séries',
         'mobile.acervo.show' => 'Séries — playlist',

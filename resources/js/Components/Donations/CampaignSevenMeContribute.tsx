@@ -39,11 +39,19 @@ const toneClasses: Record<
 
 type Props = {
     href: string;
+    title?: string;
+    subtitle?: string;
     tone?: CampaignSevenMeTone;
     className?: string;
 };
 
-export default function CampaignSevenMeContribute({ href, tone = 'neutral', className = '' }: Props) {
+export default function CampaignSevenMeContribute({
+    href,
+    title = 'Contribuir via 7me',
+    subtitle = 'Abre o link oficial de doação',
+    tone = 'neutral',
+    className = '',
+}: Props) {
     const styles = toneClasses[tone];
 
     return (
@@ -63,12 +71,8 @@ export default function CampaignSevenMeContribute({ href, tone = 'neutral', clas
                 />
             </span>
             <span className="min-w-0 flex-1">
-                <span className={`block text-base font-semibold sm:text-lg ${styles.title}`}>
-                    Contribuir via 7me
-                </span>
-                <span className={`mt-0.5 block text-xs ${styles.subtitle}`}>
-                    Abre o link oficial de doação
-                </span>
+                <span className={`block text-base font-semibold sm:text-lg ${styles.title}`}>{title}</span>
+                <span className={`mt-0.5 block text-xs ${styles.subtitle}`}>{subtitle}</span>
             </span>
             <ArrowTopRightOnSquareIcon
                 className={`h-5 w-5 shrink-0 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${styles.chevron}`}

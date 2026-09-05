@@ -101,6 +101,8 @@ const PERMISSION_MENU: Record<string, { section: MenuSection; screen: string; ac
     'events.view': { section: 'publicacao', screen: 'Eventos', action: 'Visualizar' },
     'events.manage': { section: 'publicacao', screen: 'Eventos', action: 'Gerenciar' },
     'culto.manage': { section: 'publicacao', screen: 'Culto', action: 'Gerenciar' },
+    'programacao-sabado.view': { section: 'publicacao', screen: 'Programação do sábado', action: 'Visualizar' },
+    'programacao-sabado.manage': { section: 'publicacao', screen: 'Programação do sábado', action: 'Gerenciar' },
     'series.manage': { section: 'publicacao', screen: 'Séries', action: 'Gerenciar' },
     'music.manage': { section: 'publicacao', screen: 'Música', action: 'Gerenciar' },
     'photos.manage': { section: 'publicacao', screen: 'Fotos', action: 'Gerenciar álbuns' },

@@ -264,6 +264,7 @@ Route::post('/mobile/ano-biblico/desafios/recalcular-atual', [MobileAnoBiblicoCo
     ->name('mobile.ano-biblico.challenges.recalculate');
 Route::get('/mobile/sobre-o-app', [MobileController::class, 'sobreOApp'])->name('mobile.sobre-o-app');
 Route::get('/mobile/conheca-a-nova-semente', [MobileController::class, 'conhecaNovaSemente'])->name('mobile.conheca');
+Route::get('/mobile/programacao-sabado', [MobileController::class, 'programacaoSabado'])->name('mobile.programacao-sabado');
 Route::get('/mobile/crencas', [MobileController::class, 'beliefs'])->name('mobile.beliefs');
 Route::get('/mobile/quem-somos', [MobileController::class, 'quemSomos'])->name('mobile.quem-somos');
 Route::get('/mobile/classe-comecos', [MobileController::class, 'classeComecos'])->name('mobile.classe-comecos');
@@ -672,6 +673,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/programacao', [\App\Http\Controllers\WeeklyProgramController::class, 'store'])->name('programacao.store')->middleware('permission:programacao.manage');
     Route::put('/programacao/{weeklyProgram}', [\App\Http\Controllers\WeeklyProgramController::class, 'update'])->name('programacao.update')->middleware('permission:programacao.manage');
     Route::delete('/programacao/{weeklyProgram}', [\App\Http\Controllers\WeeklyProgramController::class, 'destroy'])->name('programacao.destroy')->middleware('permission:programacao.manage');
+
+    Route::get('/programacao-sabado', [\App\Http\Controllers\SaturdayProgramController::class, 'index'])->name('programacao-sabado.index')->middleware('permission:programacao-sabado.view|programacao-sabado.manage');
+    Route::post('/programacao-sabado', [\App\Http\Controllers\SaturdayProgramController::class, 'store'])->name('programacao-sabado.store')->middleware('permission:programacao-sabado.manage');
+    Route::put('/programacao-sabado/{saturdayProgram}', [\App\Http\Controllers\SaturdayProgramController::class, 'update'])->name('programacao-sabado.update')->middleware('permission:programacao-sabado.manage');
+    Route::delete('/programacao-sabado/{saturdayProgram}', [\App\Http\Controllers\SaturdayProgramController::class, 'destroy'])->name('programacao-sabado.destroy')->middleware('permission:programacao-sabado.manage');
     // Agendamento de salas (calendário + reservas)
     Route::get('/salas/agenda', [RoomBookingController::class, 'index'])->name('room-bookings.index')->middleware('permission:rooms.view|rooms.manage|rooms.schedule');
     Route::post('/salas/agenda', [RoomBookingController::class, 'store'])->name('room-bookings.store')->middleware('permission:rooms.schedule');

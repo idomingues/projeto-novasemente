@@ -1,10 +1,10 @@
+import CampaignSevenMeContribute from '@/Components/Donations/CampaignSevenMeContribute';
 import DizimoPactoStory from '@/Components/Offerings/DizimoPactoStory';
 import MobileLayout from '@/Layouts/MobileLayout';
 import { Head } from '@inertiajs/react';
 import {
     CheckIcon,
     DocumentDuplicateIcon,
-    ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 import { useState } from 'react';
 
@@ -24,37 +24,6 @@ interface Props {
     donation: DonationInfo;
     localOffer: LocalOfferInfo;
     offeringUrl: string;
-}
-
-const SEVENME_LOGO_SRC = '/images/7me-logo.png';
-
-function SevenMeCard({ href, title }: { href: string; title: string }) {
-    return (
-        <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group flex cursor-pointer items-center gap-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-zinc-200/90 transition hover:bg-zinc-50 hover:ring-zinc-300 active:scale-[0.99] dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800/80 dark:hover:ring-zinc-700"
-        >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-50 shadow-sm ring-1 ring-zinc-200/80 dark:bg-zinc-950 dark:ring-zinc-700">
-                <img
-                    src={SEVENME_LOGO_SRC}
-                    alt=""
-                    className="h-6 w-auto max-w-[32px] object-contain"
-                    width={32}
-                    height={24}
-                />
-            </span>
-            <span className="min-w-0 flex-1">
-                <span className="block text-lg font-semibold text-zinc-900 dark:text-white">{title}</span>
-                <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">Doar pelo 7me</span>
-            </span>
-            <ArrowTopRightOnSquareIcon
-                className="h-5 w-5 shrink-0 text-zinc-400 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300"
-                aria-hidden
-            />
-        </a>
-    );
 }
 
 const CENTS_DESTINATIONS = [
@@ -128,8 +97,22 @@ export default function MobileOfferings({ donation, localOffer, offeringUrl }: P
 
                     {hasSevenMe && (
                         <div className="grid gap-3 sm:grid-cols-2">
-                            {hasTithe && titheUrl && <SevenMeCard href={titheUrl} title="Dízimo" />}
-                            {hasOffering && offeringUrl && <SevenMeCard href={offeringUrl} title="Oferta e Pacto" />}
+                            {hasTithe && titheUrl ? (
+                                <CampaignSevenMeContribute
+                                    href={titheUrl}
+                                    title="Dízimo"
+                                    subtitle="Doar pelo 7me"
+                                    tone="brand"
+                                />
+                            ) : null}
+                            {hasOffering && offeringUrl ? (
+                                <CampaignSevenMeContribute
+                                    href={offeringUrl}
+                                    title="Oferta e Pacto"
+                                    subtitle="Doar pelo 7me"
+                                    tone="emerald"
+                                />
+                            ) : null}
                         </div>
                     )}
 
