@@ -1,6 +1,8 @@
 import ReadingPositionControls from '@/Components/Mobile/ReadingPositionControls';
+import { downloadBlob, sanitizeDownloadFilename } from '@/lib/downloadBlob';
 import { extractPdfMagazineProgressive, type MagazineArticle } from '@/lib/extractPdfMagazine';
 import { extractPdfTextProgressive } from '@/lib/extractPdfText';
+import { fetchPdfBytes } from '@/lib/pdfjsClient';
 import { stripUrlFragment } from '@/lib/pdfViewerUrl';
 import {
     ArrowDownTrayIcon,
@@ -620,16 +622,40 @@ function PdfReaderActions({
     originalUrl: string;
     downloadUrl: string;
 }) {
+    const [downloading, setDownloading] = useState(false);
+
+    const handleDownload = async () => {
+        if (downloading) return;
+        setDownloading(true);
+        try {
+            const { bytes } = await fetchPdfBytes(downloadUrl);
+            downloadBlob(
+                new Blob([bytes], { type: 'application/pdf' }),
+                `${sanitizeDownloadFilename('documento')}.pdf`,
+            );
+        } catch {
+            // Fallback: abre em nova aba só se o blob falhar.
+            window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+        } finally {
+            setDownloading(false);
+        }
+    };
+
     return (
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
             <a href={originalUrl} target="_blank" rel="noopener noreferrer" className={actionBtnClass}>
                 <ArrowTopRightOnSquareIcon className="h-5 w-5 shrink-0" aria-hidden />
                 Ver PDF original
             </a>
-            <a href={downloadUrl} className={actionBtnClass}>
+            <button
+                type="button"
+                onClick={() => void handleDownload()}
+                disabled={downloading}
+                className={`${actionBtnClass} disabled:cursor-not-allowed disabled:opacity-60`}
+            >
                 <ArrowDownTrayIcon className="h-5 w-5 shrink-0" aria-hidden />
-                Baixar PDF
-            </a>
+                {downloading ? 'Preparando…' : 'Baixar PDF'}
+            </button>
         </div>
     );
 }

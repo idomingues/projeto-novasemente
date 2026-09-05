@@ -1,4 +1,5 @@
 import { fetchPdfBytes, loadPdfDocument } from '@/lib/pdfjsClient';
+import { downloadBlob, sanitizeDownloadFilename } from '@/lib/downloadBlob';
 import { type PDFDocumentProxy, type PDFPageProxy } from 'pdfjs-dist';
 import {
     ArrowDownTrayIcon,
@@ -8,7 +9,7 @@ import {
     MagnifyingGlassMinusIcon,
     MagnifyingGlassPlusIcon,
 } from '@heroicons/react/24/outline';
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type Props = {
     pdfUrl: string;
@@ -51,7 +52,10 @@ export default function PdfOriginalViewer({
     const [currentPage, setCurrentPage] = useState(1);
     const [zoom, setZoom] = useState(1);
     const [pinchScale, setPinchScale] = useState(1);
+    const [downloading, setDownloading] = useState(false);
+    const [downloadError, setDownloadError] = useState<string | null>(null);
     const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const pdfBytesRef = useRef<ArrayBuffer | null>(null);
     const pinchRef = useRef<{ active: boolean; startDist: number; startZoom: number; liveScale: number }>({
         active: false,
         startDist: 0,
@@ -70,9 +74,13 @@ export default function PdfOriginalViewer({
         setZoom(1);
         setPinchScale(1);
         pinchRef.current.liveScale = 1;
+        pdfBytesRef.current = null;
+        setDownloadError(null);
 
         try {
             const { bytes } = await fetchPdfBytes(pdfUrl);
+            // Cópia: o pdf.js pode consumir/transferir o buffer original.
+            pdfBytesRef.current = bytes.slice(0);
             const documentProxy = await loadPdfDocument(bytes);
             setPdf(documentProxy);
             setPageCount(documentProxy.numPages);
@@ -98,9 +106,30 @@ export default function PdfOriginalViewer({
         setCurrentPage(pageNumber);
     }, []);
 
-    const handleDownload = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
-        event.stopPropagation();
-    }, []);
+    const handleDownload = useCallback(async () => {
+        if (downloading) return;
+        setDownloading(true);
+        setDownloadError(null);
+        try {
+            let bytes = pdfBytesRef.current;
+            if (!bytes || bytes.byteLength === 0) {
+                const source = (downloadUrl ?? pdfUrl).trim();
+                const fetched = await fetchPdfBytes(source);
+                bytes = fetched.bytes.slice(0);
+                pdfBytesRef.current = bytes;
+            }
+            const filename = `${sanitizeDownloadFilename(title, 'programacao')}.pdf`;
+            downloadBlob(new Blob([bytes], { type: 'application/pdf' }), filename);
+        } catch (error) {
+            setDownloadError(
+                error instanceof Error
+                    ? error.message
+                    : 'Não foi possível baixar o PDF. Tente de novo.',
+            );
+        } finally {
+            setDownloading(false);
+        }
+    }, [downloading, downloadUrl, pdfUrl, title]);
 
     const bumpZoom = useCallback((delta: number) => {
         setPinchScale(1);
@@ -262,18 +291,23 @@ export default function PdfOriginalViewer({
                         </div>
                     </div>
 
-                    {downloadUrl ? (
-                        <a
-                            href={downloadUrl}
-                            download
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={handleDownload}
-                            className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                        >
-                            <ArrowDownTrayIcon className="h-5 w-5 shrink-0" aria-hidden />
-                            Baixar PDF
-                        </a>
+                    {downloadUrl || pdfUrl ? (
+                        <div className="mt-4 space-y-2">
+                            <button
+                                type="button"
+                                onClick={() => void handleDownload()}
+                                disabled={downloading}
+                                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                            >
+                                <ArrowDownTrayIcon className="h-5 w-5 shrink-0" aria-hidden />
+                                {downloading ? 'Preparando download…' : 'Baixar PDF'}
+                            </button>
+                            {downloadError ? (
+                                <p className="text-center text-xs text-amber-700 dark:text-amber-300" role="alert">
+                                    {downloadError}
+                                </p>
+                            ) : null}
+                        </div>
                     ) : null}
                 </>
             ) : null}
