@@ -5,6 +5,7 @@ import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
 import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import Modal from '@/Components/Modal';
@@ -13,6 +14,7 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import { FormEventHandler, useMemo, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
 import { compressImageForUpload, ImageCompressError } from '@/utils/compressImageForUpload';
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
@@ -53,6 +55,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
     const [editingId, setEditingId] = useState<number | null>(null);
     const [coverCompressing, setCoverCompressing] = useState(false);
     const [coverCompressError, setCoverCompressError] = useState<string | null>(null);
+    const { openPreview, previewModal } = usePublicationAppPreview();
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         title: '',
@@ -202,6 +205,17 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
 
                                     {canManage && (
                                         <ListCardActionRow className="mt-3 gap-1 sm:w-auto">
+                                            <AppPhonePreviewButton
+                                                onClick={() =>
+                                                    openPreview({
+                                                        typeLabel: 'Álbum',
+                                                        title: a.title,
+                                                        imageUrl: cover,
+                                                        publishedLabel,
+                                                        backLabel: '← Fotos',
+                                                    })
+                                                }
+                                            />
                                             <ListCardIconActionButton
                                                 label="Editar"
                                                 icon={<PencilIcon className="h-5 w-5" />}
@@ -355,6 +369,7 @@ export default function PhotoAlbumsIndex({ albums, canManage, hasDriveApiKey }: 
                     </form>
                 </Modal>
             )}
+            {previewModal}
         </AdminLayout>
     );
 }

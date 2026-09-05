@@ -12,6 +12,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
 import InputError from '@/Components/InputError';
 import { FormEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
@@ -20,6 +21,7 @@ import { compressImageForUpload, ImageCompressError } from '@/utils/compressImag
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 import { COMMUNITY_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { useListModalEditUrl, useListModalFromUrl } from '@/hooks/useListModalEditUrl';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 
 function imageSrc(url: string | null, appUrl: string): string {
     if (!url) return '';
@@ -69,6 +71,7 @@ export default function CommunitiesIndex({
     const [coverCompressing, setCoverCompressing] = useState(false);
     const [coverCompressError, setCoverCompressError] = useState<string | null>(null);
     const [saveMessage, setSaveMessage] = useState<string | null>(null);
+    const { openPreview, previewModal } = usePublicationAppPreview();
 
     const { syncListModalEditUrl } = useListModalEditUrl();
 
@@ -317,21 +320,37 @@ export default function CommunitiesIndex({
                                                 {c.description}
                                             </p>
                                         </div>
-                                        {canManage ? (
-                                            <ListCardActionRow className="shrink-0 gap-1 sm:w-auto">
-                                                <ListCardIconActionButton
-                                                    label="Editar"
-                                                    icon={<PencilIcon className="h-5 w-5" />}
-                                                    onClick={() => openEditModal(c)}
-                                                />
-                                                <ListCardIconActionButton
-                                                    label="Excluir"
-                                                    icon={<TrashIcon className="h-5 w-5" />}
-                                                    tone="danger"
-                                                    onClick={() => handleDelete(c.id)}
-                                                />
-                                            </ListCardActionRow>
-                                        ) : null}
+                                        <ListCardActionRow className="shrink-0 gap-1 sm:w-auto">
+                                            <AppPhonePreviewButton
+                                                onClick={() =>
+                                                    openPreview({
+                                                        typeLabel: 'Comunidade',
+                                                        title: c.name,
+                                                        excerpt: c.description,
+                                                        imageUrl: c.coverUrl
+                                                            ? imageSrc(c.coverUrl, appUrl)
+                                                            : null,
+                                                        meta: [c.isPublished ? 'Publicado' : 'Rascunho'],
+                                                        backLabel: '← Comunidades',
+                                                    })
+                                                }
+                                            />
+                                            {canManage ? (
+                                                <>
+                                                    <ListCardIconActionButton
+                                                        label="Editar"
+                                                        icon={<PencilIcon className="h-5 w-5" />}
+                                                        onClick={() => openEditModal(c)}
+                                                    />
+                                                    <ListCardIconActionButton
+                                                        label="Excluir"
+                                                        icon={<TrashIcon className="h-5 w-5" />}
+                                                        tone="danger"
+                                                        onClick={() => handleDelete(c.id)}
+                                                    />
+                                                </>
+                                            ) : null}
+                                        </ListCardActionRow>
                                     </div>
                                 </div>
                             </Card>
@@ -478,6 +497,8 @@ export default function CommunitiesIndex({
                     </form>
                 </Modal>
             )}
+
+            {previewModal}
         </AdminLayout>
     );
 }

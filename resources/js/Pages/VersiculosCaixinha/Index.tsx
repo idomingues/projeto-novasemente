@@ -24,9 +24,11 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
 import Checkbox from '@/Components/Checkbox';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
 import { FormEventHandler, useMemo, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 
 type Row = {
     id: number;
@@ -161,6 +163,7 @@ export default function VersiculosCaixinhaIndex({
     const [previewSummary, setPreviewSummary] = useState<ImportPreviewSummary | null>(null);
     const [previewTitle, setPreviewTitle] = useState('');
     const [previewScanned, setPreviewScanned] = useState<number | null>(null);
+    const { openPreview, previewModal } = usePublicationAppPreview();
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         livro: books[0] ?? '',
@@ -321,7 +324,7 @@ export default function VersiculosCaixinhaIndex({
         setIsPreviewOpen(false);
     };
 
-    const openPreview = (title: string, data: PreviewResponse) => {
+    const openImportPreview = (title: string, data: PreviewResponse) => {
         setPreviewTitle(title);
         setPreviewItems(data.items ?? []);
         setPreviewSummary(data.summary ?? null);
@@ -355,7 +358,7 @@ export default function VersiculosCaixinhaIndex({
                 setPreviewError(data.message || 'Não foi possível gerar a prévia.');
                 return;
             }
-            openPreview('Versículos populares', data);
+            openImportPreview('Versículos populares', data);
         } catch {
             setPreviewError('Não foi possível conectar ao servidor. Tente novamente.');
         } finally {
@@ -376,7 +379,7 @@ export default function VersiculosCaixinhaIndex({
                 setPreviewError(data.message || 'Não foi possível gerar a prévia.');
                 return;
             }
-            openPreview('Varredura da Bíblia', data);
+            openImportPreview('Varredura da Bíblia', data);
         } catch {
             setPreviewError('Não foi possível conectar ao servidor. Tente novamente.');
         } finally {
@@ -397,7 +400,7 @@ export default function VersiculosCaixinhaIndex({
                 setPreviewError(data.message || 'Não foi possível gerar a prévia com IA.');
                 return;
             }
-            openPreview('Busca com IA', data);
+            openImportPreview('Busca com IA', data);
         } catch {
             setPreviewError('Não foi possível conectar ao servidor. Tente novamente.');
         } finally {
@@ -438,6 +441,16 @@ export default function VersiculosCaixinhaIndex({
     };
 
     const previewSelectedCount = previewItems.filter((item) => item.selected && item.status === 'ready').length;
+
+    const openRowPhonePreview = (row: Row) => {
+        openPreview({
+            typeLabel: 'Promessa',
+            title: row.ref,
+            excerpt: row.textPreview,
+            meta: [row.categoria, row.ativo ? 'Ativo' : 'Inativo'],
+            backLabel: '← Caixinha',
+        });
+    };
 
     const previewStatusLabel = (status: ImportPreviewItem['status']) => {
         switch (status) {
@@ -674,6 +687,7 @@ export default function VersiculosCaixinhaIndex({
                                                 </div>
                                             </div>
                                             <div className="flex shrink-0">
+                                                <AppPhonePreviewButton onClick={() => openRowPhonePreview(row)} />
                                                 <button
                                                     type="button"
                                                     onClick={() => openEditModal(row)}
@@ -741,6 +755,7 @@ export default function VersiculosCaixinhaIndex({
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex justify-end gap-1">
+                                                        <AppPhonePreviewButton onClick={() => openRowPhonePreview(row)} />
                                                         <button
                                                             type="button"
                                                             onClick={() => openEditModal(row)}
@@ -1053,6 +1068,8 @@ export default function VersiculosCaixinhaIndex({
                     )}
                 </div>
             </Modal>
+
+            {previewModal}
         </AdminLayout>
     );
 }

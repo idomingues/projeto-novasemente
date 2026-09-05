@@ -11,10 +11,12 @@ import SelectInput from '@/Components/SelectInput';
 import PageHeader from '@/Components/PageHeader';
 import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
 import PollCardResults from '@/Components/Polls/PollCardResults';
 import PollResultsCard from '@/Components/Polls/PollResultsCard';
 import type { PollResults } from '@/Components/Polls/pollTypes';
 import { useListModalSubmit } from '@/hooks/useListModalSubmit';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 import { confirmAction } from '@/utils/confirmDialog';
 import { Head, useForm, router } from '@inertiajs/react';
 import {
@@ -124,6 +126,7 @@ export default function Index({
     const [modalTab, setModalTab] = useState<ModalTab>('enquete');
     const [linkCopied, setLinkCopied] = useState<'painel' | 'voto' | null>(null);
     const syncFormAfterReloadRef = useRef(false);
+    const { openPreview, previewModal } = usePublicationAppPreview();
 
     const { data, setData, errors, reset, clearErrors, setError } = useForm({
         question: '',
@@ -479,21 +482,50 @@ export default function Index({
                                     </p>
                                     {poll.results && <PollCardResults results={poll.results} />}
                                 </button>
-                                {canManage && (
                                     <ListCardActionRow className="mt-3">
-                                        <ListCardIconActionButton
-                                            label="Editar"
-                                            icon={<PencilIcon className="h-4 w-4" />}
-                                            onClick={() => openEditModal(poll)}
+                                        <AppPhonePreviewButton
+                                            onClick={() =>
+                                                openPreview({
+                                                    typeLabel: 'Enquete',
+                                                    title: poll.question,
+                                                    excerpt:
+                                                        poll.response_type === 'text'
+                                                            ? 'Texto livre · sem gráfico de resultado'
+                                                            : `${poll.options_count} opções · resultado em % · 1 por pessoa`,
+                                                    meta: [
+                                                        poll.status_label,
+                                                        poll.response_type_label ??
+                                                            (poll.response_type === 'text'
+                                                                ? 'Texto livre'
+                                                                : 'Múltipla escolha'),
+                                                    ],
+                                                    publishedLabel: poll.created_at
+                                                        ? new Date(poll.created_at).toLocaleDateString('pt-BR', {
+                                                              day: '2-digit',
+                                                              month: 'short',
+                                                              year: 'numeric',
+                                                          })
+                                                        : null,
+                                                    backLabel: '← Enquetes',
+                                                })
+                                            }
                                         />
-                                        <ListCardIconActionButton
-                                            label="Excluir"
-                                            icon={<TrashIcon className="h-4 w-4" />}
-                                            tone="danger"
-                                            onClick={() => void handleDelete(poll.id)}
-                                        />
+                                        {canManage ? (
+                                            <>
+                                                <ListCardIconActionButton
+                                                    label="Editar"
+                                                    icon={<PencilIcon className="h-4 w-4" />}
+                                                    onClick={() => openEditModal(poll)}
+                                                />
+                                                <ListCardIconActionButton
+                                                    label="Excluir"
+                                                    icon={<TrashIcon className="h-4 w-4" />}
+                                                    tone="danger"
+                                                    onClick={() => void handleDelete(poll.id)}
+                                                />
+                                            </>
+                                        ) : null}
                                     </ListCardActionRow>
-                                )}
                             </li>
                         ))}
                     </ul>
@@ -1332,6 +1364,8 @@ export default function Index({
                     )}
                 </div>
             </Modal>
+
+            {previewModal}
         </AdminLayout>
     );
 }

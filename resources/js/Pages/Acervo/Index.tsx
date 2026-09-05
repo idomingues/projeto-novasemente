@@ -9,6 +9,8 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputError from '@/Components/InputError';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 import { useCallback, useState, FormEventHandler } from 'react';
 import { textIncludesSearch } from '@/utils/searchText';
 import { useListModalSubmit } from '@/hooks/useListModalSubmit';
@@ -39,6 +41,7 @@ export default function AcervoIndex({ items, canManage }: Props) {
     const [deleteItem, setDeleteItem] = useState<AcervoItem | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [search, setSearch] = useState('');
+    const { openPreview, previewModal } = usePublicationAppPreview();
 
     const filteredItems = search.trim()
         ? items.filter((item) => textIncludesSearch(item.title, search))
@@ -219,32 +222,51 @@ export default function AcervoIndex({ items, canManage }: Props) {
                                         </span>
                                     </div>
                                 </a>
-                                {canManage && (
-                                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                openEditModal(item);
-                                            }}
-                                            className="p-2 rounded-lg bg-white/90 dark:bg-zinc-800/90 shadow hover:bg-white dark:hover:bg-zinc-700"
-                                            title="Editar"
-                                        >
-                                            <PencilIcon className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                openDeleteModal(item);
-                                            }}
-                                            className="p-2 rounded-lg bg-white/90 dark:bg-zinc-800/90 shadow hover:bg-red-100 dark:hover:bg-red-900/30"
-                                            title="Remover"
-                                        >
-                                            <TrashIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
-                                        </button>
-                                    </div>
-                                )}
+                                <div className="absolute top-2 right-2 flex gap-1">
+                                    <AppPhonePreviewButton
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            openPreview({
+                                                typeLabel: 'Série',
+                                                title: item.title,
+                                                excerpt:
+                                                    item.videoCount != null && item.videoCount > 0
+                                                        ? `${item.videoCount} ${item.videoCount === 1 ? 'vídeo' : 'vídeos'}`
+                                                        : 'Playlist do YouTube',
+                                                imageUrl: item.thumbnail,
+                                                backLabel: '← Séries',
+                                            });
+                                        }}
+                                        className="!bg-white/90 shadow dark:!bg-zinc-800/90"
+                                    />
+                                    {canManage ? (
+                                        <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity">
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    openEditModal(item);
+                                                }}
+                                                className="cursor-pointer p-2 rounded-lg bg-white/90 dark:bg-zinc-800/90 shadow hover:bg-white dark:hover:bg-zinc-700"
+                                                title="Editar"
+                                            >
+                                                <PencilIcon className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    openDeleteModal(item);
+                                                }}
+                                                className="cursor-pointer p-2 rounded-lg bg-white/90 dark:bg-zinc-800/90 shadow hover:bg-red-100 dark:hover:bg-red-900/30"
+                                                title="Remover"
+                                            >
+                                                <TrashIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                            </button>
+                                        </div>
+                                    ) : null}
+                                </div>
                             </div>
                         ))}
                         </div>
@@ -344,6 +366,8 @@ export default function AcervoIndex({ items, canManage }: Props) {
                     </div>
                 </form>
             </Modal>
+
+            {previewModal}
         </AdminLayout>
     );
 }

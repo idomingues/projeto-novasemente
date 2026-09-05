@@ -1,3 +1,2 @@
-• Suporte aprimorado ao iPad: layout responsivo em telas maiores (central de voluntários, home, notícias e barra inferior).
-• App iOS universal (iPhone + iPad) — nova build para instalação na App Store em tablets.
-• Compatibilidade iOS ampliada (mínimo iOS 15) para mais modelos de iPad receberem a atualização.
+• Pré-visualização no celular nas telas de Publicação do painel: veja como notícias, culto, eventos e demais conteúdos aparecem no app antes de publicar.
+• Visualizador em formato de celular reutilizável em todo o sistema de gestão.

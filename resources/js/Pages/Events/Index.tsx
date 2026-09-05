@@ -23,6 +23,7 @@ import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
 import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import InputError from '@/Components/InputError';
@@ -46,6 +47,7 @@ import {
     useListModalSaveMessage,
     useSyncFormAfterListReload,
 } from '@/hooks/useListModalEditUrl';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 
 /** Cores sugeridas (hex) — complementam o código livre e o seletor nativo. */
@@ -296,6 +298,7 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
     const [saving, setSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState<string | null>(null);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const { openPreview, previewModal } = usePublicationAppPreview();
     const { syncListModalEditUrl } = useListModalEditUrl();
     const showSaveMessage = useListModalSaveMessage();
 
@@ -760,6 +763,25 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                                                         onClick={() => setActive(ev, !ev.is_active)}
                                                         disabled={activatingId === ev.id}
                                                     />
+                                                    <AppPhonePreviewButton
+                                                        onClick={() =>
+                                                            openPreview({
+                                                                typeLabel: 'Evento',
+                                                                title: ev.title,
+                                                                imageUrl: imageSrc(ev.image_url, appUrl) || null,
+                                                                excerpt: ev.description,
+                                                                publishedLabel: formatDateTime(
+                                                                    ev.starts_at,
+                                                                    ev.all_day,
+                                                                ),
+                                                                meta: [
+                                                                    ...(ev.location ? [ev.location] : []),
+                                                                    ...(ev.price ? [ev.price] : []),
+                                                                ],
+                                                                backLabel: '← Eventos',
+                                                            })
+                                                        }
+                                                    />
                                                     <ListCardIconActionButton
                                                         label="Editar"
                                                         icon={<PencilIcon className="h-5 w-5" />}
@@ -1147,6 +1169,7 @@ export default function Index({ events, eventsForMonth, month, year, canManage }
                     </div>
                 </form>
             </Modal>
+            {previewModal}
         </AdminLayout>
     );
 }

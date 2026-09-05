@@ -7,6 +7,8 @@ import ListSearchHint from '@/Components/ListSearchHint';
 import Card from '@/Components/Card';
 import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 import { confirmAction } from '@/utils/confirmDialog';
 import { Head, Link, router } from '@inertiajs/react';
 import {
@@ -78,6 +80,7 @@ export default function RevistaAdventistaIndex({ articles, canManage, sections, 
     const [syncing, setSyncing] = useState(false);
     const lastAppliedSearchRef = useRef(filters.q ?? '');
     const searchBelowMinimum = isListSearchBelowMinimum(searchQuery);
+    const { openPreview, previewModal } = usePublicationAppPreview();
 
     useEffect(() => {
         setSearchQuery(filters.q ?? '');
@@ -274,15 +277,28 @@ export default function RevistaAdventistaIndex({ articles, canManage, sections, 
                                                 {article.author_name && <span>• {article.author_name}</span>}
                                             </div>
                                         </div>
-                                        {canManage && (
-                                            <ListCardActionRow className="shrink-0 gap-1">
+                                        <ListCardActionRow className="shrink-0 gap-1">
+                                            <AppPhonePreviewButton
+                                                onClick={() =>
+                                                    openPreview({
+                                                        typeLabel: article.section_label || 'Revista',
+                                                        title: article.title,
+                                                        excerpt: article.excerpt,
+                                                        imageUrl: hero,
+                                                        publishedLabel: formatDate(article.published_at),
+                                                        meta: article.author_name ? [article.author_name] : undefined,
+                                                        backLabel: '← Revista',
+                                                    })
+                                                }
+                                            />
+                                            {canManage ? (
                                                 <ListCardIconActionButton
                                                     label={isActive ? 'Desativar' : 'Ativar'}
                                                     icon={<PowerIcon className="h-5 w-5" />}
                                                     onClick={() => handleSetActive(article, !isActive)}
                                                 />
-                                            </ListCardActionRow>
-                                        )}
+                                            ) : null}
+                                        </ListCardActionRow>
                                     </div>
                                     {article.excerpt && (
                                         <p className="line-clamp-3 text-sm text-zinc-600 dark:text-zinc-300">{article.excerpt}</p>
@@ -339,6 +355,8 @@ export default function RevistaAdventistaIndex({ articles, canManage, sections, 
                     })}
                 </nav>
             )}
+
+            {previewModal}
         </AdminLayout>
     );
 }

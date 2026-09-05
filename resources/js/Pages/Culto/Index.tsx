@@ -7,6 +7,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -15,6 +16,7 @@ import { useCallback, useEffect, useState, FormEventHandler } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import { submitListModalDelete } from '@/utils/listModalFetchSave';
 import { useListModalSubmit } from '@/hooks/useListModalSubmit';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 import {
     useListModalEditUrl,
     useListModalFromUrl,
@@ -71,6 +73,7 @@ export default function CultoIndex({ cultos: cultosProp }: Props) {
     });
     const { syncListModalEditUrl } = useListModalEditUrl();
     const showSaveMessage = useListModalSaveMessage();
+    const { openPreview, previewModal } = usePublicationAppPreview();
 
     const applyCultoToForm = useCallback(
         (c: CultoItem) => {
@@ -231,6 +234,19 @@ export default function CultoIndex({ cultos: cultosProp }: Props) {
                                     </div>
                                 </div>
                                 <ListCardActionRow className="mt-3 gap-1 sm:w-auto">
+                                    <AppPhonePreviewButton
+                                        onClick={() =>
+                                            openPreview({
+                                                typeLabel: 'Culto',
+                                                title: c.title,
+                                                imageUrl: c.youtube_thumb_url,
+                                                publishedLabel: c.published_at
+                                                    ? formatDate(c.published_at)
+                                                    : 'Rascunho',
+                                                backLabel: '← Culto',
+                                            })
+                                        }
+                                    />
                                     <ListCardIconActionButton
                                         label="Editar"
                                         icon={<PencilIcon className="h-5 w-5" />}
@@ -249,6 +265,8 @@ export default function CultoIndex({ cultos: cultosProp }: Props) {
                     ))
                 )}
             </div>
+
+            {previewModal}
 
             <Modal show={isModalOpen} onClose={closeModal}>
                 <form onSubmit={submit} className="p-6">

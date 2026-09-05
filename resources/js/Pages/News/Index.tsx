@@ -21,12 +21,14 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
 import InputError from '@/Components/InputError';
 import SelectInput from '@/Components/SelectInput';
 import Checkbox from '@/Components/Checkbox';
 import { useState, useEffect, FormEventHandler, useMemo, useCallback, useRef, type ReactNode } from 'react';
 import ListSearchHint from '@/Components/ListSearchHint';
 import { useDebouncedServerSearch } from '@/hooks/useDebouncedServerSearch';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 import { confirmAction } from '@/utils/confirmDialog';
 import { buildNewsFormData } from '@/utils/buildNewsFormData';
 import {
@@ -238,6 +240,7 @@ export default function Index({ posts, filters, canManage, config }: Props) {
     const modalScrollRef = useRef<HTMLDivElement>(null);
     const { syncListModalEditUrl } = useListModalEditUrl();
     const showSaveMessage = useListModalSaveMessage();
+    const { openPreview, previewModal } = usePublicationAppPreview();
     const [existingPdfUrl, setExistingPdfUrl] = useState<string | null>(null);
     const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null);
     const {
@@ -743,26 +746,50 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                                             {p.author?.name && <span>• {p.author.name}</span>}
                                         </div>
                                     </div>
-                                    {canManage && (
-                                        <ListCardActionRow className="shrink-0 gap-1 sm:w-auto">
-                                            <ListCardIconActionButton
-                                                label={isActive ? 'Desativar' : 'Ativar'}
-                                                icon={<PowerIcon className="h-5 w-5" />}
-                                                onClick={() => handleSetActive(p, !isActive)}
-                                            />
-                                            <ListCardIconActionButton
-                                                label="Editar"
-                                                icon={<PencilIcon className="h-5 w-5" />}
-                                                onClick={() => openEditModal(p)}
-                                            />
-                                            <ListCardIconActionButton
-                                                label="Excluir"
-                                                icon={<TrashIcon className="h-5 w-5" />}
-                                                tone="danger"
-                                                onClick={() => handleDelete(p.id)}
-                                            />
-                                        </ListCardActionRow>
-                                    )}
+                                    <ListCardActionRow className="shrink-0 gap-1 sm:w-auto">
+                                        <AppPhonePreviewButton
+                                            onClick={() => {
+                                                const coverOrImage = p.cover_url || p.image_url;
+                                                const youtubeThumb =
+                                                    p.content_type === 'youtube' && p.youtube_url
+                                                        ? youtubeThumbUrlFromVideoUrl(p.youtube_url)
+                                                        : null;
+                                                openPreview({
+                                                    typeLabel: entityLabel || typeShortLabel(p.content_type ?? 'article'),
+                                                    title: p.title,
+                                                    excerpt: cardSummary(p),
+                                                    imageUrl: coverOrImage
+                                                        ? imageSrc(coverOrImage, appUrl)
+                                                        : youtubeThumb,
+                                                    publishedLabel: p.published_at
+                                                        ? new Date(p.published_at).toLocaleDateString('pt-BR')
+                                                        : 'Rascunho',
+                                                    meta: [typeShortLabel(p.content_type ?? 'article')],
+                                                    backLabel: '← Publicações',
+                                                });
+                                            }}
+                                        />
+                                        {canManage && (
+                                            <>
+                                                <ListCardIconActionButton
+                                                    label={isActive ? 'Desativar' : 'Ativar'}
+                                                    icon={<PowerIcon className="h-5 w-5" />}
+                                                    onClick={() => handleSetActive(p, !isActive)}
+                                                />
+                                                <ListCardIconActionButton
+                                                    label="Editar"
+                                                    icon={<PencilIcon className="h-5 w-5" />}
+                                                    onClick={() => openEditModal(p)}
+                                                />
+                                                <ListCardIconActionButton
+                                                    label="Excluir"
+                                                    icon={<TrashIcon className="h-5 w-5" />}
+                                                    tone="danger"
+                                                    onClick={() => handleDelete(p.id)}
+                                                />
+                                            </>
+                                        )}
+                                    </ListCardActionRow>
                                 </div>
                                 {cardSummary(p) && (
                                     <p className="text-sm text-zinc-600 dark:text-zinc-300">{cardSummary(p)}</p>
@@ -819,6 +846,8 @@ export default function Index({ posts, filters, canManage, config }: Props) {
                     </nav>
                 </div>
             )}
+
+            {previewModal}
 
             {canManage && (
                 <Modal

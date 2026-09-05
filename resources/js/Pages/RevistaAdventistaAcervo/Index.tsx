@@ -5,6 +5,8 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import Card from '@/Components/Card';
 import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 import { confirmAction } from '@/utils/confirmDialog';
 import { Head, Link, router } from '@inertiajs/react';
 import {
@@ -67,6 +69,7 @@ function buildQuery(filters: { ano: number; status: string }): Record<string, st
 export default function RevistaAdventistaAcervoIndex({ editions, canManage, availableYears, filters }: Props) {
     const [syncing, setSyncing] = useState(false);
     const [syncingPdfs, setSyncingPdfs] = useState(false);
+    const { openPreview, previewModal } = usePublicationAppPreview();
 
     const applyYear = (year: number) => {
         router.get(route('revista-adventista-acervo.index'), buildQuery({ ...filters, ano: year }), {
@@ -259,22 +262,44 @@ export default function RevistaAdventistaAcervoIndex({ editions, canManage, avai
                                     Ver no app
                                     <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                                 </Link>
-                                {canManage ? (
-                                    <div className="flex items-center gap-1">
-                                        <ListCardIconActionButton
-                                            label={edition.is_active ? 'Desativar' : 'Ativar'}
-                                            icon={<PowerIcon className="h-5 w-5" />}
-                                            onClick={() => toggleActive(edition, !edition.is_active)}
-                                            tone={edition.is_active ? 'danger' : 'default'}
-                                        />
-                                        <ListCardIconActionButton
-                                            label="Excluir"
-                                            icon={<TrashIcon className="h-5 w-5" />}
-                                            onClick={() => deleteEdition(edition)}
-                                            tone="danger"
-                                        />
-                                    </div>
-                                ) : null}
+                                <div className="flex items-center gap-1">
+                                    <AppPhonePreviewButton
+                                        onClick={() =>
+                                            openPreview({
+                                                typeLabel: 'Edição',
+                                                title: edition.title,
+                                                excerpt: `${edition.month_label} de ${edition.year}`,
+                                                imageUrl: edition.cover_url,
+                                                publishedLabel: formatDate(edition.synced_at),
+                                                meta: [
+                                                    edition.pdf_cached
+                                                        ? 'PDF local'
+                                                        : edition.has_pdf
+                                                          ? 'PDF remoto'
+                                                          : 'Sem PDF',
+                                                    edition.is_active ? 'Ativa' : 'Inativa',
+                                                ],
+                                                backLabel: '← Revista',
+                                            })
+                                        }
+                                    />
+                                    {canManage ? (
+                                        <>
+                                            <ListCardIconActionButton
+                                                label={edition.is_active ? 'Desativar' : 'Ativar'}
+                                                icon={<PowerIcon className="h-5 w-5" />}
+                                                onClick={() => toggleActive(edition, !edition.is_active)}
+                                                tone={edition.is_active ? 'danger' : 'default'}
+                                            />
+                                            <ListCardIconActionButton
+                                                label="Excluir"
+                                                icon={<TrashIcon className="h-5 w-5" />}
+                                                onClick={() => deleteEdition(edition)}
+                                                tone="danger"
+                                            />
+                                        </>
+                                    ) : null}
+                                </div>
                             </ListCardActionRow>
                         </Card>
                     ))}
@@ -310,6 +335,8 @@ export default function RevistaAdventistaAcervoIndex({ editions, canManage, avai
                     })}
                 </nav>
             ) : null}
+
+            {previewModal}
         </AdminLayout>
     );
 }

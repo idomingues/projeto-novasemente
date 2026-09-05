@@ -8,6 +8,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -32,6 +33,7 @@ import { construcaoProgressRaised, defaultConstrucaoIgrejaStory } from '@/data/c
 import { parseMoneyInput } from '@/lib/pixPayload';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 
 interface CampaignPhoto {
@@ -127,6 +129,7 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
     const [previewConstrucaoDraft, setPreviewConstrucaoDraft] = useState<ConstrucaoIgrejaStoryData | null>(null);
     const storyPhotosInputRef = useRef<HTMLInputElement | null>(null);
     const thanksPhotosInputRef = useRef<HTMLInputElement | null>(null);
+    const { openPreview, previewModal } = usePublicationAppPreview();
 
     const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
         title: '',
@@ -659,27 +662,45 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                                         Fotos
                                     </ListCardTextActionButton>
                                 ) : null}
-                                {canManage ? (
-                                    <div className="flex min-w-0 items-stretch gap-1 sm:contents">
-                                        <ListCardTextActionButton
-                                            type="button"
-                                            className="min-h-11 min-w-0 flex-1 whitespace-nowrap sm:h-9 sm:min-h-0 sm:w-auto sm:flex-none"
-                                            icon={<PencilIcon className="h-4 w-4" />}
-                                            onClick={() => openEditModal(campaign)}
-                                        >
-                                            Editar
-                                        </ListCardTextActionButton>
-                                        {canDelete ? (
-                                            <ListCardIconActionButton
-                                                label="Excluir"
-                                                className="shrink-0 sm:min-h-9 sm:min-w-9 sm:p-2"
-                                                icon={<TrashIcon className="h-5 w-5" />}
-                                                tone="danger"
-                                                onClick={() => handleDelete(campaign)}
-                                            />
-                                        ) : null}
-                                    </div>
-                                ) : null}
+                                <div className="flex min-w-0 items-stretch gap-1 sm:contents">
+                                    <AppPhonePreviewButton
+                                        className="shrink-0 sm:min-h-9 sm:min-w-9 sm:p-2"
+                                        onClick={() =>
+                                            openPreview({
+                                                typeLabel: 'Oferta',
+                                                title: campaign.title,
+                                                excerpt: campaign.description,
+                                                imageUrl: campaign.cover_image_url,
+                                                meta: [
+                                                    statusLabels[campaign.status] ?? campaign.status,
+                                                    ...metaParts.slice(0, 2),
+                                                ],
+                                                backLabel: '← Oferta',
+                                            })
+                                        }
+                                    />
+                                    {canManage ? (
+                                        <>
+                                            <ListCardTextActionButton
+                                                type="button"
+                                                className="min-h-11 min-w-0 flex-1 whitespace-nowrap sm:h-9 sm:min-h-0 sm:w-auto sm:flex-none"
+                                                icon={<PencilIcon className="h-4 w-4" />}
+                                                onClick={() => openEditModal(campaign)}
+                                            >
+                                                Editar
+                                            </ListCardTextActionButton>
+                                            {canDelete ? (
+                                                <ListCardIconActionButton
+                                                    label="Excluir"
+                                                    className="shrink-0 sm:min-h-9 sm:min-w-9 sm:p-2"
+                                                    icon={<TrashIcon className="h-5 w-5" />}
+                                                    tone="danger"
+                                                    onClick={() => handleDelete(campaign)}
+                                                />
+                                            ) : null}
+                                        </>
+                                    ) : null}
+                                </div>
                             </div>
                         </article>
                         );
@@ -1411,6 +1432,8 @@ export default function DonationCampaignsIndex({ campaigns, canManage, canManage
                     )}
                 </div>
             </Modal>
+
+            {previewModal}
         </AdminLayout>
     );
 }

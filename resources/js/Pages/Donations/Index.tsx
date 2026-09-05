@@ -7,6 +7,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import ListCardTextActionButton from '@/Components/ListCard/ListCardTextActionButton';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
@@ -18,6 +19,7 @@ import { DONATION_CAMPAIGN_COVER_SPECS } from '@/constants/mediaCoverSpecs';
 import { parseMoneyInput } from '@/lib/pixPayload';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 import { GALLERY_IMAGE_ACCEPT } from '@/utils/mobilePhotoPick';
 
 interface CampaignPhoto {
@@ -130,6 +132,7 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
     const [manualDonationOpen, setManualDonationOpen] = useState(false);
     const storyPhotosInputRef = useRef<HTMLInputElement | null>(null);
     const thanksPhotosInputRef = useRef<HTMLInputElement | null>(null);
+    const { openPreview, previewModal } = usePublicationAppPreview();
 
     const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
         type: 'money' as Campaign['type'],
@@ -488,6 +491,23 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                                         Fotos do projeto
                                     </ListCardTextActionButton>
                                 )}
+                                <AppPhonePreviewButton
+                                    onClick={() =>
+                                        openPreview({
+                                            typeLabel:
+                                                campaign.type === 'items' ? 'Doação · Objetos' : 'Doação',
+                                            title: campaign.title,
+                                            excerpt: campaign.description,
+                                            imageUrl: campaign.cover_image_url,
+                                            meta: [
+                                                statusLabels[campaign.status] ?? campaign.status,
+                                                campaignTypeLabels[campaign.type],
+                                                `${Math.round(campaign.progress_percent)}% da meta`,
+                                            ],
+                                            backLabel: '← Doação',
+                                        })
+                                    }
+                                />
                                 {canManage && (
                                     <>
                                         <ListCardIconActionButton
@@ -1259,6 +1279,8 @@ export default function DonationsIndex({ campaigns, canManage, canManageMedia, c
                     )}
                 </div>
             </Modal>
+
+            {previewModal}
         </AdminLayout>
     );
 }

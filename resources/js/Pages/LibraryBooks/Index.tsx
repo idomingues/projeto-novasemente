@@ -10,6 +10,8 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import Textarea from '@/Components/Textarea';
 import InputError from '@/Components/InputError';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 import { FormEventHandler, useEffect, useMemo, useRef, useState } from 'react';
 import { confirmAction } from '@/utils/confirmDialog';
 import { inertiaListModalSave } from '@/utils/inertiaListModalSave';
@@ -118,6 +120,7 @@ export default function LibraryBooksIndex({
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [coverCompressing, setCoverCompressing] = useState(false);
+    const { openPreview, previewModal } = usePublicationAppPreview();
     const [coverCompressError, setCoverCompressError] = useState<string | null>(null);
 
     const defaultCategory = categories[0]?.value ?? 'books';
@@ -540,26 +543,44 @@ export default function LibraryBooksIndex({
                                         ) : null}
                                     </div>
 
-                                    {canManage && (
-                                        <div className="flex items-center gap-1 mt-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => openEditModal(b)}
-                                                className="p-2.5 rounded-xl text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                                title="Editar"
-                                            >
-                                                <PencilIcon className="w-5 h-5" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDelete(b.id)}
-                                                className="p-2.5 rounded-xl text-zinc-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                                title="Excluir"
-                                            >
-                                                <TrashIcon className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    )}
+                                    <div className="mt-3 flex items-center gap-1">
+                                        <AppPhonePreviewButton
+                                            onClick={() =>
+                                                openPreview({
+                                                    typeLabel: categoryLabel(categories, b.category),
+                                                    title: b.title,
+                                                    excerpt: b.subtitle || b.description || null,
+                                                    imageUrl: b.cover_url,
+                                                    publishedLabel,
+                                                    meta: [
+                                                        ...(b.author?.name ? [b.author.name] : []),
+                                                        ...(cacheLabel ? [cacheLabel] : []),
+                                                    ],
+                                                    backLabel: '← Biblioteca',
+                                                })
+                                            }
+                                        />
+                                        {canManage ? (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openEditModal(b)}
+                                                    className="cursor-pointer rounded-xl p-2.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                                                    title="Editar"
+                                                >
+                                                    <PencilIcon className="h-5 w-5" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDelete(b.id)}
+                                                    className="cursor-pointer rounded-xl p-2.5 text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:hover:bg-zinc-800 dark:hover:text-red-400"
+                                                    title="Excluir"
+                                                >
+                                                    <TrashIcon className="h-5 w-5" />
+                                                </button>
+                                            </>
+                                        ) : null}
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -741,6 +762,8 @@ export default function LibraryBooksIndex({
                     </form>
                 </Modal>
             )}
+
+            {previewModal}
         </AdminLayout>
     );
 }

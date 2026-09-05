@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { DevicePhoneMobileIcon, DocumentTextIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
 import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -264,11 +265,7 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
                                     </div>
                                     <div className="mt-3">
                                         <ListCardActionRow>
-                                            <ListCardIconActionButton
-                                                label="Pré-visualizar no celular"
-                                                icon={<DevicePhoneMobileIcon className="h-4 w-4" aria-hidden />}
-                                                onClick={() => setPreviewRow(row)}
-                                            />
+                                            <AppPhonePreviewButton onClick={() => setPreviewRow(row)} />
                                             {canManage ? (
                                                 <>
                                                     <ListCardIconActionButton
@@ -328,13 +325,7 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
                                             </td>
                                             <td className="px-4 py-3 text-right">
                                                 <div className="inline-flex items-center gap-1">
-                                                    <ListCardIconActionButton
-                                                        label="Pré-visualizar no celular"
-                                                        icon={
-                                                            <DevicePhoneMobileIcon className="h-4 w-4" aria-hidden />
-                                                        }
-                                                        onClick={() => setPreviewRow(row)}
-                                                    />
+                                                    <AppPhonePreviewButton onClick={() => setPreviewRow(row)} />
                                                     {canManage ? (
                                                         <>
                                                             <ListCardIconActionButton

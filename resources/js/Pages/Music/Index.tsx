@@ -5,6 +5,7 @@ import AddButton from '@/Components/AddButton';
 import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
+import AppPhonePreviewButton from '@/Components/AppPhonePreview/AppPhonePreviewButton';
 import ListCardActionRow from '@/Components/ListCard/ListCardActionRow';
 import ListCardIconActionButton from '@/Components/ListCard/ListCardIconActionButton';
 import Modal from '@/Components/Modal';
@@ -20,6 +21,7 @@ import {
     useListModalSaveMessage,
     useSyncFormAfterListReload,
 } from '@/hooks/useListModalEditUrl';
+import { usePublicationAppPreview } from '@/hooks/usePublicationAppPreview';
 
 interface MusicaItem {
     id: number;
@@ -51,6 +53,7 @@ export default function MusicIndex({ musicas, canManage }: Props) {
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [saveMessage, setSaveMessage] = useState<string | null>(null);
+    const { openPreview, previewModal } = usePublicationAppPreview();
     const { data, setData, errors, reset, clearErrors, setError } = useForm({
         title: '',
         youtube_url: '',
@@ -214,6 +217,19 @@ export default function MusicIndex({ musicas, canManage }: Props) {
                                 </div>
                                 {canManage && (
                                     <ListCardActionRow className="mt-3 gap-1 sm:w-auto">
+                                        <AppPhonePreviewButton
+                                            onClick={() =>
+                                                openPreview({
+                                                    typeLabel: 'Música',
+                                                    title: m.title,
+                                                    imageUrl: m.youtube_thumb_url,
+                                                    publishedLabel: m.published_at
+                                                        ? formatDate(m.published_at)
+                                                        : 'Rascunho',
+                                                    backLabel: '← Música',
+                                                })
+                                            }
+                                        />
                                         <ListCardIconActionButton
                                             label="Editar"
                                             icon={<PencilIcon className="h-5 w-5" />}
@@ -290,6 +306,7 @@ export default function MusicIndex({ musicas, canManage }: Props) {
                 </form>
             </Modal>
             )}
+            {previewModal}
         </AdminLayout>
     );
 }
