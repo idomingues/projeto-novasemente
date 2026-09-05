@@ -178,7 +178,7 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
             <div className="space-y-6">
                 <PageHeader
                     title="Programação do sábado"
-                    description="Publique o PDF da programação. Fica visível no app até sábado às 15:00."
+                    subtitle="Publique o PDF da programação. Fica visível no app até sábado às 15:00."
                     actions={
                         canManage ? (
                             <AddButton variant="label" onClick={openCreateModal}>
@@ -232,17 +232,15 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
                                         <ListCardActionRow className="mt-3">
                                             <ListCardIconActionButton
                                                 label="Editar"
+                                                icon={<PencilIcon className="h-4 w-4" aria-hidden />}
                                                 onClick={() => openEditModal(row)}
-                                            >
-                                                <PencilIcon className="h-4 w-4" aria-hidden />
-                                            </ListCardIconActionButton>
+                                            />
                                             <ListCardIconActionButton
                                                 label="Excluir"
+                                                icon={<TrashIcon className="h-4 w-4" aria-hidden />}
                                                 tone="danger"
                                                 onClick={() => void handleDelete(row)}
-                                            >
-                                                <TrashIcon className="h-4 w-4" aria-hidden />
-                                            </ListCardIconActionButton>
+                                            />
                                         </ListCardActionRow>
                                     )}
                                 </article>
@@ -286,17 +284,15 @@ export default function ProgramacaoSabadoIndex({ items, canManage }: Props) {
                                                     <div className="inline-flex items-center gap-1">
                                                         <ListCardIconActionButton
                                                             label="Editar"
+                                                            icon={<PencilIcon className="h-4 w-4" aria-hidden />}
                                                             onClick={() => openEditModal(row)}
-                                                        >
-                                                            <PencilIcon className="h-4 w-4" aria-hidden />
-                                                        </ListCardIconActionButton>
+                                                        />
                                                         <ListCardIconActionButton
                                                             label="Excluir"
+                                                            icon={<TrashIcon className="h-4 w-4" aria-hidden />}
                                                             tone="danger"
                                                             onClick={() => void handleDelete(row)}
-                                                        >
-                                                            <TrashIcon className="h-4 w-4" aria-hidden />
-                                                        </ListCardIconActionButton>
+                                                        />
                                                     </div>
                                                 </td>
                                             )}
