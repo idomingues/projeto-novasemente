@@ -1,6 +1,6 @@
 # Home — Horários, rolagem e Meditação Diária
 
-**Status em 06/09/2026:** testes automatizados e build do frontend aprovados; validação visual da rolagem e restauração no ambiente de destino pendentes.
+**Status em 06/09/2026:** testes automatizados, build e validação manual local aprovados; restauração no ambiente de destino e publicação permanecem pendentes.
 
 ## Contexto e objetivo
 
@@ -113,7 +113,13 @@ Não foi executado:
 - consulta ao ambiente de destino ou escrita de registros;
 - implantação em homologação ou produção.
 
-Os critérios de aceite de visualização e dados permanecem abertos.
+Os critérios de aceite relacionados a dados e ambiente publicado permanecem abertos.
+
+### Validação manual local — confirmada pelo usuário
+
+O usuário confirmou que o teste local foi concluído com sucesso: a Home rola normalmente, o carrossel de Horários responde ao gesto horizontal e a rolagem vertical continua acessível. A confirmação cobre o ambiente local usado no teste e não substitui a verificação em homologação ou produção.
+
+Com isso, os critérios de comportamento da interface ficam validados localmente. Os critérios de restauração de dados, implantação e verificação no ambiente publicado continuam pendentes.
 
 ## Registro do processo de trabalho
 
