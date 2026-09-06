@@ -2,7 +2,7 @@
 
 ## Diretrizes centrais da iResult
 
-Este projeto segue as [Diretrizes IA da iResult](https://github.com/iResult/diretrizes-ia). Elas definem padrões compartilhados de requisitos, frontend, backend, dados, segurança, testes, entrega e operação.
+Este projeto segue a versão `v1.0.0` das [Diretrizes IA da iResult](https://github.com/iResult/diretrizes-ia). Elas definem padrões compartilhados de requisitos, frontend, backend, dados, segurança, testes, entrega e operação.
 
 Consulte somente a diretriz central relacionada à tarefa. As regras específicas do Nova Semente permanecem neste arquivo e em `docs/`; não copie arquitetura, banco ou regras de negócio de outro projeto.
 
