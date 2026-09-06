@@ -253,8 +253,12 @@ class MobileController extends Controller
         $user = $request->user();
 
         $sabbathBanner = app(SabbathSunsetService::class)->homeBannerPayload();
-        $meditationBanner = app(MeditationHomeBannerService::class)->homeBannerPayload($church);
         $weeklyProgramCards = app(\App\Services\WeeklyProgramService::class)->homeCards($church);
+        $showSaturdayProgram = Carbon::now((string) config('sabbath.timezone', 'America/Sao_Paulo'))->isSaturday()
+            && $weeklyProgramCards !== [];
+        $meditationBanner = $showSaturdayProgram
+            ? null
+            : app(MeditationHomeBannerService::class)->homeBannerPayload($church);
         $moduleSpotlight = HomeModuleSpotlight::forChurch($church);
         $bookmarkedHomeCards = [];
         if ($user !== null && Schema::hasTable('user_home_card_bookmarks')) {

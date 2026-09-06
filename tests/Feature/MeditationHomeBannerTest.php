@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Church;
 use App\Models\News;
+use App\Models\WeeklyProgram;
+use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\DataProvider;
 use App\Support\MeditationDailyFeed;
 use Carbon\Carbon;
 use Database\Seeders\ChurchSeeder;
@@ -117,6 +120,51 @@ class MeditationHomeBannerTest extends TestCase
                     ->etc()
                 )
             );
+    }
+
+    public static function programVisibilityCases(): array
+    {
+        return [
+            'sábado com horário futuro' => ['2026-09-05 07:00:00', true, true, '09:30', '10:30', false, 1],
+            'sábado em andamento' => ['2026-09-05 09:45:00', true, true, '09:30', '10:30', false, 1],
+            'sábado inativo' => ['2026-09-05 07:00:00', false, true, '09:30', '10:30', true, 0],
+            'sábado fora da home' => ['2026-09-05 07:00:00', true, false, '09:30', '10:30', true, 0],
+            'sábado encerrado' => ['2026-09-05 09:45:00', true, true, '08:00', '09:00', true, 0],
+            'sábado sem hora exibível' => ['2026-09-05 07:00:00', true, true, null, null, true, 0],
+            'domingo com horário' => ['2026-09-06 07:00:00', true, true, '09:30', '10:30', true, 1],
+            'sexta no Brasil, sábado UTC' => ['2026-09-04 22:00:00', true, true, '23:00', '23:59', true, 1],
+        ];
+    }
+
+    #[DataProvider('programVisibilityCases')]
+    public function test_meditation_banner_respects_visible_saturday_program(
+        string $date, bool $active, bool $onHome, ?string $start, ?string $end,
+        bool $expectBanner, int $expectedCards,
+    ): void {
+        config(['sabbath.timezone' => 'America/Sao_Paulo', 'meditation.home_banner_preview' => true]);
+        Http::fake(['api.sunrise-sunset.org/*' => Http::response(['status' => 'INVALID_REQUEST'])]);
+        $now = Carbon::parse($date, 'America/Sao_Paulo');
+        Carbon::setTestNow($now);
+        $church = $this->seedMeditationForDate($now->copy()->startOfDay()->setHour(5));
+        WeeklyProgram::query()->delete();
+        WeeklyProgram::query()->create([
+            'church_id' => $church->id, 'day_of_week' => $now->dayOfWeek,
+            'when_label' => 'Programação de hoje', 'title' => 'Culto',
+            'time_mode' => 'fixed', 'start_time' => $start, 'end_time' => $end,
+            'is_active' => $active, 'show_on_home' => $onHome, 'sort_order' => 0,
+        ]);
+
+        $this->get(route('mobile.home'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Mobile/Home')
+            ->has('weeklyProgramCards', $expectedCards)
+            ->where('meditationBanner', fn ($banner) => $expectBanner ? $banner !== null : $banner === null)
+        );
+
+        WeeklyProgram::query()->delete();
+        $this->get(route('mobile.home'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('weeklyProgramCards', 0)
+            ->where('meditationBanner', fn ($banner) => $banner !== null)
+        );
     }
 
     private function seedMeditationForDate(Carbon $publishedAt): Church

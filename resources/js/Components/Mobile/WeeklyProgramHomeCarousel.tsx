@@ -72,7 +72,7 @@ export default function WeeklyProgramHomeCarousel({ cards, appUrl = '' }: Props)
                 ref={scrollerRef}
                 className={
                     showCarouselChrome
-                        ? 'flex min-w-0 flex-nowrap items-stretch gap-3 overflow-x-auto overscroll-x-contain scroll-smooth snap-x snap-mandatory py-1 touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+                        ? 'flex min-w-0 flex-nowrap items-stretch gap-3 overflow-x-auto overscroll-x-contain scroll-smooth snap-x snap-mandatory py-1 touch-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
                         : 'min-w-0'
                 }
             >

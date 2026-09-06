@@ -394,3 +394,11 @@ html.dark .ns-sidebar-scroll::-webkit-scrollbar-thumb {
     overscroll-behavior-x: none;
     -webkit-overflow-scrolling: touch;
 }
+
+/* Na Home, permitir também o gesto horizontal do carrossel de Horários.
+ * O shell continua fixo; somente os contêineres com overflow podem rolar. */
+html:has(.ns-home-horizontal-pan),
+#app:has(.ns-home-horizontal-pan),
+.ns-app-shell.ns-home-horizontal-pan {
+    touch-action: auto;
+}

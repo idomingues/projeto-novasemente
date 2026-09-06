@@ -426,7 +426,7 @@ export default function MobileHome({
     }, [showPostRegistrationBanner]);
 
     return (
-        <MobileLayout>
+        <MobileLayout allowHorizontalPan>
             <Head title="Home" />
             <div className="mx-auto flex w-full max-w-lg -mt-5 flex-col gap-7 pb-4 sm:max-w-xl md:max-w-2xl lg:-mt-3 lg:max-w-none">
                 {showPostRegistrationBanner ? (
